@@ -1,0 +1,36 @@
+{
+  "web3": {
+    "connect_wallet": "連接錢包",
+    "account": "帳戶"
+  },
+  "navigation": {
+    "dashboard": "儀表板",
+    "find": "發現",
+    "messages": "訊息",
+    "profile": "個人"
+  },
+  "menu": {
+    "more": "更多",
+    "settings": "設定",
+    "expand": "擴展",
+    "home": "首頁",
+    "company": "公司",
+    "contact": "聯絡",
+    "feedback": "回饋",
+    "docs": "文件",
+    "privacy": "隱私",
+    "terms": "條款"
+  },
+  "sidebar": {
+    "dashboard": "儀表板",
+    "find": "發現",
+    "ai": "AI",
+    "analytics": "分析",
+    "wallet": "錢包",
+    "profile": "用戶",
+    "settings": "設定"
+  },
+  "dashboard": {
+    "version_notice": "Coolha 目前處於 v0.1-alpha 版本，我們正努力開發中，敬請期待。"
+  }
+}

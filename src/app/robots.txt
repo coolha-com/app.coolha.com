@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+# Allow AI crawlers
+User-agent: GPTBot
+Allow: /
+User-agent: ClaudeBot
+Allow: /
+User-agent: PerplexityBot
+Allow: /
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: https://coolha.com/sitemap.xml

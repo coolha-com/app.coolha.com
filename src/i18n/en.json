@@ -1,0 +1,36 @@
+{
+  "web3": {
+    "connect_wallet": "Connect Wallet",
+    "account": "Account"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "find": "Find",
+    "messages": "Messages",
+    "profile": "Profile"
+  },
+  "menu": {
+    "more": "More",
+    "settings": "Settings",
+    "expand": "Expand",
+    "home": "Home",
+    "company": "Company",
+    "contact": "Contact",
+    "feedback": "Feedback",
+    "docs": "Docs",
+    "privacy": "Privacy",
+    "terms": "Terms"
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "find": "Find",
+    "ai": "AI",
+    "analytics": "Analytics",
+    "wallet": "Wallet",
+    "profile": "Profile",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "version_notice": "Coolha is currently in v0.1-alpha version. We are working hard on development, please stay tuned."
+  }
+}
