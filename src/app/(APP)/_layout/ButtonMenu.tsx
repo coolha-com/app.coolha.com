@@ -45,18 +45,13 @@ export default function ButtonMenu() {
                             <ThemeSwap />
                             <LanguageSwitcher />
                         </div>
-                        {/*                         <DropdownMenuItem asChild>
-                            <Link href={`/settings`} prefetch={false} className="w-full flex items-center gap-2 cursor-pointer" >
-                                <RxGear className="w-6 h-6" />
-                                <span>{t('settings')}</span>
-                            </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                            <Link href={`/extend`} prefetch={false} className="w-full flex items-center gap-2 cursor-pointer" >
-                                <RxCube className="w-6 h-6" />
-                                <span>{t('expand')}</span>
-                            </Link>
-                        </DropdownMenuItem> */}
+
+
+                        {/* 版本信息 */}
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
+                            v0.1-alpha
+                        </span>
+
                     </div>
 
                     {/* 分隔线 */}
@@ -64,24 +59,21 @@ export default function ButtonMenu() {
 
                     {/* 信息链接区 */}
                     <div className="px-2 py-2 space-y-3">
-                        {/* 版本信息 */}
-                        <div className="flex items-center justify-between">
 
-                            <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
-                                v0.1-alpha
-                            </span>
-                        </div>
+
 
                         {/* 链接组 1 */}
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                             <Link href={`https://coolha.com`} target='_blank' className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors">
                                 {t('company')}
                             </Link>
+
+
                         </div>
 
                         {/* 链接组 2 */}
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-{/*                             <Link href={`https://link3.to/coolha`} className="text-muted-foreground hover:text-foreground hover:underline transition-colors" target='_blank'>
+                            {/*                             <Link href={`https://link3.to/coolha`} className="text-muted-foreground hover:text-foreground hover:underline transition-colors" target='_blank'>
                                 {t('contact')}
                             </Link> */}
                             <Link href={`https://docs.coolha.com`} className="text-muted-foreground hover:text-foreground hover:underline transition-colors" target='_blank'>
@@ -97,7 +89,7 @@ export default function ButtonMenu() {
 
                         {/* 版权信息 */}
                         <div className="text-xs text-muted-foreground/50 pt-2 border-t mt-2">
-                            <span>© 2026 coolha.com</span>
+                            <span>© 2026 app.coolha.com</span>
                         </div>
                     </div>
 
