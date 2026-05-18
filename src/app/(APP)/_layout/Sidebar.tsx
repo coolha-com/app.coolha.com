@@ -9,9 +9,7 @@ import ButtonMenu from "./ButtonMenu";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { RiSearchFill, RiSearchLine, RiHomeFill, RiHomeLine, RiCompassFill, RiCompassLine, RiChat1Fill, RiChat1Line, RiUserFill, RiUserLine, RiPuzzleLine, RiSettingsLine, RiWallet3Fill, RiWallet3Line, RiSettingsFill, RiRobot2Fill, RiRobot2Line } from "react-icons/ri";
-import { IoStatsChartOutline, IoWalletOutline, } from "react-icons/io5";
-import { FaRobot } from "react-icons/fa6";
+import { RiHomeLine, RiCompassLine, RiUserFill, RiUserLine, RiSettingsLine, RiWallet3Fill, RiWallet3Line, RiSettingsFill, RiRobot2Fill, RiRobot2Line } from "react-icons/ri";
 
 const ConnectButton = dynamic(() => import("@/components/web3/ConnectButton"), { ssr: false });
 
@@ -68,11 +66,11 @@ function NavbarLink() {
             startsWith: '/dashboard'
         },
         {
-            title: t('find'),
-            href: '/find',
+            title: t('discover'),
+            href: '/discover',
             iconActive: RiCompassLine,
             iconInactive: RiCompassLine,
-            startsWith: '/find'
+            startsWith: '/discover'
         },
         {
             title: t('ai'),
@@ -82,11 +80,11 @@ function NavbarLink() {
             startsWith: '/ai'
         },
         {
-            title: t('wallet'),
-            href: '/wallet',
+            title: t('portfolio'),
+            href: '/portfolio',
             iconActive: RiWallet3Line,
             iconInactive: RiWallet3Fill,
-            startsWith: '/wallet'
+            startsWith: '/portfolio'
         },
         {
             title: t('profile'),

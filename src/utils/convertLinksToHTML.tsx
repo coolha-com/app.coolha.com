@@ -1,9 +1,9 @@
 'use client'
 
 // 定义处理链接的函数
-export function convertLinksToHTML(text) {
+export function convertLinksToHTML(text?: string) {
    const urlPattern = /(\bhttps?:\/\/[^\s/$.?#].[^\s]*)/gi;
-   const modifiedText = text?.replace(urlPattern, (url:any) => {
+   const modifiedText = text?.replace(urlPattern, (url: string) => {
       return `<a href="${url}" class="text-success hover:underline" target="_blank" rel="noopener noreferrer" target='_blank'>${url}</a>`;
    });
 

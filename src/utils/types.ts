@@ -1,6 +1,6 @@
 'use client'
 
-enum LimitType {
+export enum LimitType {
     Fifty = "Fifty",
     Ten = "Ten",
     TwentyFive = "TwentyFive",

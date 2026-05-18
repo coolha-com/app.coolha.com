@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useAccount, useWalletClient } from 'wagmi'
 import type { RWAAsset } from '@/lib/rwa/types'
-import { pickRouterAdapter } from '@/lib/rwa/routerAdapter'
+import { createDefaultDefiRouter, simulateTransaction } from '@/lib/defi/router'
 
 function toSafeNumber(input: string): number {
   const parsed = Number(input)
@@ -11,7 +11,8 @@ function toSafeNumber(input: string): number {
 }
 
 export function TradePanel(props: { asset: RWAAsset }) {
-  const adapter = useMemo(() => pickRouterAdapter(), [])
+  const router = useMemo(() => createDefaultDefiRouter(), [])
+  const primaryAdapter = router.listAdapters()[0]
   const { address, isConnected, chainId } = useAccount()
   const { data: walletClient } = useWalletClient()
   const [amount, setAmount] = useState<string>('100')
@@ -26,7 +27,7 @@ export function TradePanel(props: { asset: RWAAsset }) {
   } | null>(null)
   const [message, setMessage] = useState<string>('')
 
-  const simulateTransaction = async () => {
+  const handleSimulateTransaction = async () => {
     setMessage('')
     setResult(null)
     const n = toSafeNumber(amount)
@@ -35,12 +36,13 @@ export function TradePanel(props: { asset: RWAAsset }) {
       return
     }
     setStatus('simulating')
-    const sim = await adapter.simulate({
+    const sim = await simulateTransaction({
       assetId: props.asset.id,
       amountIn: n,
       tokenIn: token,
-      chainId: props.asset.chainId ?? 1,
+      chainId: chainId ?? props.asset.chainId ?? 84532,
       user: address as `0x${string}` | undefined,
+      protocol: 'uniswap',
     })
     setResult({
       txHashPreview: sim.txHashPreview,
@@ -60,7 +62,7 @@ export function TradePanel(props: { asset: RWAAsset }) {
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Trade Module</p>
           <h2 className="mt-1 text-lg font-semibold text-foreground">交易模块（Mock Router）</h2>
         </div>
-        <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground">{adapter.label}</span>
+        <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground">{primaryAdapter.label}</span>
       </div>
 
       <p className="mt-2 text-sm text-muted-foreground">
@@ -103,7 +105,7 @@ export function TradePanel(props: { asset: RWAAsset }) {
 
       <button
         type="button"
-        onClick={simulateTransaction}
+        onClick={handleSimulateTransaction}
         disabled={status === 'simulating'}
         className="mt-4 h-11 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
       >
@@ -135,9 +137,9 @@ export function TradePanel(props: { asset: RWAAsset }) {
       <div className="mt-4 rounded-[24px] border border-border bg-background p-4 text-xs text-muted-foreground">
         <p className="font-semibold text-foreground">routerAdapter 预留结构</p>
         <div className="mt-2 space-y-1">
-          <p>adapter.id: {adapter.id}</p>
-          <p>adapter.label: {adapter.label}</p>
-          <p>future: Ondo / Centrifuge / Uniswap / Custom Router</p>
+          <p>router.adapters: {router.listAdapters().map((adapter) => adapter.id).join(', ')}</p>
+          <p>entrypoint: swap(params) / lend(params) / buyRWA(params)</p>
+          <p>future: Ondo / Centrifuge / Custom Router</p>
         </div>
       </div>
     </section>

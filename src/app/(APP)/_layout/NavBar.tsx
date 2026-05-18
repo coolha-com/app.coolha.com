@@ -1,7 +1,6 @@
 'use client'
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
-import { RxPlusCircled, RxMagnifyingGlass } from "react-icons/rx";
 import ButtonMenu from "./ButtonMenu";
 import { Button } from "@/components/ui/button";
 import { RiSettingsLine } from "react-icons/ri";
@@ -24,31 +23,6 @@ export default function NavBar() {
             ) : null}
         </>
     )
-}
-
-function Find() {
-    const router = useRouter();
-    return (
-        <>
-            <div className="flex-1"> </div>
-            <div className="flex-none font-bold">发现</div>
-            <div className="flex-1"> </div>
-        </>
-    )
-}
-
-function Message() {
-    return (
-        <>
-            <div className="flex-1"> </div>
-            <div className="flex-none font-bold">消息</div>
-            <div className="flex-1 flex justify-end">
-                <Button variant="ghost" size="icon">
-                    <RxPlusCircled className="w-7 h-7" />
-                </Button>
-            </div>
-        </>
-    );
 }
 
 function Profile() {

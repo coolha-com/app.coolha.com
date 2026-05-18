@@ -1,7 +1,7 @@
 'use client'
 import { useTranslations } from 'next-intl'
 
-export default function page() {
+export default function DashboardPage() {
   const t = useTranslations('dashboard')
   return (
     <div className='container mx-auto p-2 space-y-8 min-h-screen'>

@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useTranslations } from 'next-intl'
 import { usePathname, } from 'next/navigation'
 
-import { RiChat1Fill, RiChat1Line, RiCompassFill, RiCompassLine, RiHomeFill, RiHomeLine, RiRobot2Fill, RiRobot2Line, RiUserFill, RiUserLine, RiWallet3Fill, RiWallet3Line } from "react-icons/ri";
+import type { ReactNode } from "react";
+import { RiCompassFill, RiCompassLine, RiHomeFill, RiHomeLine, RiRobot2Fill, RiRobot2Line, RiUserFill, RiUserLine, RiWallet3Fill, RiWallet3Line } from "react-icons/ri";
 
 
 export default function NavFooter() {
-    const t = useTranslations('navigation')
     return (
         <div>
             <div className="md:hidden h-14" aria-hidden />
@@ -23,8 +22,8 @@ export default function NavFooter() {
                 />
 
                 <NavLink
-                    href='/find'
-                    activeHrefs={['/find']}
+                    href='/discover'
+                    activeHrefs={['/discover', '/rwa']}
                     icon={<RiCompassLine className="size-7" />}
                     activeIcon={<RiCompassFill className="size-7" />}
                 />
@@ -37,8 +36,8 @@ export default function NavFooter() {
                 />
 
                 <NavLink
-                    href='/wallet'
-                    activeHrefs={['/wallet',]}
+                    href='/portfolio'
+                    activeHrefs={['/portfolio']}
                     icon={<RiWallet3Line className="size-7" />}
                     activeIcon={<RiWallet3Fill className="size-7" />}
                 />
@@ -67,7 +66,12 @@ export default function NavFooter() {
 }
 
 
-function NavLink({ href, activeIcon, icon, activeHrefs, }) {
+function NavLink({ href, activeIcon, icon, activeHrefs, }: {
+    href: string
+    activeIcon: ReactNode
+    icon: ReactNode
+    activeHrefs: string[]
+}) {
     const pathname = usePathname();
     // 检查路径是否以activeHrefs中的任何一个前缀开头
     const isActive = activeHrefs.some((activeHref) => pathname.startsWith(activeHref));

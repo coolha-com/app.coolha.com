@@ -5,9 +5,9 @@ import Link from 'next/link'
 const sections = [
    {
       title: 'RWA',
-      href: '/find/rwa',
+      href: '/discover',
       description: '真实世界资产代币化市场',
-      badge: 'Coming Soon',
+      badge: 'Live',
    },
    {
       title: 'DeFi',

@@ -1,8 +1,9 @@
 'use client'
+import type { ReactNode } from "react";
 import { ThemeProvider } from "next-themes";
 
 // app/layout.jsx
-export default function Theme({ children }: any) {
+export default function Theme({ children }: { children: ReactNode }) {
     return (
         <>
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem={true}>

@@ -15,7 +15,8 @@ export default function LanguageSwitcher() {
     const locale = useLocale();
 
     const handleSelect = (nextLocale: string) => {
-        document.cookie = `NEXT_LOCALE=${nextLocale}; path=/;`;
+        // eslint-disable-next-line react-hooks/immutability
+        window.document.cookie = `NEXT_LOCALE=${nextLocale}; path=/;`;
         window.location.reload();
     };
 

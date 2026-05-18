@@ -24,9 +24,11 @@
   "sidebar": {
     "dashboard": "Dashboard",
     "find": "Find",
+    "discover": "RWA Market",
     "ai": "AI",
     "analytics": "Analytics",
     "wallet": "Wallet",
+    "portfolio": "Portfolio",
     "profile": "Profile",
     "settings": "Settings"
   },

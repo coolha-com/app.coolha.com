@@ -1,11 +1,11 @@
-import type { RwaaApyPoint } from '@/lib/rwa/types'
+import type { RWAApyPoint } from '@/lib/rwa/types'
 
 function pointsToPath(points: Array<{ x: number; y: number }>): string {
   if (points.length === 0) return ''
   return points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
 }
 
-export function ApyHistoryChart(props: { points: RwaaApyPoint[] }) {
+export function ApyHistoryChart(props: { points: RWAApyPoint[] }) {
   const values = props.points.map((p) => p.apy)
   const min = Math.min(...values, 0)
   const max = Math.max(...values, 1)

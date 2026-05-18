@@ -1,14 +1,15 @@
 'use client'
 
+import type { ReactNode } from 'react';
 import NavBar from './_layout/NavBar';
 import NavFooter from './_layout/NavFooter';
 import Sidebar from './_layout/Sidebar';
 import { usePathname } from 'next/navigation';
 
 
-export default function layout({ children }) {
+export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const activeHrefs = ['/dashboard',  '/wallet', '/profile']
+  const activeHrefs = []
 
   const isActive = activeHrefs.some((activeHref) => pathname.startsWith(activeHref));
   return (

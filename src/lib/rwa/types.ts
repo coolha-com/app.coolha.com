@@ -4,7 +4,9 @@ export type RWAAssetType = 'bond' | 'credit' | 'real_estate'
 
 export type RWARiskLevel = 'low' | 'medium' | 'high'
 
-export type RWAProtocolId = 'ondo' | 'centrifuge' | 'maple'
+export type KnownRWAProtocolId = 'ondo' | 'centrifuge' | 'maple'
+
+export type RWAProtocolId = KnownRWAProtocolId | (string & {})
 
 export type RWAProtocol = {
   id: RWAProtocolId
@@ -43,14 +45,16 @@ export type RWAFlowSeries = {
   points: RWAFlowPoint[]
 }
 
-export type RwaaApyPoint = {
+export type RWAApyPoint = {
   date: string
   apy: number
 }
 
+export type RwaaApyPoint = RWAApyPoint
+
 export type RWAAssetDetail = {
   asset: RWAAsset
-  apyHistory: RwaaApyPoint[]
+  apyHistory: RWAApyPoint[]
   fundFlow: RWAFlowSeries
 }
 

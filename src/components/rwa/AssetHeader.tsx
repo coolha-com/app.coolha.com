@@ -12,7 +12,7 @@ export function AssetHeader(props: { asset: RWAAsset }) {
     <header className="overflow-hidden rounded-[32px] border border-border bg-card/95 p-5 shadow-sm backdrop-blur md:p-6">
       <div className="grid gap-5 xl:grid-cols-[1.25fr_0.95fr]">
         <div className="min-w-0 space-y-4">
-          <Link href="/find/rwa" className="inline-flex rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground transition hover:text-foreground">
+          <Link href="/discover" className="inline-flex rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground transition hover:text-foreground">
             ← 返回 RWA Marketplace
           </Link>
 
