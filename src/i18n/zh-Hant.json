@@ -22,13 +22,10 @@
     "terms": "條款"
   },
   "sidebar": {
-    "dashboard": "儀表板",
-    "find": "發現",
-    "discover": "RWA市場",
-    "ai": "AI",
-    "analytics": "分析",
     "wallet": "錢包",
-    "portfolio": "資產組合",
+    "ai": "AI",
+    "dashboard": "儀表板",
+    "discover": "發現",
     "profile": "用戶",
     "settings": "設定"
   },

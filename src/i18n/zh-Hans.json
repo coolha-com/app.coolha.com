@@ -23,13 +23,10 @@
     "terms": "条款"
   },
   "sidebar": {
-    "dashboard": "仪表板",
-    "find": "发现",
-    "discover": "RWA市场",
-    "ai": "AI",
-    "analytics": "分析",
     "wallet": "钱包",
-    "portfolio": "资产组合",
+    "ai": "AI",
+    "dashboard": "仪表板",
+    "discover": "发现",
     "profile": "用户",
     "settings": "设置"
   },

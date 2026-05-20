@@ -58,6 +58,21 @@ function NavbarLink() {
     const pathname = usePathname();
     const t = useTranslations('sidebar')
     const links = [
+                {
+            title: t('wallet'),
+            href: '/wallet',
+            iconActive: RiWallet3Line,
+            iconInactive: RiWallet3Fill,
+            startsWith: '/wallet'
+        },
+                {
+            title: t('ai'),
+            href: '/ai',
+            iconActive: RiRobot2Line,
+            iconInactive: RiRobot2Fill,
+            startsWith: '/ai'
+        },
+
         {
             title: t('dashboard'),
             href: '/dashboard',
@@ -72,20 +87,7 @@ function NavbarLink() {
             iconInactive: RiCompassLine,
             startsWith: '/discover'
         },
-        {
-            title: t('ai'),
-            href: '/ai',
-            iconActive: RiRobot2Line,
-            iconInactive: RiRobot2Fill,
-            startsWith: '/ai'
-        },
-        {
-            title: t('portfolio'),
-            href: '/portfolio',
-            iconActive: RiWallet3Line,
-            iconInactive: RiWallet3Fill,
-            startsWith: '/portfolio'
-        },
+
         {
             title: t('profile'),
             href: '/profile',

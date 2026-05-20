@@ -15,6 +15,20 @@ export default function NavFooter() {
             <div className="md:hidden fixed inset-x-0 bottom-0 flex h-14 bg-accent backdrop-filter backdrop-saturate-180 backdrop-blur-16 z-50 p-1">
 
                 <NavLink
+                    href='/wallet'
+                    activeHrefs={['/wallet']}
+                    icon={<RiWallet3Line className="size-7" />}
+                    activeIcon={<RiWallet3Fill className="size-7" />}
+                />
+
+                <NavLink
+                    href='/ai'
+                    activeHrefs={['/ai']}
+                    icon={<RiRobot2Line className="size-7" />}
+                    activeIcon={<RiRobot2Fill className="size-7" />}
+                />
+
+                <NavLink
                     href='/dashboard'
                     activeHrefs={['/dashboard']}
                     icon={<RiHomeLine className="size-7" />}
@@ -26,20 +40,6 @@ export default function NavFooter() {
                     activeHrefs={['/discover', '/rwa']}
                     icon={<RiCompassLine className="size-7" />}
                     activeIcon={<RiCompassFill className="size-7" />}
-                />
-
-                <NavLink
-                    href='/ai'
-                    activeHrefs={['/ai']}
-                    icon={<RiRobot2Line className="size-7" />}
-                    activeIcon={<RiRobot2Fill className="size-7" />}
-                />
-
-                <NavLink
-                    href='/portfolio'
-                    activeHrefs={['/portfolio']}
-                    icon={<RiWallet3Line className="size-7" />}
-                    activeIcon={<RiWallet3Fill className="size-7" />}
                 />
 
                 <NavLink

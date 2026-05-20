@@ -5,7 +5,7 @@ import { type ReactNode, useEffect, useMemo } from 'react'
 import { cookieToInitialState, WagmiProvider } from 'wagmi'
 import { useTheme } from 'next-themes'
 import { createAppKit } from '@reown/appkit/react'
-import { sepolia, baseSepolia, arcTestnet } from '@reown/appkit/networks'
+import { sepolia, baseSepolia, arcTestnet, tempoTestnet } from '@reown/appkit/networks'
 import { getWalletRuntime, resolveWalletProjectId } from './wagmi'
 
 // Set up queryClient
@@ -38,13 +38,13 @@ export default function Wagmi_Provider({ children, cookies, walletProjectId }: W
         return createAppKit({
             adapters: [walletRuntime.wagmiAdapter],
             projectId: walletRuntime.projectId,
-            networks: [sepolia, baseSepolia, arcTestnet],
+            networks: [sepolia, baseSepolia, arcTestnet,tempoTestnet],
             defaultNetwork: sepolia,
             allowUnsupportedChain: false,
             chainImages: {
                 8453: '/web3/base.png',
-                84532:'/web3/base.png',
-                5042002:'/web3/arc-testnet.png'
+                84532: '/web3/base.png',
+                5042002: '/web3/arc-testnet.png'
             },
             metadata,
             themeMode: 'dark',
@@ -60,11 +60,15 @@ export default function Wagmi_Provider({ children, cookies, walletProjectId }: W
             enableCoinbase: false,
             allWallets: 'SHOW',
             featuredWalletIds: [
-              
+
                 'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96',
-               
+                '20459438007b75f4f4acb98bf29aa3b800550309646d375da5fd4aac6c2a2c66',
                 '1ae92b26df02f0abca6304df07debccd18262fdf5fe82daa81593582dac9a369',
                 '225affb176778569276e484e1b92637ad061b01e13a048b35a9d280c3b58970f',
+                '4622a2b2d6af1c9844944291e5e7351a6aa24cd7b23099efac1b2fd875da31a0',
+                '20459438007b75f4f4acb98bf29aa3b800550309646d375da5fd4aac6c2a2c66',
+                '971e689d0a5be527bac79629b4ee9b925e82208e5168b733496a09c0faed0709',
+                '8a0ee50d1f22f6651afcae7eb4253e52a3310b90af5daef78a8c4929a9bb99d4',
             ]
         })
     }, [walletRuntime])
