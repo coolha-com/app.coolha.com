@@ -12,6 +12,7 @@ export type TokenDefinition = {
   address: TokenAddress
   decimals: number
   icon: string
+  isAddressVerified: boolean
 }
 
 export type QuoteRouteFill = {
@@ -26,8 +27,17 @@ export type QuoteSummary = {
   minBuyAmount: string
   sellAmount: string
   integratorFeeAmount: string
+  integratorFeeToken?: string
   routeSummary: string
   routeFills?: QuoteRouteFill[]
+}
+
+export type ZeroExMonetizationConfig = {
+  affiliateAddress?: `0x${string}`
+  swapFeeRecipient?: `0x${string}`
+  swapFeeBps?: string
+  feeEnabled: boolean
+  feeStatusLabel: string
 }
 
 export type SwapTransactionRequest = {

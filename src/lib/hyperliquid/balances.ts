@@ -17,11 +17,15 @@ export async function readTokenBalance(
   const token = getTokenBySymbol(symbol)
 
   if (!token) {
-    throw new Error(`Unknown token symbol: ${symbol}`)
+    return null
   }
 
   if (token.address === 'native') {
     return readNativeHypeBalance(publicClient, wallet)
+  }
+
+  if (!token.isAddressVerified) {
+    return null
   }
 
   const balance = await publicClient.readContract({
@@ -34,14 +38,23 @@ export async function readTokenBalance(
   return formatUnits(balance, token.decimals)
 }
 
-export async function readAllTokenBalances(publicClient: PublicClient, wallet: Address): Promise<Record<TokenSymbol, string>> {
-  const balances = await Promise.all(
+export async function readAllTokenBalances(publicClient: PublicClient, wallet: Address): Promise<Partial<Record<TokenSymbol, string>>> {
+  const balances = await Promise.allSettled(
     HYPEREVM_TOKENS.map(async (token) => {
       const balance = await readTokenBalance(publicClient, wallet, token.symbol)
 
-      return [token.symbol, balance ?? '0'] as const
+      return [token.symbol, balance] as const
     }),
   )
 
-  return Object.fromEntries(balances) as Record<TokenSymbol, string>
+  return Object.fromEntries(
+    balances.flatMap((result) => {
+      if (result.status !== 'fulfilled') {
+        return []
+      }
+
+      const [symbol, balance] = result.value
+      return balance === null ? [] : [[symbol, balance] as const]
+    }),
+  ) as Partial<Record<TokenSymbol, string>>
 }

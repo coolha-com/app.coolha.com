@@ -1,6 +1,8 @@
-import type { QuoteRouteFill, QuoteSummary } from './types'
+import type { QuoteRouteFill, QuoteSummary, ZeroExMonetizationConfig } from './types'
 
 const ZEROX_BASE_URL = 'https://api.0x.org'
+const ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/
+const MAX_SWAP_FEE_BPS = 1000
 
 type ZeroExRouteFill = {
   from?: string
@@ -17,6 +19,7 @@ type ZeroExQuotePayload = {
   fees?: {
     integratorFee?: {
       amount?: string
+      token?: string
     }
   }
   route?: {
@@ -24,11 +27,43 @@ type ZeroExQuotePayload = {
   }
 }
 
+type ZeroExMonetizationInput = {
+  affiliateAddress?: string
+  swapFeeRecipient?: string
+  swapFeeBps?: string
+}
+
 function buildHeaders(apiKey?: string): HeadersInit {
   return {
     '0x-version': 'v2',
     ...(apiKey ? { '0x-api-key': apiKey } : {}),
   }
+}
+
+function isAddress(value: string | undefined): value is `0x${string}` {
+  return Boolean(value && ADDRESS_PATTERN.test(value))
+}
+
+function normalizeAddress(value: string | undefined): `0x${string}` | undefined {
+  const trimmed = value?.trim()
+
+  return isAddress(trimmed) ? trimmed : undefined
+}
+
+function normalizeSwapFeeBps(value: string | undefined): string | undefined {
+  const trimmed = value?.trim()
+
+  if (!trimmed) {
+    return undefined
+  }
+
+  const parsed = Number.parseInt(trimmed, 10)
+
+  if (!Number.isInteger(parsed) || parsed <= 0 || parsed > MAX_SWAP_FEE_BPS) {
+    return undefined
+  }
+
+  return String(parsed)
 }
 
 function buildUrl(pathname: string, params: URLSearchParams): string {
@@ -67,6 +102,53 @@ async function fetchZeroExJson(pathname: string, params: URLSearchParams, apiKey
   return response.json()
 }
 
+export function resolveZeroExMonetizationConfig(input: ZeroExMonetizationInput): ZeroExMonetizationConfig {
+  const affiliateAddress = normalizeAddress(input.affiliateAddress)
+  const swapFeeRecipient = normalizeAddress(input.swapFeeRecipient)
+  const swapFeeBps = normalizeSwapFeeBps(input.swapFeeBps)
+  const hasFeeInput = Boolean(input.swapFeeRecipient?.trim() || input.swapFeeBps?.trim())
+
+  if (swapFeeRecipient && swapFeeBps) {
+    return {
+      affiliateAddress,
+      swapFeeRecipient,
+      swapFeeBps,
+      feeEnabled: true,
+      feeStatusLabel: `Builder fee configured at ${swapFeeBps} Bps and forwarded to the platform recipient.`,
+    }
+  }
+
+  if (hasFeeInput) {
+    return {
+      affiliateAddress,
+      feeEnabled: false,
+      feeStatusLabel: 'Builder fee configuration is incomplete or invalid, so no platform fee will be attached to the 0x request.',
+    }
+  }
+
+  return {
+    affiliateAddress,
+    feeEnabled: false,
+    feeStatusLabel: 'Builder fee is not configured yet, so the current request is quote-only without a platform fee.',
+  }
+}
+
+export function applyZeroExMonetizationParams(
+  params: URLSearchParams,
+  config: ZeroExMonetizationConfig,
+): URLSearchParams {
+  if (config.affiliateAddress) {
+    params.set('affiliateAddress', config.affiliateAddress)
+  }
+
+  if (config.feeEnabled && config.swapFeeRecipient && config.swapFeeBps) {
+    params.set('swapFeeRecipient', config.swapFeeRecipient)
+    params.set('swapFeeBps', config.swapFeeBps)
+  }
+
+  return params
+}
+
 export function normalizePriceResponse(payload: ZeroExQuotePayload): QuoteSummary {
   const routeFills = toRouteFills(payload.route?.fills)
 
@@ -77,6 +159,7 @@ export function normalizePriceResponse(payload: ZeroExQuotePayload): QuoteSummar
     minBuyAmount: payload.minBuyAmount ?? payload.grossBuyAmount ?? payload.buyAmount ?? '0',
     sellAmount: payload.sellAmount ?? '0',
     integratorFeeAmount: payload.fees?.integratorFee?.amount ?? '0',
+    integratorFeeToken: payload.fees?.integratorFee?.token,
     routeSummary: toRouteSummary(routeFills),
     routeFills,
   }

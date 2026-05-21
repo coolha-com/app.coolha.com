@@ -7,6 +7,7 @@ export const HYPEREVM_TOKENS: TokenDefinition[] = [
     address: 'native',
     decimals: 18,
     icon: '/tokens/hype.png',
+    isAddressVerified: true,
   },
   {
     symbol: 'USDT0',
@@ -14,6 +15,7 @@ export const HYPEREVM_TOKENS: TokenDefinition[] = [
     address: '0x1111111111111111111111111111111111111111',
     decimals: 6,
     icon: '/tokens/usdt0.png',
+    isAddressVerified: false,
   },
   {
     symbol: 'USDC',
@@ -21,6 +23,7 @@ export const HYPEREVM_TOKENS: TokenDefinition[] = [
     address: '0x2222222222222222222222222222222222222222',
     decimals: 6,
     icon: '/tokens/usdc.png',
+    isAddressVerified: false,
   },
   {
     symbol: 'ETH',
@@ -28,6 +31,7 @@ export const HYPEREVM_TOKENS: TokenDefinition[] = [
     address: '0x3333333333333333333333333333333333333333',
     decimals: 18,
     icon: '/tokens/eth.png',
+    isAddressVerified: false,
   },
   {
     symbol: 'BTC',
@@ -35,6 +39,7 @@ export const HYPEREVM_TOKENS: TokenDefinition[] = [
     address: '0x4444444444444444444444444444444444444444',
     decimals: 8,
     icon: '/tokens/btc.png',
+    isAddressVerified: false,
   },
 ]
 
@@ -42,4 +47,10 @@ export function getTokenBySymbol(symbol: string): TokenDefinition | undefined {
   const normalizedSymbol = symbol.toUpperCase() as TokenSymbol
 
   return HYPEREVM_TOKENS.find((token) => token.symbol === normalizedSymbol)
+}
+
+export function hasVerifiedTokenAddress(symbol: string): boolean {
+  const token = getTokenBySymbol(symbol)
+
+  return token?.isAddressVerified ?? false
 }

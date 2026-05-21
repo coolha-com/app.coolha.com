@@ -25,10 +25,10 @@ export async function readTokenAllowance(
   const token = getTokenBySymbol(symbol)
 
   if (!token) {
-    throw new Error(`Unknown token symbol: ${symbol}`)
+    return null
   }
 
-  if (token.address === 'native') {
+  if (token.address === 'native' || !token.isAddressVerified) {
     return null
   }
 

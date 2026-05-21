@@ -2,7 +2,7 @@
 
 import { useAppKit } from '@reown/appkit/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { formatUnits, parseUnits, type Address } from 'viem'
+import { formatUnits, parseUnits } from 'viem'
 import { useAccount, usePublicClient, useSwitchChain, useWalletClient, useWriteContract } from 'wagmi'
 
 import { AiInsightPanel } from '@/components/hyperliquid/AiInsightPanel'
@@ -16,10 +16,16 @@ import { approvalState, buildApproveRequest } from '@/lib/hyperliquid/allowance'
 import { buildTradeInsight } from '@/lib/hyperliquid/ai-explainer'
 import { readAllTokenBalances, readNativeHypeBalance } from '@/lib/hyperliquid/balances'
 import { HYPEREVM_CHAIN_ID } from '@/lib/hyperliquid/chains'
-import { fetchPrice, fetchQuote, normalizePriceResponse } from '@/lib/hyperliquid/quotes'
+import {
+  applyZeroExMonetizationParams,
+  fetchPrice,
+  fetchQuote,
+  normalizePriceResponse,
+  resolveZeroExMonetizationConfig,
+} from '@/lib/hyperliquid/quotes'
 import { evaluateTradeRisk } from '@/lib/hyperliquid/risk-engine'
 import { sendSwapTransaction } from '@/lib/hyperliquid/swaps'
-import { HYPEREVM_TOKENS, getTokenBySymbol } from '@/lib/hyperliquid/tokens'
+import { getTokenBySymbol, hasVerifiedTokenAddress, HYPEREVM_TOKENS } from '@/lib/hyperliquid/tokens'
 import { waitForTransactionAndRefresh } from '@/lib/hyperliquid/transactions'
 import type { QuoteSummary, RiskFlag, TokenSymbol, TradeInsight } from '@/lib/hyperliquid/types'
 
@@ -36,13 +42,19 @@ type MarketOption = {
 
 const DEFAULT_SLIPPAGE_BPS = 100
 const MIN_HYPE_GAS_BALANCE = 0.02
-const ZEROX_API_KEY = process.env.NEXT_PUBLIC_ZEROX_API_KEY
+const ZEROX_API_KEY = process.env.NEXT_PUBLIC_ZEROX_API_KEY?.trim()
+const ZEROX_AFFILIATE_ADDRESS = process.env.NEXT_PUBLIC_ZEROX_AFFILIATE_ADDRESS?.trim()
+const ZEROX_SWAP_FEE_RECIPIENT = process.env.NEXT_PUBLIC_ZEROX_SWAP_FEE_RECIPIENT?.trim()
+const ZEROX_SWAP_FEE_BPS = process.env.NEXT_PUBLIC_ZEROX_SWAP_FEE_BPS?.trim()
 
 const MARKET_OPTIONS: MarketOption[] = [
-  { id: 'hype-usdc', label: 'HYPE / USDC', buySymbol: 'HYPE', sellSymbol: 'USDC', changeLabel: '+2.8%' },
-  { id: 'eth-usdc', label: 'ETH / USDC', buySymbol: 'ETH', sellSymbol: 'USDC', changeLabel: '+1.2%' },
-  { id: 'btc-usdc', label: 'BTC / USDC', buySymbol: 'BTC', sellSymbol: 'USDC', changeLabel: '+0.7%' },
-  { id: 'usdt0-hype', label: 'USDT0 / HYPE', buySymbol: 'USDT0', sellSymbol: 'HYPE', changeLabel: '-0.3%' },
+  {
+    id: 'usdc-hype',
+    label: 'USDC / HYPE',
+    buySymbol: 'USDC',
+    sellSymbol: 'HYPE',
+    changeLabel: 'core',
+  },
 ]
 
 function formatDisplayValue(value?: string, maximumFractionDigits = 4): string {
@@ -60,9 +72,13 @@ function formatDisplayValue(value?: string, maximumFractionDigits = 4): string {
   })
 }
 
-function formatAddress(address?: Address): string {
+function formatAddressLike(address?: string): string {
   if (!address) {
     return 'Not connected'
+  }
+
+  if (!address.startsWith('0x') || address.length < 10) {
+    return address
   }
 
   return `${address.slice(0, 6)}...${address.slice(-4)}`
@@ -74,6 +90,43 @@ function formatQuoteAmount(rawAmount: string | undefined, symbol: TokenSymbol): 
   }
 
   const token = getTokenBySymbol(symbol)
+  if (!token) {
+    return rawAmount
+  }
+
+  try {
+    return formatDisplayValue(formatUnits(BigInt(rawAmount), token.decimals), 6)
+  } catch {
+    return rawAmount
+  }
+}
+
+function getTokenByReference(reference?: string) {
+  if (!reference) {
+    return undefined
+  }
+
+  const bySymbol = getTokenBySymbol(reference)
+  if (bySymbol) {
+    return bySymbol
+  }
+
+  const normalizedReference = reference.toLowerCase()
+  return HYPEREVM_TOKENS.find(
+    (token) => token.address !== 'native' && token.address.toLowerCase() === normalizedReference,
+  )
+}
+
+function formatIntegratorFeeAmount(
+  rawAmount: string | undefined,
+  feeTokenReference: string | undefined,
+  fallbackSymbol: TokenSymbol,
+): string {
+  if (!rawAmount || rawAmount === '0') {
+    return '0'
+  }
+
+  const token = getTokenByReference(feeTokenReference) ?? getTokenBySymbol(fallbackSymbol)
   if (!token) {
     return rawAmount
   }
@@ -103,7 +156,7 @@ export default function AiPage() {
 
   const [activeMarketId, setActiveMarketId] = useState(MARKET_OPTIONS[0].id)
   const [amount, setAmount] = useState('')
-  const [balances, setBalances] = useState<Record<TokenSymbol, string> | null>(null)
+  const [balances, setBalances] = useState<Partial<Record<TokenSymbol, string>> | null>(null)
   const [gasBalance, setGasBalance] = useState<string | null>(null)
   const [quote, setQuote] = useState<QuoteSummary | null>(null)
   const [quoteState, setQuoteState] = useState<QuoteState>('idle')
@@ -126,10 +179,20 @@ export default function AiPage() {
     () => MARKET_OPTIONS.find((market) => market.id === activeMarketId) ?? MARKET_OPTIONS[0],
     [activeMarketId],
   )
+  const monetizationConfig = useMemo(
+    () =>
+      resolveZeroExMonetizationConfig({
+        affiliateAddress: ZEROX_AFFILIATE_ADDRESS,
+        swapFeeRecipient: ZEROX_SWAP_FEE_RECIPIENT,
+        swapFeeBps: ZEROX_SWAP_FEE_BPS,
+      }),
+    [],
+  )
   const sellToken = useMemo(() => getTokenBySymbol(activeMarket.sellSymbol), [activeMarket.sellSymbol])
   const buyToken = useMemo(() => getTokenBySymbol(activeMarket.buySymbol), [activeMarket.buySymbol])
   const isCorrectChain = chainId === HYPEREVM_CHAIN_ID
   const hasEnoughGas = Number.parseFloat(gasBalance ?? '0') >= MIN_HYPE_GAS_BALANCE
+  const sellTokenAddressVerified = hasVerifiedTokenAddress(activeMarket.sellSymbol)
   const isBusy =
     quoteState === 'loading' ||
     tradeState === 'approving' ||
@@ -185,6 +248,14 @@ export default function AiPage() {
 
   const buildQuoteParams = useCallback(
     () => {
+      if (!ZEROX_API_KEY) {
+        throw new Error('Missing NEXT_PUBLIC_ZEROX_API_KEY. Quote requests are disabled until the 0x API key is configured.')
+      }
+
+      if (!sellToken || !buyToken) {
+        throw new Error('The selected market is missing token metadata.')
+      }
+
       if (!address || !parsedAmount || parsedAmount <= 0n) {
         throw new Error('Enter a valid amount before requesting a quote.')
       }
@@ -198,13 +269,9 @@ export default function AiPage() {
         taker: address,
       })
 
-      if (ZEROX_API_KEY) {
-        params.set('affiliateAddress', address)
-      }
-
-      return params
+      return applyZeroExMonetizationParams(params, monetizationConfig)
     },
-    [activeMarket.buySymbol, activeMarket.sellSymbol, address, parsedAmount],
+    [activeMarket.buySymbol, activeMarket.sellSymbol, address, buyToken, monetizationConfig, parsedAmount, sellToken],
   )
 
   useEffect(() => {
@@ -384,6 +451,10 @@ export default function AiPage() {
       return 'Enter Amount'
     }
 
+    if (!ZEROX_API_KEY) {
+      return 'Configure 0x API Key'
+    }
+
     if (quoteState === 'loading') {
       return 'Getting Quote...'
     }
@@ -420,6 +491,14 @@ export default function AiPage() {
       return 'Switch to HyperEVM mainnet to continue.'
     }
 
+    if (!ZEROX_API_KEY) {
+      return 'Missing NEXT_PUBLIC_ZEROX_API_KEY. Quotes and swaps stay disabled until the 0x client key is configured.'
+    }
+
+    if (!sellTokenAddressVerified) {
+      return 'The sell token address has not been verified locally yet, so this market is hidden until the metadata is upgraded.'
+    }
+
     if (quoteError) {
       return quoteError
     }
@@ -441,11 +520,31 @@ export default function AiPage() {
     }
 
     return 'Enter an amount to request a fresh quote.'
-  }, [approvalRequired, isConnected, isCorrectChain, quoteError, quoteState, tradeState])
+  }, [approvalRequired, isConnected, isCorrectChain, quoteError, quoteState, sellTokenAddressVerified, tradeState])
 
   const quotePreview = quote
     ? `Expected receive ${formatQuoteAmount(quote.buyAmount, activeMarket.buySymbol)} ${activeMarket.buySymbol}`
     : 'No quote requested yet'
+  const integratorFeeLabel = useMemo(() => {
+    if (!quote) {
+      return monetizationConfig.feeEnabled ? 'Awaiting quote' : 'Not configured'
+    }
+
+    if (quote.integratorFeeAmount === '0') {
+      return monetizationConfig.feeEnabled ? '0x returned no builder fee for this route' : 'No platform fee attached'
+    }
+
+    const formattedAmount = formatIntegratorFeeAmount(
+      quote.integratorFeeAmount,
+      quote.integratorFeeToken,
+      activeMarket.buySymbol,
+    )
+    const feeTokenLabel =
+      getTokenByReference(quote.integratorFeeToken)?.symbol ??
+      (quote.integratorFeeToken ? formatAddressLike(quote.integratorFeeToken) : activeMarket.buySymbol)
+
+    return `${formattedAmount} ${feeTokenLabel}`
+  }, [activeMarket.buySymbol, monetizationConfig.feeEnabled, quote])
 
   const marketItems = useMemo(
     () =>
@@ -464,7 +563,7 @@ export default function AiPage() {
         <p className="text-sm font-medium uppercase tracking-[0.24em] text-muted-foreground">HyperEVM AI Terminal</p>
         <h1 className="text-3xl font-semibold tracking-tight text-foreground">Trade whitelisted spot pairs with wallet-confirmed execution</h1>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          The page keeps swap execution self-custodial, surfaces HyperEVM wallet readiness, and updates AI insight from the live quote state.
+          The page keeps swap execution self-custodial, surfaces HyperEVM wallet readiness, and currently narrows trading to the core market that does not depend on placeholder ERC-20 approval metadata.
         </p>
       </div>
 
@@ -479,7 +578,7 @@ export default function AiPage() {
 
         <section className="space-y-4">
           <WalletStatusBar
-            addressLabel={formatAddress(address)}
+            addressLabel={formatAddressLike(address)}
             connectionLabel={isConnected ? 'Connected' : 'Disconnected'}
             gasLabel={
               !isConnected
@@ -495,9 +594,15 @@ export default function AiPage() {
           <TradingViewPanel pairLabel={activeMarket.label} />
           <SwapCard
             amount={amount}
-            balanceLabel={balances?.[activeMarket.sellSymbol] ? `${formatDisplayValue(balances[activeMarket.sellSymbol])} ${activeMarket.sellSymbol}` : 'Balance unavailable'}
+            balanceLabel={
+              balances?.[activeMarket.sellSymbol]
+                ? `${formatDisplayValue(balances[activeMarket.sellSymbol])} ${activeMarket.sellSymbol}`
+                : sellTokenAddressVerified
+                  ? 'Balance unavailable'
+                  : 'Address pending verification'
+            }
             isConnected={isConnected}
-            isPrimaryDisabled={isBusy || (isConnected && isCorrectChain && (!parsedAmount || parsedAmount <= 0n))}
+            isPrimaryDisabled={isBusy || (isConnected && isCorrectChain && (!parsedAmount || parsedAmount <= 0n || !ZEROX_API_KEY))}
             onAmountChange={setAmount}
             onPrimaryAction={() => {
               void handlePrimaryAction()
@@ -510,7 +615,8 @@ export default function AiPage() {
           />
           <QuoteDetails
             buyAmount={quote ? `${formatQuoteAmount(quote.buyAmount, activeMarket.buySymbol)} ${activeMarket.buySymbol}` : '--'}
-            integratorFeeAmount={quote ? formatQuoteAmount(quote.integratorFeeAmount, activeMarket.sellSymbol) : '--'}
+            feeConfigLabel={monetizationConfig.feeStatusLabel}
+            integratorFeeAmount={integratorFeeLabel}
             minBuyAmount={quote ? `${formatQuoteAmount(quote.minBuyAmount, activeMarket.buySymbol)} ${activeMarket.buySymbol}` : '--'}
             routeSummary={quote?.routeSummary}
             statusLabel={quoteError ? `Quote error: ${quoteError}` : quoteUpdatedAt ? `Last updated ${quoteUpdatedAt}` : 'Awaiting quote'}
@@ -523,11 +629,12 @@ export default function AiPage() {
           suggestion={insight.suggestion}
           summary={insight.summary}
           warning={insight.warning}
+          disclaimerLabel="AI output is descriptive only, never an investment recommendation, and never a promise of profitability or execution quality."
         />
       </main>
 
-      <section className="rounded-[2rem] border border-dashed border-border/80 bg-card/50 p-4 text-sm text-muted-foreground">
-        All swaps stay self-custodial. Quotes come from the frontend 0x integration, and every approval or swap still requires your own wallet confirmation.
+      <section className="rounded-[2rem] border border-dashed border-border/80 bg-card/50 p-4 text-sm leading-7 text-muted-foreground">
+        This terminal is a self-custody interface only. Every quote comes from the frontend 0x integration, every trade still requires your own wallet confirmation, and any builder fee depends on explicit 0x fee configuration plus route availability. Unverified token metadata is intentionally hidden from execution paths until the on-chain addresses are confirmed.
       </section>
 
       <section className="grid gap-3 md:grid-cols-5">
@@ -535,7 +642,11 @@ export default function AiPage() {
           <div className="rounded-[2rem] border border-border/60 bg-card/70 px-4 py-3 text-sm" key={token.symbol}>
             <p className="font-medium text-foreground">{token.symbol}</p>
             <p className="mt-1 text-muted-foreground">
-              {balances?.[token.symbol] ? `${formatDisplayValue(balances[token.symbol])} ${token.symbol}` : 'Balance pending'}
+              {balances?.[token.symbol]
+                ? `${formatDisplayValue(balances[token.symbol])} ${token.symbol}`
+                : token.isAddressVerified
+                  ? 'Balance pending'
+                  : 'Address pending verification'}
             </p>
           </div>
         ))}

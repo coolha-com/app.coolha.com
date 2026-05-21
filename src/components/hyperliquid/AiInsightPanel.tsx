@@ -22,6 +22,7 @@ type AiInsightPanelProps = {
   suggestion?: string
   statusLabel?: string
   riskItems?: RiskFlag[]
+  disclaimerLabel?: string
 }
 
 export function AiInsightPanel({
@@ -30,6 +31,7 @@ export function AiInsightPanel({
   suggestion = 'Use this panel for informative guidance only.',
   statusLabel = 'Waiting for quote context.',
   riskItems = [],
+  disclaimerLabel = 'AI content is for interface assistance only and never replaces your own judgment, wallet confirmation, or legal review.',
 }: AiInsightPanelProps) {
   return (
     <Card className="gap-4 border border-border/60 bg-card/90 shadow-none backdrop-blur">
@@ -48,7 +50,7 @@ export function AiInsightPanel({
           {statusLabel}
         </div>
         <div className="rounded-[2rem] border border-dashed border-border/80 bg-muted/10 p-4 text-xs leading-6 text-muted-foreground">
-          AI content is for interface assistance only and never replaces your wallet confirmation.
+          {disclaimerLabel}
         </div>
       </CardContent>
     </Card>

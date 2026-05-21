@@ -13,6 +13,7 @@ type QuoteDetailsProps = {
   routeSummary?: string
   minBuyAmount?: string
   integratorFeeAmount?: string
+  feeConfigLabel?: string
   statusLabel?: string
 }
 
@@ -21,6 +22,7 @@ export function QuoteDetails({
   routeSummary = '--',
   minBuyAmount = '--',
   integratorFeeAmount = '--',
+  feeConfigLabel = 'Builder fee status unavailable',
   statusLabel = 'Awaiting quote',
 }: QuoteDetailsProps) {
   return (
@@ -45,6 +47,9 @@ export function QuoteDetails({
         <div className="flex items-center justify-between rounded-3xl border border-border/70 bg-muted/20 px-4 py-3">
           <span className="text-muted-foreground">Builder fee</span>
           <span className="font-medium text-foreground">{integratorFeeAmount}</span>
+        </div>
+        <div className="rounded-[2rem] border border-dashed border-border/80 bg-muted/10 px-4 py-3 text-xs leading-6 text-muted-foreground">
+          {feeConfigLabel}
         </div>
         <div className="rounded-[2rem] border border-dashed border-border/80 bg-muted/10 px-4 py-3 text-xs leading-6 text-muted-foreground">
           {statusLabel}
