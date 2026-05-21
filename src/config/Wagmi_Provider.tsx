@@ -2,11 +2,10 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { type ReactNode, useEffect, useMemo } from 'react'
-import { cookieToInitialState, WagmiProvider } from 'wagmi'
-import { useTheme } from 'next-themes'
 import { createAppKit } from '@reown/appkit/react'
-import { sepolia, baseSepolia, arcTestnet, tempoTestnet,hyperliquidEvmTestnet } from '@reown/appkit/networks'
-import { getWalletRuntime, resolveWalletProjectId } from './wagmi'
+import { useTheme } from 'next-themes'
+import { cookieToInitialState, WagmiProvider } from 'wagmi'
+import { defaultNetwork, getWalletRuntime, networks, resolveWalletProjectId } from './wagmi'
 
 // Set up queryClient
 export const queryClient = new QueryClient()
@@ -38,10 +37,11 @@ export default function Wagmi_Provider({ children, cookies, walletProjectId }: W
         return createAppKit({
             adapters: [walletRuntime.wagmiAdapter],
             projectId: walletRuntime.projectId,
-            networks: [sepolia, baseSepolia, arcTestnet,tempoTestnet,hyperliquidEvmTestnet],
-            defaultNetwork: sepolia,
+            networks,
+            defaultNetwork,
             allowUnsupportedChain: false,
             chainImages: {
+                999: '/web3/world.jpg',
                 8453: '/web3/base.png',
                 84532: '/web3/base.png',
                 5042002: '/web3/arc-testnet.png'

@@ -1,9 +1,17 @@
-import { cookieStorage, createStorage, http } from "@wagmi/core"
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi"
-import { arcTestnet, baseSepolia, sepolia, tempoTestnet,hyperliquidEvmTestnet } from "@reown/appkit/networks"
+import { arcTestnet, baseSepolia, hyperliquidEvmTestnet, sepolia, tempoTestnet } from "@reown/appkit/networks"
+import { cookieStorage, createStorage, http } from "@wagmi/core"
+import { HYPEREVM_MAINNET } from "@/lib/hyperliquid/chains"
 
-export const networks = [sepolia, baseSepolia, arcTestnet,tempoTestnet,hyperliquidEvmTestnet]  
-export const defaultNetwork = sepolia
+export const networks: [
+  typeof HYPEREVM_MAINNET,
+  typeof sepolia,
+  typeof baseSepolia,
+  typeof arcTestnet,
+  typeof tempoTestnet,
+  typeof hyperliquidEvmTestnet,
+] = [HYPEREVM_MAINNET, sepolia, baseSepolia, arcTestnet, tempoTestnet, hyperliquidEvmTestnet]
+export const defaultNetwork = HYPEREVM_MAINNET
 
 export function resolveWalletProjectId(explicitProjectId?: string | null) {
   return explicitProjectId?.trim() || process.env.NEXT_PUBLIC_REOWN_ID || process.env.REOWN_ID || ""
@@ -18,6 +26,7 @@ function createWalletRuntime(projectId: string) {
     projectId,
     networks,
     transports: {
+      [HYPEREVM_MAINNET.id]: http(HYPEREVM_MAINNET.rpcUrls.default.http[0]),
       [baseSepolia.id]: http(baseSepolia.rpcUrls.default.http[0]),
       [sepolia.id]: http(sepolia.rpcUrls.default.http[0]),
       [arcTestnet.id]: http(arcTestnet.rpcUrls.default.http[0]),
