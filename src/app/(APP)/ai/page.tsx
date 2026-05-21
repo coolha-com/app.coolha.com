@@ -25,7 +25,12 @@ import {
 } from '@/lib/hyperliquid/quotes'
 import { evaluateTradeRisk } from '@/lib/hyperliquid/risk-engine'
 import { sendSwapTransaction } from '@/lib/hyperliquid/swaps'
-import { getTokenBySymbol, hasVerifiedTokenAddress, HYPEREVM_TOKENS } from '@/lib/hyperliquid/tokens'
+import {
+  getTokenBySymbol,
+  getZeroExTokenIdentifier,
+  hasVerifiedTokenAddress,
+  HYPEREVM_TOKENS,
+} from '@/lib/hyperliquid/tokens'
 import { waitForTransactionAndRefresh } from '@/lib/hyperliquid/transactions'
 import type { QuoteSummary, RiskFlag, TokenSymbol, TradeInsight } from '@/lib/hyperliquid/types'
 
@@ -49,11 +54,32 @@ const ZEROX_SWAP_FEE_BPS = process.env.NEXT_PUBLIC_ZEROX_SWAP_FEE_BPS?.trim()
 
 const MARKET_OPTIONS: MarketOption[] = [
   {
-    id: 'usdc-hype',
-    label: 'USDC / HYPE',
+    id: 'usdc-to-hype',
+    label: 'USDC -> HYPE',
+    buySymbol: 'HYPE',
+    sellSymbol: 'USDC',
+    changeLabel: 'live',
+  },
+  {
+    id: 'hype-to-usdc',
+    label: 'HYPE -> USDC',
     buySymbol: 'USDC',
     sellSymbol: 'HYPE',
-    changeLabel: 'core',
+    changeLabel: 'live',
+  },
+  {
+    id: 'usdt0-to-hype',
+    label: 'USDT0 -> HYPE',
+    buySymbol: 'HYPE',
+    sellSymbol: 'USDT0',
+    changeLabel: 'live',
+  },
+  {
+    id: 'hype-to-usdt0',
+    label: 'HYPE -> USDT0',
+    buySymbol: 'USDT0',
+    sellSymbol: 'HYPE',
+    changeLabel: 'live',
   },
 ]
 
@@ -256,14 +282,21 @@ export default function AiPage() {
         throw new Error('The selected market is missing token metadata.')
       }
 
+      const sellTokenIdentifier = getZeroExTokenIdentifier(activeMarket.sellSymbol)
+      const buyTokenIdentifier = getZeroExTokenIdentifier(activeMarket.buySymbol)
+
+      if (!sellTokenIdentifier || !buyTokenIdentifier) {
+        throw new Error('The selected market is missing a valid 0x token identifier.')
+      }
+
       if (!address || !parsedAmount || parsedAmount <= 0n) {
         throw new Error('Enter a valid amount before requesting a quote.')
       }
 
       const params = new URLSearchParams({
         chainId: String(HYPEREVM_CHAIN_ID),
-        sellToken: activeMarket.sellSymbol,
-        buyToken: activeMarket.buySymbol,
+        sellToken: sellTokenIdentifier,
+        buyToken: buyTokenIdentifier,
         sellAmount: parsedAmount.toString(),
         slippageBps: String(DEFAULT_SLIPPAGE_BPS),
         taker: address,

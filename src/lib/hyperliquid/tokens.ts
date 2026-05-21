@@ -1,5 +1,10 @@
 import type { TokenDefinition, TokenSymbol } from './types'
 
+export const ZEROX_NATIVE_TOKEN_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' as const
+export const WHYPE_ADDRESS = '0x5555555555555555555555555555555555555555' as const
+export const HYPEREVM_USDT0_ADDRESS = '0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb' as const
+export const HYPEREVM_USDC_ADDRESS = '0xb88339CB7199b77E23DB6E890353E22632Ba630f' as const
+
 export const HYPEREVM_TOKENS: TokenDefinition[] = [
   {
     symbol: 'HYPE',
@@ -12,18 +17,18 @@ export const HYPEREVM_TOKENS: TokenDefinition[] = [
   {
     symbol: 'USDT0',
     name: 'USDT0',
-    address: '0x1111111111111111111111111111111111111111',
+    address: HYPEREVM_USDT0_ADDRESS,
     decimals: 6,
     icon: '/tokens/usdt0.png',
-    isAddressVerified: false,
+    isAddressVerified: true,
   },
   {
     symbol: 'USDC',
     name: 'USD Coin',
-    address: '0x2222222222222222222222222222222222222222',
+    address: HYPEREVM_USDC_ADDRESS,
     decimals: 6,
     icon: '/tokens/usdc.png',
-    isAddressVerified: false,
+    isAddressVerified: true,
   },
   {
     symbol: 'ETH',
@@ -53,4 +58,14 @@ export function hasVerifiedTokenAddress(symbol: string): boolean {
   const token = getTokenBySymbol(symbol)
 
   return token?.isAddressVerified ?? false
+}
+
+export function getZeroExTokenIdentifier(symbol: string): string | undefined {
+  const token = getTokenBySymbol(symbol)
+
+  if (!token) {
+    return undefined
+  }
+
+  return token.address === 'native' ? ZEROX_NATIVE_TOKEN_ADDRESS : token.address
 }
