@@ -23,7 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
       default: Title,
     },
     description: "Coolha App",
-    metadataBase: new URL('https://coolha.com'),
+    metadataBase: new URL('https://app.coolha.com'),
     icons: {
       icon: '/favicon.ico',
       shortcut: '/shortcut-icon.png',

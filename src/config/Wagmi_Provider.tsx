@@ -5,7 +5,7 @@ import { type ReactNode, useEffect, useMemo } from 'react'
 import { cookieToInitialState, WagmiProvider } from 'wagmi'
 import { useTheme } from 'next-themes'
 import { createAppKit } from '@reown/appkit/react'
-import { sepolia, baseSepolia, arcTestnet, tempoTestnet } from '@reown/appkit/networks'
+import { sepolia, baseSepolia, arcTestnet, tempoTestnet,hyperliquidEvmTestnet } from '@reown/appkit/networks'
 import { getWalletRuntime, resolveWalletProjectId } from './wagmi'
 
 // Set up queryClient
@@ -14,8 +14,8 @@ export const queryClient = new QueryClient()
 export const metadata = {
     name: 'Coolha',
     description: 'Coolha Web Dapp',
-    url: 'https://coolha.com',
-    icons: ['https://coolha.com/favicon.ico'],
+    url: 'https://app.coolha.com',
+    icons: ['https://app.coolha.com/favicon.ico'],
     termsConditionsUrl: "https://docs.coolha.com/docs/apps/terms",
     privacyPolicyUrl: "https://docs.coolha.com/docs/apps/privacy",
 }
@@ -38,7 +38,7 @@ export default function Wagmi_Provider({ children, cookies, walletProjectId }: W
         return createAppKit({
             adapters: [walletRuntime.wagmiAdapter],
             projectId: walletRuntime.projectId,
-            networks: [sepolia, baseSepolia, arcTestnet,tempoTestnet],
+            networks: [sepolia, baseSepolia, arcTestnet,tempoTestnet,hyperliquidEvmTestnet],
             defaultNetwork: sepolia,
             allowUnsupportedChain: false,
             chainImages: {
