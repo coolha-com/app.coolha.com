@@ -14,14 +14,14 @@ type TradingViewPanelProps = {
 
 export function TradingViewPanel({ pairLabel = 'HYPE / USDC' }: TradingViewPanelProps) {
   return (
-    <Card className="gap-4 border border-border/60 bg-card/90 shadow-none backdrop-blur">
-      <CardHeader className="gap-2">
-        <CardTitle>Chart</CardTitle>
+    <Card className="gap-3 border border-border/60 bg-card/70 shadow-none backdrop-blur" size="sm">
+      <CardHeader className="gap-1">
+        <CardTitle>K 线图</CardTitle>
         <CardDescription>{pairLabel}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid h-[360px] place-items-center rounded-[2rem] border border-dashed border-border/80 bg-muted/20 text-sm text-muted-foreground">
-          Trading view panel placeholder
+        <div className="grid h-[280px] place-items-center rounded-[1.5rem] border border-dashed border-border/80 bg-muted/20 text-sm text-muted-foreground">
+          图表占位区域
         </div>
       </CardContent>
     </Card>

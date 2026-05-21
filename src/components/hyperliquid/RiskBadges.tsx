@@ -4,7 +4,7 @@ type RiskBadgesProps = {
   items?: string[]
 }
 
-export function RiskBadges({ items = ['Gas', 'Slippage', 'Price impact'] }: RiskBadgesProps) {
+export function RiskBadges({ items = ['Gas 不足', '滑点', '价格冲击'] }: RiskBadgesProps) {
   return (
     <div className="flex flex-wrap gap-2">
       {items.map((item) => (

@@ -14,7 +14,7 @@ export function buildSwapTransaction(quote: ZeroExSwapPayload): SwapTransactionR
   const transaction = quote.transaction
 
   if (!transaction?.to || !transaction.data) {
-    throw new Error('Quote transaction payload is incomplete')
+    throw new Error('报价返回的交易数据不完整。')
   }
 
   return {
@@ -28,7 +28,7 @@ export async function sendSwapTransaction(walletClient: WalletClient, quote: Zer
   const account = walletClient.account
 
   if (!account) {
-    throw new Error('Wallet client is not connected')
+    throw new Error('钱包客户端尚未连接。')
   }
 
   const transaction = buildSwapTransaction(quote)

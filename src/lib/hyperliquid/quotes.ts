@@ -114,7 +114,7 @@ export function resolveZeroExMonetizationConfig(input: ZeroExMonetizationInput):
       swapFeeRecipient,
       swapFeeBps,
       feeEnabled: true,
-      feeStatusLabel: `Builder fee configured at ${swapFeeBps} Bps and forwarded to the platform recipient.`,
+      feeStatusLabel: `Builder Fee 已配置为 ${swapFeeBps} Bps，并会转发到平台收款地址。`,
     }
   }
 
@@ -122,14 +122,14 @@ export function resolveZeroExMonetizationConfig(input: ZeroExMonetizationInput):
     return {
       affiliateAddress,
       feeEnabled: false,
-      feeStatusLabel: 'Builder fee configuration is incomplete or invalid, so no platform fee will be attached to the 0x request.',
+      feeStatusLabel: 'Builder Fee 配置不完整或无效，本次 0x 请求不会附加平台费。',
     }
   }
 
   return {
     affiliateAddress,
     feeEnabled: false,
-    feeStatusLabel: 'Builder fee is not configured yet, so the current request is quote-only without a platform fee.',
+    feeStatusLabel: 'Builder Fee 尚未配置，当前请求仅用于报价，不附带平台费。',
   }
 }
 

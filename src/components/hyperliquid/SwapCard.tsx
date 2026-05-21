@@ -1,14 +1,6 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { TokenSelector } from './TokenSelector'
 
@@ -24,6 +16,8 @@ type SwapCardProps = {
   balanceLabel?: string
   quotePreview?: string
   isPrimaryDisabled?: boolean
+  onSwapDirection?: () => void
+  isSwapDirectionDisabled?: boolean
 }
 
 export function SwapCard({
@@ -35,58 +29,73 @@ export function SwapCard({
   sellSymbol = 'USDC',
   buySymbol = 'HYPE',
   statusLabel,
-  balanceLabel = 'Balance unavailable',
-  quotePreview = 'No quote requested yet',
+  balanceLabel = '余额暂不可用',
+  quotePreview = '尚未请求报价',
   isPrimaryDisabled = false,
+  onSwapDirection,
+  isSwapDirectionDisabled = false,
 }: SwapCardProps) {
   return (
-    <Card className="gap-4 border border-border/60 bg-card/90 shadow-none backdrop-blur">
-      <CardHeader className="gap-2">
-        <CardTitle>Swap</CardTitle>
-        <CardDescription>
-          {isConnected ? 'Review the pair and request a quote.' : 'Connect your wallet to start trading.'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <TokenSelector
-          helperText="Sell token"
-          label="From"
-          value={sellSymbol}
-        />
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <label className="block text-sm font-medium text-foreground" htmlFor="sell-amount">
-              Sell amount
-            </label>
-            <span className="text-xs text-muted-foreground">{balanceLabel}</span>
+    <section className="rounded-[2rem] border border-border/70 bg-card/95 p-3 shadow-xl ring-1 ring-foreground/5 backdrop-blur">
+      <div className="space-y-3 rounded-[1.5rem] bg-muted/30 p-3">
+        <div className="flex items-start justify-between gap-3 rounded-[1.5rem] bg-background/90 p-4">
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <label className="text-sm text-muted-foreground" htmlFor="sell-amount">
+                卖出数量
+              </label>
+              <span className="text-xs text-muted-foreground">{balanceLabel}</span>
+            </div>
+            <Input
+              id="sell-amount"
+              inputMode="decimal"
+              onChange={(event) => onAmountChange(event.target.value)}
+              placeholder="0.0"
+              value={amount}
+              className="h-auto border-0 bg-transparent px-0 text-4xl font-semibold shadow-none focus-visible:ring-0"
+            />
+            <TokenSelector
+              helperText="卖出币种"
+              label="资产"
+              value={sellSymbol}
+            />
           </div>
-          <Input
-            id="sell-amount"
-            inputMode="decimal"
-            onChange={(event) => onAmountChange(event.target.value)}
-            placeholder="0.0"
-            value={amount}
-          />
         </div>
-        <TokenSelector
-          helperText="Buy token"
-          label="To"
-          value={buySymbol}
-        />
-      </CardContent>
-      <CardFooter className="flex-col items-stretch gap-3">
-        <div className="flex items-center justify-between rounded-3xl border border-dashed border-border/80 px-4 py-3 text-sm text-muted-foreground">
-          <span>Status</span>
-          <span>{statusLabel ?? (isConnected ? 'Ready for quote' : 'Wallet disconnected')}</span>
+        <div className="relative flex justify-center py-1">
+          <Button
+            className="absolute top-1/2 z-10 -translate-y-1/2 rounded-full border border-border/80 bg-background text-foreground hover:bg-muted"
+            disabled={isSwapDirectionDisabled}
+            onClick={onSwapDirection}
+            size="icon"
+            type="button"
+            variant="outline"
+          >
+            ↕
+          </Button>
         </div>
-        <div className="rounded-3xl border border-border/70 bg-muted/20 px-4 py-3 text-sm">
-          <p className="text-muted-foreground">Quote preview</p>
-          <p className="mt-1 font-medium text-foreground">{quotePreview}</p>
+        <div className="flex items-start justify-between gap-3 rounded-[1.5rem] bg-background/90 p-4">
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-muted-foreground">买入</span>
+              <span className="text-xs text-muted-foreground">{quotePreview}</span>
+            </div>
+            <div className="text-4xl font-semibold tracking-tight text-foreground">--</div>
+            <TokenSelector
+              helperText="买入币种"
+              label="资产"
+              value={buySymbol}
+            />
+          </div>
         </div>
-        <Button className="w-full" disabled={isPrimaryDisabled} onClick={onPrimaryAction} type="button">
+      </div>
+      <div className="mt-3 space-y-3">
+        <div className="rounded-[1.5rem] border border-dashed border-border/80 px-4 py-3 text-sm text-muted-foreground">
+          {statusLabel ?? (isConnected ? '可以开始请求报价' : '钱包未连接')}
+        </div>
+        <Button className="h-12 w-full text-base font-semibold" disabled={isPrimaryDisabled} onClick={onPrimaryAction} type="button">
           {primaryLabel}
         </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </section>
   )
 }

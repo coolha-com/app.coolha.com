@@ -6,12 +6,11 @@ import { formatUnits, parseUnits } from 'viem'
 import { useAccount, usePublicClient, useSwitchChain, useWalletClient, useWriteContract } from 'wagmi'
 
 import { AiInsightPanel } from '@/components/hyperliquid/AiInsightPanel'
-import { MarketList } from '@/components/hyperliquid/MarketList'
 import { QuoteDetails } from '@/components/hyperliquid/QuoteDetails'
 import { SwapCard } from '@/components/hyperliquid/SwapCard'
 import { TradingViewPanel } from '@/components/hyperliquid/TradingViewPanel'
-import { WalletStatusBar } from '@/components/hyperliquid/WalletStatusBar'
 import ConnectButton from '@/components/web3/ConnectButton'
+import { Button } from '@/components/ui/button'
 import { approvalState, buildApproveRequest } from '@/lib/hyperliquid/allowance'
 import { buildTradeInsight } from '@/lib/hyperliquid/ai-explainer'
 import { readAllTokenBalances, readNativeHypeBalance } from '@/lib/hyperliquid/balances'
@@ -82,6 +81,20 @@ const MARKET_OPTIONS: MarketOption[] = [
     changeLabel: 'live',
   },
 ]
+
+function findReverseMarketId(marketId: string): string | null {
+  const active = MARKET_OPTIONS.find((market) => market.id === marketId)
+
+  if (!active) {
+    return null
+  }
+
+  const reverse = MARKET_OPTIONS.find(
+    (market) => market.sellSymbol === active.buySymbol && market.buySymbol === active.sellSymbol,
+  )
+
+  return reverse?.id ?? null
+}
 
 function formatDisplayValue(value?: string, maximumFractionDigits = 4): string {
   if (!value) {
@@ -205,6 +218,7 @@ export default function AiPage() {
     () => MARKET_OPTIONS.find((market) => market.id === activeMarketId) ?? MARKET_OPTIONS[0],
     [activeMarketId],
   )
+  const reverseMarketId = useMemo(() => findReverseMarketId(activeMarketId), [activeMarketId])
   const monetizationConfig = useMemo(
     () =>
       resolveZeroExMonetizationConfig({
@@ -256,6 +270,14 @@ export default function AiPage() {
     )
   }, [activeMarket.buySymbol, activeMarket.sellSymbol])
 
+  const handleSwapDirection = useCallback(() => {
+    if (!reverseMarketId) {
+      return
+    }
+
+    setActiveMarketId(reverseMarketId)
+  }, [reverseMarketId])
+
   const refreshBalances = useCallback(async () => {
     if (!publicClient || !address || !isConnected || !isCorrectChain) {
       setBalances(null)
@@ -275,22 +297,22 @@ export default function AiPage() {
   const buildQuoteParams = useCallback(
     () => {
       if (!ZEROX_API_KEY) {
-        throw new Error('Missing NEXT_PUBLIC_ZEROX_API_KEY. Quote requests are disabled until the 0x API key is configured.')
+        throw new Error('缺少 NEXT_PUBLIC_ZEROX_API_KEY，当前无法请求报价。')
       }
 
       if (!sellToken || !buyToken) {
-        throw new Error('The selected market is missing token metadata.')
+        throw new Error('当前交易对缺少代币元数据。')
       }
 
       const sellTokenIdentifier = getZeroExTokenIdentifier(activeMarket.sellSymbol)
       const buyTokenIdentifier = getZeroExTokenIdentifier(activeMarket.buySymbol)
 
       if (!sellTokenIdentifier || !buyTokenIdentifier) {
-        throw new Error('The selected market is missing a valid 0x token identifier.')
+        throw new Error('当前交易对缺少有效的 0x token 标识。')
       }
 
       if (!address || !parsedAmount || parsedAmount <= 0n) {
-        throw new Error('Enter a valid amount before requesting a quote.')
+        throw new Error('请先输入有效数量，再请求报价。')
       }
 
       const params = new URLSearchParams({
@@ -335,7 +357,7 @@ export default function AiPage() {
 
   const handleGetQuote = useCallback(async () => {
     if (!publicClient || !address || !sellToken || !buyToken || !parsedAmount || parsedAmount <= 0n) {
-      setQuoteError('Enter a valid amount and connect to HyperEVM first.')
+      setQuoteError('请先连接 HyperEVM 钱包并输入有效数量。')
       setQuoteState('error')
       return
     }
@@ -412,7 +434,7 @@ export default function AiPage() {
   const handleSwap = useCallback(async () => {
     if (!walletClient || !publicClient) {
       setTradeState('error')
-      setQuoteError('Wallet client is not available.')
+      setQuoteError('钱包客户端不可用。')
       return
     }
 
@@ -473,63 +495,63 @@ export default function AiPage() {
 
   const primaryLabel = useMemo(() => {
     if (!isConnected) {
-      return 'Connect Wallet'
+      return '连接钱包'
     }
 
     if (!isCorrectChain) {
-      return 'Switch To HyperEVM'
+      return '切换到 HyperEVM'
     }
 
     if (!parsedAmount || parsedAmount <= 0n) {
-      return 'Enter Amount'
+      return '输入数量'
     }
 
     if (!ZEROX_API_KEY) {
-      return 'Configure 0x API Key'
+      return '配置 0x API Key'
     }
 
     if (quoteState === 'loading') {
-      return 'Getting Quote...'
+      return '获取报价中...'
     }
 
     if (tradeState === 'approving') {
-      return 'Approving...'
+      return '授权中...'
     }
 
     if (approvalRequired) {
-      return 'Approve Token'
+      return '授权代币'
     }
 
     if (tradeState === 'swapping' || tradeState === 'pending') {
-      return 'Submitting Swap...'
+      return '提交交易中...'
     }
 
     if (tradeState === 'success') {
-      return 'Swap Completed'
+      return '交易已完成'
     }
 
     if (quoteState === 'ready') {
-      return 'Swap Now'
+      return '立即兑换'
     }
 
-    return 'Get Quote'
+    return '获取报价'
   }, [approvalRequired, isConnected, isCorrectChain, parsedAmount, quoteState, tradeState])
 
   const statusLabel = useMemo(() => {
     if (!isConnected) {
-      return 'Wallet disconnected'
+      return '钱包未连接'
     }
 
     if (!isCorrectChain) {
-      return 'Switch to HyperEVM mainnet to continue.'
+      return '请先切换到 HyperEVM 主网。'
     }
 
     if (!ZEROX_API_KEY) {
-      return 'Missing NEXT_PUBLIC_ZEROX_API_KEY. Quotes and swaps stay disabled until the 0x client key is configured.'
+      return '缺少 NEXT_PUBLIC_ZEROX_API_KEY，报价和交易暂不可用。'
     }
 
     if (!sellTokenAddressVerified) {
-      return 'The sell token address has not been verified locally yet, so this market is hidden until the metadata is upgraded.'
+      return '当前卖出代币地址尚未在本地完成校验，此交易对暂不可用。'
     }
 
     if (quoteError) {
@@ -537,34 +559,34 @@ export default function AiPage() {
     }
 
     if (tradeState === 'success') {
-      return 'Swap settled on-chain.'
+      return '交易已在链上确认。'
     }
 
     if (tradeState === 'pending') {
-      return 'Waiting for the transaction confirmation.'
+      return '等待链上确认中。'
     }
 
     if (approvalRequired) {
-      return 'Allowance approval is required before swapping.'
+      return '兑换前需要先完成代币授权。'
     }
 
     if (quoteState === 'ready') {
-      return 'Quote ready. Review the route and confirm the trade.'
+      return '报价已就绪，请确认路由和手续费。'
     }
 
-    return 'Enter an amount to request a fresh quote.'
+    return '输入数量后即可请求最新报价。'
   }, [approvalRequired, isConnected, isCorrectChain, quoteError, quoteState, sellTokenAddressVerified, tradeState])
 
   const quotePreview = quote
-    ? `Expected receive ${formatQuoteAmount(quote.buyAmount, activeMarket.buySymbol)} ${activeMarket.buySymbol}`
-    : 'No quote requested yet'
+    ? `预计到账 ${formatQuoteAmount(quote.buyAmount, activeMarket.buySymbol)} ${activeMarket.buySymbol}`
+    : '尚未请求报价'
   const integratorFeeLabel = useMemo(() => {
     if (!quote) {
-      return monetizationConfig.feeEnabled ? 'Awaiting quote' : 'Not configured'
+      return monetizationConfig.feeEnabled ? '等待报价' : '未配置'
     }
 
     if (quote.integratorFeeAmount === '0') {
-      return monetizationConfig.feeEnabled ? '0x returned no builder fee for this route' : 'No platform fee attached'
+      return monetizationConfig.feeEnabled ? '该路由未返回 Builder Fee' : '当前未附加平台费'
     }
 
     const formattedAmount = formatIntegratorFeeAmount(
@@ -579,111 +601,142 @@ export default function AiPage() {
     return `${formattedAmount} ${feeTokenLabel}`
   }, [activeMarket.buySymbol, monetizationConfig.feeEnabled, quote])
 
-  const marketItems = useMemo(
-    () =>
-      MARKET_OPTIONS.map((market) => ({
-        id: market.id,
-        label: market.label,
-        changeLabel: market.changeLabel,
-        subtitle: `${market.sellSymbol} -> ${market.buySymbol}`,
-      })),
-    [],
-  )
+  const marketItems = MARKET_OPTIONS
 
   return (
-    <div className="container mx-auto min-h-screen space-y-6 px-4 py-6">
-      <div className="space-y-2">
-        <p className="text-sm font-medium uppercase tracking-[0.24em] text-muted-foreground">HyperEVM AI Terminal</p>
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Trade whitelisted spot pairs with wallet-confirmed execution</h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          The page keeps swap execution self-custodial, surfaces HyperEVM wallet readiness, and currently narrows trading to the core market that does not depend on placeholder ERC-20 approval metadata.
-        </p>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(144,137,252,0.14),_transparent_34%),linear-gradient(180deg,_rgba(10,10,18,0.95),_rgba(10,10,18,1))] px-4 py-6">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
+        <div className="space-y-1">
+          <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">Swap</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">HyperEVM 现货兑换</h1>
+        </div>
+        <ConnectButton />
       </div>
 
-      <main className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)_360px]">
-        <aside className="space-y-4">
-          <div className="rounded-[2rem] border border-border/60 bg-card/90 p-4 shadow-none backdrop-blur">
-            <p className="mb-3 text-sm font-medium text-foreground">Wallet Access</p>
-            <ConnectButton />
+      <main className="mx-auto mt-8 flex w-full max-w-6xl justify-center">
+        <section className="w-full max-w-2xl space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {marketItems.map((market) => (
+              <Button
+                className="rounded-full"
+                key={market.id}
+                onClick={() => setActiveMarketId(market.id)}
+                size="sm"
+                type="button"
+                variant={activeMarketId === market.id ? 'secondary' : 'outline'}
+              >
+                {market.label}
+              </Button>
+            ))}
           </div>
-          <MarketList activeMarketId={activeMarketId} markets={marketItems} onSelectMarket={setActiveMarketId} />
-        </aside>
 
-        <section className="space-y-4">
-          <WalletStatusBar
-            addressLabel={formatAddressLike(address)}
-            connectionLabel={isConnected ? 'Connected' : 'Disconnected'}
-            gasLabel={
-              !isConnected
-                ? 'Connect to load HYPE balance'
-                : !isCorrectChain
-                  ? 'Switch to HyperEVM'
-                  : gasBalance
-                    ? `${formatDisplayValue(gasBalance)} HYPE${hasEnoughGas ? ' ready' : ' low'}`
-                    : 'Loading HYPE balance...'
-            }
-            networkLabel={!isConnected ? 'Not connected' : isCorrectChain ? 'HyperEVM' : `Wrong network (${chainId ?? '--'})`}
-          />
-          <TradingViewPanel pairLabel={activeMarket.label} />
-          <SwapCard
-            amount={amount}
-            balanceLabel={
-              balances?.[activeMarket.sellSymbol]
-                ? `${formatDisplayValue(balances[activeMarket.sellSymbol])} ${activeMarket.sellSymbol}`
-                : sellTokenAddressVerified
-                  ? 'Balance unavailable'
-                  : 'Address pending verification'
-            }
-            isConnected={isConnected}
-            isPrimaryDisabled={isBusy || (isConnected && isCorrectChain && (!parsedAmount || parsedAmount <= 0n || !ZEROX_API_KEY))}
-            onAmountChange={setAmount}
-            onPrimaryAction={() => {
-              void handlePrimaryAction()
-            }}
-            primaryLabel={primaryLabel}
-            quotePreview={quotePreview}
-            sellSymbol={activeMarket.sellSymbol}
-            statusLabel={statusLabel}
-            buySymbol={activeMarket.buySymbol}
-          />
-          <QuoteDetails
-            buyAmount={quote ? `${formatQuoteAmount(quote.buyAmount, activeMarket.buySymbol)} ${activeMarket.buySymbol}` : '--'}
-            feeConfigLabel={monetizationConfig.feeStatusLabel}
-            integratorFeeAmount={integratorFeeLabel}
-            minBuyAmount={quote ? `${formatQuoteAmount(quote.minBuyAmount, activeMarket.buySymbol)} ${activeMarket.buySymbol}` : '--'}
-            routeSummary={quote?.routeSummary}
-            statusLabel={quoteError ? `Quote error: ${quoteError}` : quoteUpdatedAt ? `Last updated ${quoteUpdatedAt}` : 'Awaiting quote'}
-          />
+          <div className="rounded-[2rem] border border-border/60 bg-card/60 p-4 shadow-none backdrop-blur">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <span className="rounded-full border border-border/70 px-3 py-1">
+                  {!isConnected ? '钱包未连接' : isCorrectChain ? 'HyperEVM' : `错误网络 ${chainId ?? '--'}`}
+                </span>
+                <span className="rounded-full border border-border/70 px-3 py-1">
+                  {!isConnected
+                    ? '请先连接钱包'
+                    : gasBalance
+                      ? `${formatDisplayValue(gasBalance)} HYPE${hasEnoughGas ? '' : ' Gas 偏低'}`
+                      : 'Gas 加载中'}
+                </span>
+                {isConnected ? (
+                  <span className="rounded-full border border-border/70 px-3 py-1">{formatAddressLike(address)}</span>
+                ) : null}
+              </div>
+              <span className="text-xs text-muted-foreground">仅自托管</span>
+            </div>
+
+            <SwapCard
+              amount={amount}
+              balanceLabel={
+                balances?.[activeMarket.sellSymbol]
+                  ? `${formatDisplayValue(balances[activeMarket.sellSymbol])} ${activeMarket.sellSymbol}`
+                  : sellTokenAddressVerified
+                    ? '余额暂不可用'
+                    : '地址待校验'
+              }
+              isConnected={isConnected}
+              isPrimaryDisabled={isBusy || (isConnected && isCorrectChain && (!parsedAmount || parsedAmount <= 0n || !ZEROX_API_KEY))}
+              onAmountChange={setAmount}
+              onPrimaryAction={() => {
+                void handlePrimaryAction()
+              }}
+              onSwapDirection={() => {
+                void handleSwapDirection()
+              }}
+              primaryLabel={primaryLabel}
+              quotePreview={quotePreview}
+              sellSymbol={activeMarket.sellSymbol}
+              statusLabel={statusLabel}
+              buySymbol={activeMarket.buySymbol}
+              isSwapDirectionDisabled={!reverseMarketId || isBusy}
+            />
+
+            <div className="mt-4">
+              <QuoteDetails
+                buyAmount={quote ? `${formatQuoteAmount(quote.buyAmount, activeMarket.buySymbol)} ${activeMarket.buySymbol}` : '--'}
+                feeConfigLabel={monetizationConfig.feeStatusLabel}
+                integratorFeeAmount={integratorFeeLabel}
+                minBuyAmount={quote ? `${formatQuoteAmount(quote.minBuyAmount, activeMarket.buySymbol)} ${activeMarket.buySymbol}` : '--'}
+                routeSummary={quote?.routeSummary}
+                statusLabel={quoteError ? `报价错误：${quoteError}` : quoteUpdatedAt ? `上次更新：${quoteUpdatedAt}` : '等待报价'}
+              />
+            </div>
+          </div>
+
+          <details className="group rounded-[1.75rem] border border-border/60 bg-card/60 p-4 backdrop-blur">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-foreground">
+              <span>AI 解读</span>
+              <span className="text-xs text-muted-foreground group-open:hidden">展开</span>
+              <span className="hidden text-xs text-muted-foreground group-open:inline">收起</span>
+            </summary>
+            <div className="mt-4">
+              <AiInsightPanel
+                riskItems={riskFlags}
+                statusLabel={statusLabel}
+                suggestion={insight.suggestion}
+                summary={insight.summary}
+                warning={insight.warning}
+                disclaimerLabel="AI 输出仅用于描述和风险解释，不构成投资建议，也不承诺收益或成交质量。"
+              />
+            </div>
+          </details>
+
+          <details className="group rounded-[1.75rem] border border-border/60 bg-card/60 p-4 backdrop-blur">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-foreground">
+              <span>K 线图</span>
+              <span className="text-xs text-muted-foreground group-open:hidden">展开</span>
+              <span className="hidden text-xs text-muted-foreground group-open:inline">收起</span>
+            </summary>
+            <div className="mt-4">
+              <TradingViewPanel pairLabel={activeMarket.label} />
+            </div>
+          </details>
+
+          <section className="rounded-[1.75rem] border border-dashed border-border/80 bg-card/50 p-4 text-sm leading-7 text-muted-foreground">
+            这是一个自托管兑换界面。报价来自前端直连的 0x 集成，每一笔交易仍需你在钱包中亲自确认，Builder Fee 是否生效取决于你的 0x 配置与具体路由。
+          </section>
+
+          <section className="grid gap-2 sm:grid-cols-2">
+            {HYPEREVM_TOKENS.filter((token) => ['HYPE', 'USDC', 'USDT0'].includes(token.symbol)).map((token) => (
+              <div className="rounded-[1.25rem] border border-border/60 bg-card/50 px-4 py-3 text-sm" key={token.symbol}>
+                <p className="font-medium text-foreground">{token.symbol}</p>
+                <p className="mt-1 text-muted-foreground">
+                  {balances?.[token.symbol]
+                    ? `${formatDisplayValue(balances[token.symbol])} ${token.symbol}`
+                    : token.isAddressVerified
+                      ? '余额加载中'
+                      : '地址待校验'}
+                </p>
+              </div>
+            ))}
+          </section>
         </section>
-
-        <AiInsightPanel
-          riskItems={riskFlags}
-          statusLabel={statusLabel}
-          suggestion={insight.suggestion}
-          summary={insight.summary}
-          warning={insight.warning}
-          disclaimerLabel="AI output is descriptive only, never an investment recommendation, and never a promise of profitability or execution quality."
-        />
       </main>
-
-      <section className="rounded-[2rem] border border-dashed border-border/80 bg-card/50 p-4 text-sm leading-7 text-muted-foreground">
-        This terminal is a self-custody interface only. Every quote comes from the frontend 0x integration, every trade still requires your own wallet confirmation, and any builder fee depends on explicit 0x fee configuration plus route availability. Unverified token metadata is intentionally hidden from execution paths until the on-chain addresses are confirmed.
-      </section>
-
-      <section className="grid gap-3 md:grid-cols-5">
-        {HYPEREVM_TOKENS.map((token) => (
-          <div className="rounded-[2rem] border border-border/60 bg-card/70 px-4 py-3 text-sm" key={token.symbol}>
-            <p className="font-medium text-foreground">{token.symbol}</p>
-            <p className="mt-1 text-muted-foreground">
-              {balances?.[token.symbol]
-                ? `${formatDisplayValue(balances[token.symbol])} ${token.symbol}`
-                : token.isAddressVerified
-                  ? 'Balance pending'
-                  : 'Address pending verification'}
-            </p>
-          </div>
-        ))}
-      </section>
     </div>
   )
 }
