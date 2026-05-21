@@ -11,12 +11,14 @@ import {
 type WalletStatusBarProps = {
   networkLabel?: string
   addressLabel?: string
+  connectionLabel?: string
   gasLabel?: string
 }
 
 export function WalletStatusBar({
   networkLabel = 'HyperEVM',
   addressLabel = 'Not connected',
+  connectionLabel = 'Disconnected',
   gasLabel = 'Check HYPE balance',
 }: WalletStatusBarProps) {
   return (
@@ -25,7 +27,11 @@ export function WalletStatusBar({
         <CardTitle>Wallet Status</CardTitle>
         <CardDescription>Connection, network, and gas readiness</CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-3 md:grid-cols-3">
+      <CardContent className="grid gap-3 md:grid-cols-4">
+        <div className="rounded-3xl border border-border/70 bg-muted/20 px-4 py-3">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Status</p>
+          <p className="mt-2 text-sm font-medium text-foreground">{connectionLabel}</p>
+        </div>
         <div className="rounded-3xl border border-border/70 bg-muted/20 px-4 py-3">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Network</p>
           <p className="mt-2 text-sm font-medium text-foreground">{networkLabel}</p>

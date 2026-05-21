@@ -35,6 +35,7 @@ export async function sendSwapTransaction(walletClient: WalletClient, quote: Zer
 
   return walletClient.sendTransaction({
     account,
+    chain: walletClient.chain,
     ...transaction,
   })
 }

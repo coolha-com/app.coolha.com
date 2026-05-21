@@ -18,6 +18,12 @@ type SwapCardProps = {
   onAmountChange: (value: string) => void
   onPrimaryAction: () => void
   primaryLabel: string
+  sellSymbol?: string
+  buySymbol?: string
+  statusLabel?: string
+  balanceLabel?: string
+  quotePreview?: string
+  isPrimaryDisabled?: boolean
 }
 
 export function SwapCard({
@@ -26,6 +32,12 @@ export function SwapCard({
   onAmountChange,
   onPrimaryAction,
   primaryLabel,
+  sellSymbol = 'USDC',
+  buySymbol = 'HYPE',
+  statusLabel,
+  balanceLabel = 'Balance unavailable',
+  quotePreview = 'No quote requested yet',
+  isPrimaryDisabled = false,
 }: SwapCardProps) {
   return (
     <Card className="gap-4 border border-border/60 bg-card/90 shadow-none backdrop-blur">
@@ -39,12 +51,15 @@ export function SwapCard({
         <TokenSelector
           helperText="Sell token"
           label="From"
-          value="USDC"
+          value={sellSymbol}
         />
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-foreground" htmlFor="sell-amount">
-            Sell amount
-          </label>
+          <div className="flex items-center justify-between gap-3">
+            <label className="block text-sm font-medium text-foreground" htmlFor="sell-amount">
+              Sell amount
+            </label>
+            <span className="text-xs text-muted-foreground">{balanceLabel}</span>
+          </div>
           <Input
             id="sell-amount"
             inputMode="decimal"
@@ -56,15 +71,19 @@ export function SwapCard({
         <TokenSelector
           helperText="Buy token"
           label="To"
-          value="HYPE"
+          value={buySymbol}
         />
       </CardContent>
       <CardFooter className="flex-col items-stretch gap-3">
         <div className="flex items-center justify-between rounded-3xl border border-dashed border-border/80 px-4 py-3 text-sm text-muted-foreground">
           <span>Status</span>
-          <span>{isConnected ? 'Ready for quote' : 'Wallet disconnected'}</span>
+          <span>{statusLabel ?? (isConnected ? 'Ready for quote' : 'Wallet disconnected')}</span>
         </div>
-        <Button className="w-full" onClick={onPrimaryAction} type="button">
+        <div className="rounded-3xl border border-border/70 bg-muted/20 px-4 py-3 text-sm">
+          <p className="text-muted-foreground">Quote preview</p>
+          <p className="mt-1 font-medium text-foreground">{quotePreview}</p>
+        </div>
+        <Button className="w-full" disabled={isPrimaryDisabled} onClick={onPrimaryAction} type="button">
           {primaryLabel}
         </Button>
       </CardFooter>
