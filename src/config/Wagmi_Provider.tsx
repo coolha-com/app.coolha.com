@@ -44,7 +44,8 @@ export default function Wagmi_Provider({ children, cookies, walletProjectId }: W
                 999: '/web3/world.jpg',
                 8453: '/web3/base.png',
                 84532: '/web3/base.png',
-                5042002: '/web3/arc-testnet.png'
+                5042002: '/web3/arc-testnet.png',
+                42431: '/web3/tempo.svg',
             },
             metadata,
             themeMode: 'dark',

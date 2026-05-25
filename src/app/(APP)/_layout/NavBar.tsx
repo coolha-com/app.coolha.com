@@ -2,9 +2,6 @@
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import ButtonMenu from "./ButtonMenu";
-import { Button } from "@/components/ui/button";
-import { RiSettingsLine } from "react-icons/ri";
-import Link from "next/link";
 
 const ConnectButton = dynamic(() => import("@/components/web3/ConnectButton"), { ssr: false });
 
@@ -32,11 +29,6 @@ function Profile() {
             </div>
             <div className="flex-none"> </div>
             <div className="flex-1 flex justify-end items-center gap-2">
-                <Button variant="ghost" size="icon">
-                    <Link href="/settings">
-                        <RiSettingsLine className="w-8 h-8" />
-                    </Link>
-                </Button>
                 <ButtonMenu />
                 <ConnectButton />
             </div>

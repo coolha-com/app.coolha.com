@@ -1,13 +1,14 @@
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi"
-import { arcTestnet, baseSepolia, sepolia, tempoTestnet } from "@reown/appkit/networks"
+import { mainnet,sepolia,baseSepolia,  arcTestnet, tempoTestnet } from "@reown/appkit/networks"
 import { cookieStorage, createStorage, http } from "@wagmi/core"
 
 export const networks: [
+  typeof mainnet,
   typeof sepolia,
   typeof baseSepolia,
   typeof arcTestnet,
   typeof tempoTestnet,
-] = [sepolia, baseSepolia, arcTestnet, tempoTestnet]
+] = [mainnet,sepolia, baseSepolia, arcTestnet, tempoTestnet]
 export const defaultNetwork = sepolia
 
 export function resolveWalletProjectId(explicitProjectId?: string | null) {
@@ -23,8 +24,9 @@ function createWalletRuntime(projectId: string) {
     projectId,
     networks,
     transports: {
-      [baseSepolia.id]: http(baseSepolia.rpcUrls.default.http[0]),
+      [mainnet.id]: http(mainnet.rpcUrls.default.http[0]),
       [sepolia.id]: http(sepolia.rpcUrls.default.http[0]),
+      [baseSepolia.id]: http(baseSepolia.rpcUrls.default.http[0]),
       [arcTestnet.id]: http(arcTestnet.rpcUrls.default.http[0]),
       [tempoTestnet.id]: http(tempoTestnet.rpcUrls.default.http[0]),
     },
