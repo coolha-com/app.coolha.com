@@ -3,8 +3,8 @@
 import { RxGrid } from "react-icons/rx";
 import Link from "next/link";
 import { useTranslations } from 'next-intl'
-import ThemeSwap from "@/components/ui/ThemeSwap";
-import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
+import ThemeSwap from "@/components/ThemeSwap";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { RiSettingsLine } from "react-icons/ri";
 import { Button } from "@/components/ui/button";
