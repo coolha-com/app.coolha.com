@@ -16,7 +16,7 @@ export default function ButtonMenu() {
         <>
             {/* 菜单按钮 */}
             <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+                <DropdownMenuTrigger asChild id="sidebar-more-menu-trigger">
                     <button className="inline-flex size-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full p-0 text-sm font-medium transition-all outline-none disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:hover:bg-accent/50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 xl:h-11 xl:w-full xl:justify-start xl:px-4">
                         <RxGrid className="w-6 h-6 md:w-7 md:h-7" />
                         <span className="hidden xl:flex text-lg">{t('more')}</span>
@@ -31,7 +31,7 @@ export default function ButtonMenu() {
                             <ThemeSwap />
                             <LanguageSwitcher />
 
-                            <Button variant="outline" size="icon" className="rounded-full">
+                            <Button asChild variant="outline" size="icon" className="rounded-full">
                                 <Link href="/settings">
                                     <RiSettingsLine size={20} />
                                 </Link>

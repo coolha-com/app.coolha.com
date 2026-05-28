@@ -22,7 +22,7 @@ export default function LanguageSwitcher() {
 
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger asChild id="language-switcher-trigger">
                 <Button variant="outline" size="icon" className="rounded-full">
                     <RiTranslate size={20} />
                 </Button>
