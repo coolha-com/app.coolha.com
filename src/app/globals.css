@@ -127,9 +127,15 @@
 
   body {
     @apply bg-background text-foreground;
+    position: relative;
   }
 
   html {
     @apply font-sans;
   }
+}
+
+.app-root {
+  min-height: 100dvh;
+  isolation: isolate;
 }

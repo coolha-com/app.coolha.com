@@ -9,7 +9,7 @@ import ButtonMenu from "./ButtonMenu";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { RiHomeLine, RiCompassLine, RiUserFill, RiUserLine, RiWallet3Fill, RiWallet3Line, RiRobot2Fill, RiRobot2Line } from "react-icons/ri";
+import { RiHomeLine, RiCompassLine, RiUserFill, RiUserLine, RiRobot2Fill, RiRobot2Line } from "react-icons/ri";
 
 const ConnectButton = dynamic(() => import("@/components/web3/ConnectButton"), { ssr: false });
 

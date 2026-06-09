@@ -61,13 +61,15 @@ export default async function RootLayout({ children, }: Readonly<{ children: Rea
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          <Theme>
-            <Wagmi_Provider cookies={cookies} walletProjectId={walletProjectId}>
-              {children}
-            </Wagmi_Provider>
-          </Theme>
-        </NextIntlClientProvider>
+        <div className="app-root">
+          <NextIntlClientProvider locale={locale} messages={messages}>
+            <Theme>
+              <Wagmi_Provider cookies={cookies} walletProjectId={walletProjectId}>
+                {children}
+              </Wagmi_Provider>
+            </Theme>
+          </NextIntlClientProvider>
+        </div>
         <SpeedInsights />
         <Analytics />
       </body>

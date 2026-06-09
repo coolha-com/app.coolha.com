@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, } from 'next/navigation'
 
 import type { ReactNode } from "react";
-import { RiCompassFill, RiCompassLine, RiHomeFill, RiHomeLine, RiRobot2Fill, RiRobot2Line, RiUserFill, RiUserLine, RiWallet3Fill, RiWallet3Line } from "react-icons/ri";
+import { RiCompassFill, RiCompassLine, RiHomeFill, RiHomeLine, RiRobot2Fill, RiRobot2Line, RiUserFill, RiUserLine } from "react-icons/ri";
 
 
 export default function NavFooter() {
