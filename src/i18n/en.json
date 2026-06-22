@@ -31,5 +31,13 @@
   },
   "dashboard": {
     "version_notice": "Coolha is currently in v0.1-alpha version. We are working hard on development, please stay tuned."
+  },
+  "blocked": {
+    "eyebrow": "Access Restricted",
+    "title": "This region is currently unavailable",
+    "description": "Based on applicable laws, regulations, and compliance requirements, access or related services are not currently available in your region.",
+    "detected_country": "Detected country code: {country}",
+    "back_official": "Back to Official Website",
+    "contact_support": "Contact Support"
   }
 }

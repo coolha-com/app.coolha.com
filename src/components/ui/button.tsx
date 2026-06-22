@@ -52,22 +52,25 @@ function Button({
     asChild?: boolean
   }) {
   const render = asChild && React.isValidElement(children) ? children : undefined
+  const buttonProps = mergeProps<"button">(
+    {
+      type: asChild ? undefined : "button",
+      className: cn(buttonVariants({ variant, size, className })),
+    },
+    {
+      ...props,
+      children: asChild ? undefined : children,
+    }
+  ) as React.ComponentProps<"button"> & Record<string, string | undefined>
+
+  buttonProps["data-slot"] = "button"
+  buttonProps["data-variant"] = variant ?? undefined
+  buttonProps["data-size"] = size ?? undefined
+
   const element = useRender({
     defaultTagName: "button",
     render,
-    props: mergeProps<"button">(
-      {
-        type: asChild ? undefined : "button",
-        "data-slot": "button",
-        "data-variant": variant,
-        "data-size": size,
-        className: cn(buttonVariants({ variant, size, className })),
-      },
-      {
-        ...props,
-        children: asChild ? undefined : children,
-      }
-    ),
+    props: buttonProps,
   })
 
   return element

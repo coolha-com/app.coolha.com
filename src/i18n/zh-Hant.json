@@ -31,5 +31,13 @@
   },
   "dashboard": {
     "version_notice": "Coolha 目前處於 v0.1-alpha 版本，我們正努力開發中，敬請期待。"
+  },
+  "blocked": {
+    "eyebrow": "訪問受限",
+    "title": "當前地區暫不可訪問",
+    "description": "根據適用的法律、監管和合規要求，當前暫不向你所在地區提供訪問或相關服務。",
+    "detected_country": "檢測到的地區代碼：{country}",
+    "back_official": "返回官網",
+    "contact_support": "聯絡客服"
   }
 }

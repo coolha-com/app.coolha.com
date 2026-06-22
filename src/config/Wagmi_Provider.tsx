@@ -39,7 +39,7 @@ export default function Wagmi_Provider({ children, cookies, walletProjectId }: W
             projectId: walletRuntime.projectId,
             networks,
             defaultNetwork,
-            allowUnsupportedChain: false,
+            allowUnsupportedChain: false,//允许用户切换到不支持的链条。
             chainImages: {
                 999: '/web3/world.jpg',
                 8453: '/web3/base.png',
@@ -55,10 +55,10 @@ export default function Wagmi_Provider({ children, cookies, walletProjectId }: W
             features: {
                 analytics: true,
                 emailShowWallets: false,
-                legalCheckbox: true,
+                legalCheckbox: true,//启用或禁用服务条款和/或隐私政策复选框。
             },
-            enableWalletGuide: false,
-            enableCoinbase: false,
+            enableWalletGuide: false,//启用或禁用钱包指南文本
+            enableCoinbase: false,//启用或禁用Coinbase钱包
             allWallets: 'SHOW',
             featuredWalletIds: [
 
