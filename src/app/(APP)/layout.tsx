@@ -25,7 +25,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <NavFooter />
       </div>
 
-      <div className={`hidden lg:block ${isActive ? 'lg:w-16 xl:w-64' : ''}`} />
+      <div className={`hidden lg:block ${isActive ? 'lg:h-16 xl:h-64' : ''}`} />
 
     </div>
   )

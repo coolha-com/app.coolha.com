@@ -1,10 +1,11 @@
 {
+  "version_notice": "Coolha is currently in v0.1-alpha version. We are working hard on development, please stay tuned.",
   "web3": {
     "connect_wallet": "Connect Wallet",
     "account": "Account"
   },
   "navigation": {
-    "dashboard": "Dashboard",
+    "chat": "Chat",
     "find": "Find",
     "messages": "Messages",
     "profile": "Profile"
@@ -23,15 +24,13 @@
   },
   "sidebar": {
     "wallet": "Wallet",
-    "ai": "AI",
-    "dashboard": "Dashboard",
+    "agent": "Agent",
+    "chat": "Chat",
     "discover": "Discover",
     "profile": "Profile",
     "settings": "Settings"
   },
-  "dashboard": {
-    "version_notice": "Coolha is currently in v0.1-alpha version. We are working hard on development, please stay tuned."
-  },
+  "agent": {},
   "blocked": {
     "eyebrow": "Access Restricted",
     "title": "This region is currently unavailable",

@@ -9,7 +9,7 @@ import ButtonMenu from "./ButtonMenu";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { RiHomeLine, RiCompassLine, RiUserFill, RiUserLine, RiRobot2Fill, RiRobot2Line } from "react-icons/ri";
+import { RiChat1Line, RiCompassLine, RiUserFill, RiUserLine, RiRobot2Fill, RiRobot2Line } from "react-icons/ri";
 
 const ConnectButton = dynamic(() => import("@/components/web3/ConnectButton"), { ssr: false });
 
@@ -39,7 +39,7 @@ function Logo() {
         <div className="flex w-full justify-center xl:justify-start">
             <motion.div className="w-auto xl:w-full" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Link
-                    href={`/dashboard`}
+                    href={`/chat`}
                     className="flex size-11 items-center justify-center rounded-full xl:h-11 xl:w-full xl:justify-start xl:gap-3 xl:px-4 hover:bg-accent"
                 >
                     <Avatar className="size-8 shrink-0 border">
@@ -61,15 +61,19 @@ function NavbarLink() {
     const pathname = usePathname();
     const t = useTranslations('sidebar')
     const links = [
-
-
-
         {
-            title: t('dashboard'),
-            href: '/dashboard',
-            iconActive: RiHomeLine,
-            iconInactive: RiHomeLine,
-            startsWith: '/dashboard'
+            title: t('chat'),
+            href: '/chat',
+            iconActive: RiChat1Line,
+            iconInactive: RiChat1Line,
+            startsWith: '/chat'
+        },
+        {
+            title: t('agent'),
+            href: '/agent',
+            iconActive: RiRobot2Line,
+            iconInactive: RiRobot2Fill,
+            startsWith: '/agent'
         },
         {
             title: t('discover'),
@@ -77,13 +81,6 @@ function NavbarLink() {
             iconActive: RiCompassLine,
             iconInactive: RiCompassLine,
             startsWith: '/discover'
-        },
-        {
-            title: t('ai'),
-            href: '/ai',
-            iconActive: RiRobot2Line,
-            iconInactive: RiRobot2Fill,
-            startsWith: '/ai'
         },
         {
             title: t('profile'),

@@ -1,11 +1,11 @@
 {
-
+  "version_notice": "Coolha目前处于v0.1-alpha版本，我们正在努力开发中，敬请期待。",
   "web3": {
     "connect_wallet": "连接钱包",
     "account": "账户"
   },
   "navigation": {
-    "dashboard": "仪表板",
+    "chat": "聊天",
     "find": "发现",
     "messages": "消息",
     "profile": "个人"
@@ -24,14 +24,13 @@
   },
   "sidebar": {
     "wallet": "钱包",
-    "ai": "AI",
-    "dashboard": "仪表板",
+    "agent": "智能体",
+    "chat": "聊天",
     "discover": "发现",
     "profile": "用户",
     "settings": "设置"
   },
-  "dashboard": {
-    "version_notice": "Coolha目前处于v0.1-alpha版本，我们正在努力开发中，敬请期待。"
+  "agent": {
   },
   "blocked": {
     "eyebrow": "访问受限",

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, } from 'next/navigation'
 
 import type { ReactNode } from "react";
-import { RiCompassFill, RiCompassLine, RiHomeFill, RiHomeLine, RiRobot2Fill, RiRobot2Line, RiUserFill, RiUserLine } from "react-icons/ri";
+import { RiCompassFill, RiCompassLine, RiChat1Fill, RiChat1Line, RiRobot2Fill, RiRobot2Line, RiUserFill, RiUserLine } from "react-icons/ri";
 
 
 export default function NavFooter() {
@@ -18,10 +18,17 @@ export default function NavFooter() {
 
 
                 <NavLink
-                    href='/dashboard'
-                    activeHrefs={['/dashboard']}
-                    icon={<RiHomeLine className="size-7" />}
-                    activeIcon={<RiHomeFill className="size-7" />}
+                    href='/chat'
+                    activeHrefs={['/chat']}
+                    icon={<RiChat1Line className="size-7" />}
+                    activeIcon={<RiChat1Fill className="size-7" />}
+                />
+
+                <NavLink
+                    href='/agent'
+                    activeHrefs={['/agent']}
+                    icon={<RiRobot2Line className="size-7" />}
+                    activeIcon={<RiRobot2Fill className="size-7" />}
                 />
 
                 <NavLink
@@ -29,13 +36,6 @@ export default function NavFooter() {
                     activeHrefs={['/discover', '/rwa']}
                     icon={<RiCompassLine className="size-7" />}
                     activeIcon={<RiCompassFill className="size-7" />}
-                />
-                
-                <NavLink
-                    href='/ai'
-                    activeHrefs={['/ai']}
-                    icon={<RiRobot2Line className="size-7" />}
-                    activeIcon={<RiRobot2Fill className="size-7" />}
                 />
 
                 <NavLink
