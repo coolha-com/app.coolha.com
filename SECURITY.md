@@ -4,7 +4,7 @@
 
 If you discover a security vulnerability, please help us keep our project safe by reporting it.
 
-1. **Email**: Please send a detailed report of the vulnerability to [fqa@coolha.com](fqa@coolha.com).
+1. **Email**: Please send a detailed report of the vulnerability to [help@coolha.com](help@coolha.com).
 2. **Details**: Include as much information as possible to help us understand the issue, including:
    - Steps to reproduce
    - Potential impact

@@ -31,6 +31,12 @@
     "settings": "設定"
   },
   "agent": {},
+  "theme": {
+    "light": "明亮模式",
+    "dark": "暗黑模式",
+    "system": "跟隨系統",
+    "toggle_theme": "切換主題"
+  },
   "blocked": {
     "eyebrow": "訪問受限",
     "title": "當前地區暫不可訪問",

@@ -32,6 +32,12 @@
   },
   "agent": {
   },
+  "theme": {
+    "light": "明亮模式",
+    "dark": "暗黑模式",
+    "system": "跟随系统",
+    "toggle_theme": "切换主题"
+  },
   "blocked": {
     "eyebrow": "访问受限",
     "title": "当前地区暂不可访问",

@@ -46,7 +46,7 @@ export default async function BlockedPage({
           ) : null}
         </div>
 
-  
+
 
         <div className="mt-8 flex flex-wrap gap-4">
           <Link
@@ -57,7 +57,7 @@ export default async function BlockedPage({
           </Link>
 
           <Link
-            href="mailto:cs@coolha.com"
+            href="mailto:help@coolha.com"
             className="inline-flex h-10 items-center justify-center rounded-full border border-black bg-white px-5 text-sm font-medium text-black transition-opacity hover:opacity-90"
           >
             {t("contact_support")}

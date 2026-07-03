@@ -31,6 +31,12 @@
     "settings": "Settings"
   },
   "agent": {},
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "toggle_theme": "Toggle theme"
+  },
   "blocked": {
     "eyebrow": "Access Restricted",
     "title": "This region is currently unavailable",
