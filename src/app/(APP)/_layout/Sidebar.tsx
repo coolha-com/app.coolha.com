@@ -9,7 +9,17 @@ import ButtonMenu from "./ButtonMenu";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { RiChat1Line, RiCompassLine, RiUserFill, RiUserLine, RiRobot2Fill, RiRobot2Line } from "react-icons/ri";
+import {
+    RiCpuLine,
+    RiDashboardHorizontalLine,
+    RiExchangeDollarLine,
+    RiPuzzleFill,
+    RiPuzzleLine,
+    RiRobot2Fill,
+    RiRobot2Line,
+    RiWallet3Fill,
+    RiWallet3Line,
+} from "react-icons/ri";
 
 const ConnectButton = dynamic(() => import("@/components/web3/ConnectButton"), { ssr: false });
 
@@ -37,9 +47,9 @@ export default function Sidebar() {
 function Logo() {
     return (
         <div className="flex w-full justify-center xl:justify-start">
-            <motion.div className="w-auto xl:w-full" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <motion.div className="w-auto xl:w-full" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Link
-                    href={`/chat`}
+                    href={`/dashboard`}
                     className="flex size-11 items-center justify-center rounded-full xl:h-11 xl:w-full xl:justify-start xl:gap-3 xl:px-4 hover:bg-accent"
                 >
                     <Avatar className="size-8 shrink-0 border">
@@ -62,11 +72,18 @@ function NavbarLink() {
     const t = useTranslations('sidebar')
     const links = [
         {
-            title: t('chat'),
-            href: '/chat',
-            iconActive: RiChat1Line,
-            iconInactive: RiChat1Line,
-            startsWith: '/chat'
+            title: t('dashboard'),
+            href: '/dashboard',
+            iconActive: RiDashboardHorizontalLine,
+            iconInactive: RiDashboardHorizontalLine,
+            startsWith: '/dashboard'
+        },
+        {
+            title: t('ai'),
+            href: '/ai',
+            iconActive: RiCpuLine,
+            iconInactive: RiCpuLine,
+            startsWith: '/ai'
         },
         {
             title: t('agent'),
@@ -78,24 +95,25 @@ function NavbarLink() {
         {
             title: t('discover'),
             href: '/discover',
-            iconActive: RiCompassLine,
-            iconInactive: RiCompassLine,
+            iconActive: RiPuzzleLine,
+            iconInactive: RiPuzzleFill,
             startsWith: '/discover'
         },
         {
-            title: t('profile'),
-            href: '/profile',
-            iconActive: RiUserLine,
-            iconInactive: RiUserFill,
-            startsWith: '/profile'
+            title: t('rwa'),
+            href: '/rwa',
+            iconActive: RiExchangeDollarLine,
+            iconInactive: RiExchangeDollarLine,
+            startsWith: '/rwa'
         },
-        /*         {
-                    title: t('wallet'),
-                    href: '/wallet',
-                    iconActive: RiWallet3Line,
-                    iconInactive: RiWallet3Fill,
-                    startsWith: '/wallet'
-                }, */
+        {
+            title: t('wallet'),
+            href: '/wallet',
+            iconActive: RiWallet3Line,
+            iconInactive: RiWallet3Fill,
+            startsWith: '/wallet'
+        },
+
     ];
     return (
         <ul className="flex w-full flex-col items-center gap-1 ">
@@ -109,7 +127,7 @@ function NavbarLink() {
                             className={`size-11 justify-center rounded-full p-0 xl:h-11 xl:w-full xl:justify-start xl:px-4 ${isActive ? "font-medium" : "text-muted-foreground"}`}
                         >
                             <Link href={link.href} className="flex size-11 items-center justify-center xl:size-auto xl:w-full xl:justify-start xl:gap-3">
-                                <link.iconActive className={`w-5 h-5 ${isActive ? "text-foreground" : ""}`} />
+                                <link.iconActive className={`size-6 ${isActive ? "text-foreground" : ""}`} />
                                 <span className="hidden xl:flex text-sm">
                                     {link.title}
                                 </span>

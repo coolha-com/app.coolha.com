@@ -23,10 +23,12 @@
     "terms": "Terms"
   },
   "sidebar": {
+    "dashboard": "Dashboard",
+    "ai": "Compute Market",
+    "agent": "Agent Market",
+    "discover": "Extension Market",
+    "rwa": "Tokenized Market",
     "wallet": "Wallet",
-    "agent": "Agent",
-    "chat": "Chat",
-    "discover": "Discover",
     "profile": "Profile",
     "settings": "Settings"
   },

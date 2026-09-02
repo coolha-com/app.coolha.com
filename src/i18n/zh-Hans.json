@@ -23,15 +23,16 @@
     "terms": "条款"
   },
   "sidebar": {
+    "dashboard": "仪表板",
+    "ai": "算力市场",
+    "agent": "智能体市场",
+    "discover": "扩展市场",
+    "rwa": "代币化市场",
     "wallet": "钱包",
-    "agent": "智能体",
-    "chat": "聊天",
-    "discover": "发现",
     "profile": "用户",
     "settings": "设置"
   },
-  "agent": {
-  },
+  "agent": {},
   "theme": {
     "light": "明亮模式",
     "dark": "暗黑模式",

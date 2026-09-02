@@ -5,6 +5,7 @@ import { useAppKit, useAppKitAccount } from '@reown/appkit/react'
 import { useTranslations } from 'next-intl'
 import { mainnet } from 'viem/chains'
 import { useEnsAvatar, useEnsName } from 'wagmi'
+import { RiWallet3Line } from 'react-icons/ri'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -78,7 +79,9 @@ export default function ConnectButton({ sidebar = false, className }: ConnectBut
                 {avatarLabel}
               </AvatarFallback>
             </Avatar>
-          ) : null}
+          ) : (
+            <RiWallet3Line className="size-6 xl:hidden" />
+          )}
           <span className={cn('hidden text-sm font-bold xl:inline', mounted && isConnected && 'truncate')}>
             {mounted && isConnected ? displayName : t('connect_wallet')}
           </span>

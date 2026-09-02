@@ -23,10 +23,12 @@
     "terms": "條款"
   },
   "sidebar": {
+    "dashboard": "儀表板",
+    "ai": "算力市場",
+    "agent": "智能體市場",
+    "discover": "擴展市場",
+    "rwa": "代幣化市場",
     "wallet": "錢包",
-    "agent": "智能体",
-    "chat": "聊天",
-    "discover": "發現",
     "profile": "用戶",
     "settings": "設定"
   },

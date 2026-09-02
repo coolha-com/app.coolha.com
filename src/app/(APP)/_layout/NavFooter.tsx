@@ -4,7 +4,19 @@ import Link from "next/link";
 import { usePathname, } from 'next/navigation'
 
 import type { ReactNode } from "react";
-import { RiCompassFill, RiCompassLine, RiChat1Fill, RiChat1Line, RiRobot2Fill, RiRobot2Line, RiUserFill, RiUserLine } from "react-icons/ri";
+import {
+    RiApps2Line,
+    RiCpuFill,
+    RiCpuLine,
+    RiDashboardHorizontalLine,
+    RiExchangeDollarFill,
+    RiExchangeDollarLine,
+    RiPuzzleFill,
+    RiPuzzleLine,
+    RiRobot2Fill,
+    RiRobot2Line,
+    RiWalletLine,
+} from "react-icons/ri";
 
 
 export default function NavFooter() {
@@ -13,15 +25,33 @@ export default function NavFooter() {
             <div className="md:hidden h-14" aria-hidden />
 
             <div className="md:hidden fixed inset-x-0 bottom-0 flex h-14 bg-accent backdrop-filter backdrop-saturate-180 backdrop-blur-16 z-50 p-1">
-
-
-
+                <NavLink
+                    href='/dashboard'
+                    activeHrefs={['/dashboard']}
+                    icon={<RiDashboardHorizontalLine className="size-7" />}
+                    activeIcon={<RiDashboardHorizontalLine className="size-7" />}
+                />
 
                 <NavLink
-                    href='/chat'
-                    activeHrefs={['/chat']}
-                    icon={<RiChat1Line className="size-7" />}
-                    activeIcon={<RiChat1Fill className="size-7" />}
+                    href='/market'
+                    activeHrefs={['/market']}
+                    icon={<RiApps2Line  className="size-7" />}
+                    activeIcon={<RiApps2Line  className="size-7" />}
+                />
+
+                <NavLink
+                    href='/wallet'
+                    activeHrefs={['/wallet']}
+                    icon={<RiWalletLine className="size-7" />}
+                    activeIcon={<RiWalletLine className="size-7" />}
+                />
+
+
+                {/*                 <NavLink
+                    href='/ai'
+                    activeHrefs={['/ai']}
+                    icon={<RiCpuLine className="size-7" />}
+                    activeIcon={<RiCpuFill className="size-7" />}
                 />
 
                 <NavLink
@@ -33,37 +63,18 @@ export default function NavFooter() {
 
                 <NavLink
                     href='/discover'
-                    activeHrefs={['/discover', '/rwa']}
-                    icon={<RiCompassLine className="size-7" />}
-                    activeIcon={<RiCompassFill className="size-7" />}
+                    activeHrefs={['/discover']}
+                    icon={<RiPuzzleLine className="size-7" />}
+                    activeIcon={<RiPuzzleFill className="size-7" />}
                 />
 
                 <NavLink
-                    href={`/profile`}
-                    activeHrefs={[`/profile`]}
-                    icon={<RiUserLine className="size-7" />}
-                    activeIcon={<RiUserFill className="size-7" />}
-                />
-
-                {/*                 <NavLink
-                    href='/wallet'
-                    activeHrefs={['/wallet']}
-                    icon={<RiWallet3Line className="size-7" />}
-                    activeIcon={<RiWallet3Fill className="size-7" />}
+                    href='/rwa'
+                    activeHrefs={['/rwa']}
+                    icon={<RiExchangeDollarLine className="size-7" />}
+                    activeIcon={<RiExchangeDollarFill className="size-7" />}
                 /> */}
-
-                {/*        {address ? () : (
-          <NavLink
-            href={`/profile/sin`}
-            activeHrefs={[`/profile/sin`]}
-            icon={<RiUserLine className="Navicon" />}
-            activeIcon={<RiUserFill className="Navicon" />}
-          />
-        )}
- */}
             </div>
-
-
         </div>
     );
 }
@@ -76,7 +87,6 @@ function NavLink({ href, activeIcon, icon, activeHrefs, }: {
     activeHrefs: string[]
 }) {
     const pathname = usePathname();
-    // 检查路径是否以activeHrefs中的任何一个前缀开头
     const isActive = activeHrefs.some((activeHref) => pathname.startsWith(activeHref));
 
 
@@ -89,7 +99,6 @@ function NavLink({ href, activeIcon, icon, activeHrefs, }: {
 
             <div className={`flex flex-col items-center justify-center  ${isActive && 'text-base-content'} `}>
                 {isActive ? activeIcon : icon}
-                {/* <span className="text-xs mt-0.5">{text}</span> */}
             </div>
 
         </Link>

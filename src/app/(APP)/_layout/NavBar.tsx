@@ -10,11 +10,11 @@ export default function NavBar() {
 
     return (
         <>
-            {[/* "/find", */  "/profile"].includes(pathname) ? (
+            {["/dashboard", "/wallet"].includes(pathname) ? (
                 <div className="flex md:hidden w-full p-0 bg-background h-12 border-b">
                     <div className="flex items-center justify-between w-full px-2 h-12">
-                        {pathname && pathname.startsWith("/profile") && null}
-                        {pathname === "/profile" && <Profile />}
+                        {pathname && pathname.startsWith("/dashboard") && null}
+                        {pathname === "/dashboard" && <Dashboard />}
                     </div>
                 </div>
             ) : null}
@@ -22,7 +22,7 @@ export default function NavBar() {
     )
 }
 
-function Profile() {
+function Dashboard() {
     return (
         <>
             <div className="flex-1">
