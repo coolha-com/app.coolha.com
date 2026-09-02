@@ -30,7 +30,8 @@ export default function ThemeSwap() {
                     {themes.map(({ key, icon: Icon }) => (
                         <Icon
                             key={key}
-                            className={`size-5 transition-all ${currentTheme === key
+                            size={20}
+                            className={` transition-all ${currentTheme === key
                                     ? "scale-100 rotate-0 opacity-100"
                                     : "absolute scale-0 -rotate-90 opacity-0"
                                 }`}
