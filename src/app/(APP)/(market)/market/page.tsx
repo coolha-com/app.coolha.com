@@ -1,9 +1,8 @@
 import Link from "next/link"
 import {
   RiArrowRightLine,
+  RiBankCardLine,
   RiCpuLine,
-  RiExchangeDollarLine,
-  RiPuzzleLine,
   RiRobot2Line,
 } from "react-icons/ri"
 import type { IconType } from "react-icons"
@@ -14,38 +13,37 @@ const entries: Array<{
   href: string
   icon: IconType
 }> = [
-    {
-      title: "AI Model APIs",
-      description: "Buy access to AI model compute through wallet-based API usage.",
-      href: "/ai",
-      icon: RiCpuLine,
-    },
-    {
-      title: "Agent Services",
-      description: "Discover agents that provide verifiable real-world services.",
-      href: "/agent",
-      icon: RiRobot2Line,
-    },
-    {
-      title: "Extensions & Skills",
-      description: "Browse extensions, skills, and integrations for your agent.",
-      href: "/discover",
-      icon: RiPuzzleLine,
-    },
-    {
-      title: "RWA Assets",
-      description: "Browse tokenized real-world assets with full disclosure.",
-      href: "/rwa",
-      icon: RiExchangeDollarLine,
-    },
-  ]
+  {
+    title: "算力市场",
+    description: "通过稳定币结算的 AI Token 中转与订阅会员服务。",
+    href: "/ai",
+    icon: RiCpuLine,
+  },
+  {
+    title: "智能体市场",
+    description: "用于订阅履约、对账与客服任务的智能体服务。",
+    href: "/agent",
+    icon: RiRobot2Line,
+  },
+  {
+    title: "代币化市场",
+    description: "基于 Uniswap 流动性的代币化真实资产交易入口。",
+    href: "/rwa",
+    icon: RiBankCardLine,
+  },
+]
 
 export default function MarketPage() {
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mb-8 flex flex-col gap-3">
+        <h1 className="text-3xl font-semibold tracking-normal">市场</h1>
+        <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+          浏览 Coolha 提供的市场入口。所有交易与流动性均基于 Uniswap 与以太坊，Coolha 不托管用户资金。
+        </p>
+      </div>
 
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {entries.map(({ title, description, href, icon: Icon }) => (
           <Link
             key={href}

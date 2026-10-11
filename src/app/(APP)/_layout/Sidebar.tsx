@@ -93,13 +93,6 @@ function NavbarLink() {
             startsWith: '/agent'
         },
         {
-            title: t('discover'),
-            href: '/discover',
-            iconActive: RiPuzzleLine,
-            iconInactive: RiPuzzleFill,
-            startsWith: '/discover'
-        },
-        {
             title: t('rwa'),
             href: '/rwa',
             iconActive: RiExchangeDollarLine,

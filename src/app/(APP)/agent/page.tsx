@@ -6,9 +6,9 @@ export default function AgentPage() {
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-normal">Agent Service Marketplace</h1>
+        <h1 className="text-3xl font-semibold tracking-normal">智能体市场</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Discover agents that provide real services. Each agent should expose an on-chain identity, service scope, payment method, and verifiable reputation history.
+          用于订阅履约、稳定币对账、权益发放、库存检查与客服审核的智能体服务。接入真实服务后在此展示。
         </p>
       </div>
 
@@ -26,22 +26,27 @@ export default function AgentPage() {
             </div>
 
             <dl className="mt-6 space-y-3 text-sm">
-              <Row label="Service" value={agent.service} />
-              <Row label="Settlement" value={agent.settlement} />
-              <Row label="Identity" value={agent.identity} />
-              <Row label="Trust" value={agent.trust} />
+              <Row label="服务" value={agent.service} />
+              <Row label="结算" value={agent.settlement} />
+              <Row label="身份" value={agent.identity} />
+              <Row label="信任" value={agent.trust} />
             </dl>
 
             <div className="mt-6 rounded-xl bg-muted p-3 text-sm text-muted-foreground">
-              <div className="mb-1 flex items-center gap-2 font-medium text-foreground"><RiShieldCheckLine /> Service verification</div>
-              Agents are service providers, not RWA assets or AI model compute inventory.
+              <div className="mb-1 flex items-center gap-2 font-medium text-foreground"><RiShieldCheckLine /> 服务验证</div>
+              智能体是付费订单的运营服务提供方，不托管用户资金。
             </div>
 
             <Button className="mt-5 w-full" disabled>
-              Service checkout coming soon
+              智能体结算即将上线
             </Button>
           </article>
         ))}
+        {agentServices.length === 0 ? (
+          <div className="rounded-2xl border border-dashed bg-card p-5 text-sm leading-6 text-muted-foreground lg:col-span-3">
+            暂无已接入的真实智能体服务。接入后将在此展示。
+          </div>
+        ) : null}
       </div>
     </main>
   )

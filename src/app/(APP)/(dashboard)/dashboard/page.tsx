@@ -1,50 +1,22 @@
 import Link from "next/link"
 import {
   RiArrowRightLine,
+  RiBankCardLine,
   RiCpuLine,
-  RiExchangeDollarLine,
   RiFireLine,
-  RiPuzzleLine,
   RiRobot2Line,
+  RiShieldCheckLine,
 } from "react-icons/ri"
-import { aiAssets, agentServices, rwaAssets } from "@/lib/aifi-data"
-
-const hotExtensions = [
-  {
-    name: "Wallet Analyzer",
-    category: "Web3",
-    description: "Analyze wallet activity, DeFi exposure, and token flows.",
-    installs: "12.3K installs",
-  },
-  {
-    name: "GitHub Connector",
-    category: "Developer",
-    description: "Connect repositories for code review and project automation.",
-    installs: "Connected service",
-  },
-  {
-    name: "Supabase Connector",
-    category: "Database",
-    description: "Query product data and build backend workflows from your database.",
-    installs: "Database extension",
-  },
-]
+import { aiAssets, agentServices, settlementSteps, subscriptionProducts } from "@/lib/aifi-data"
 
 export default function DashboardPage() {
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-normal">Dashboard</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-            Browse recommended AI API tokens, popular service agents, extension integrations, and active tokenized RWA assets from one application home.
-          </p>
-        </div>
-      </div>
+
 
       <div className="grid gap-5 xl:grid-cols-2">
         <MarketSection
-          title="Recommended AI API Tokens"
+          title="AI Token"
           href="/ai"
           icon={<RiCpuLine className="size-5" />}
           items={aiAssets.map((item) => ({
@@ -56,7 +28,7 @@ export default function DashboardPage() {
         />
 
         <MarketSection
-          title="Popular Agents"
+          title="履约与支付 Agent"
           href="/agent"
           icon={<RiRobot2Line className="size-5" />}
           items={agentServices.map((item) => ({
@@ -67,29 +39,6 @@ export default function DashboardPage() {
           }))}
         />
 
-        <MarketSection
-          title="Popular Extensions"
-          href="/discover"
-          icon={<RiPuzzleLine className="size-5" />}
-          items={hotExtensions.map((item) => ({
-            title: item.name,
-            meta: item.category,
-            description: item.description,
-            stat: item.installs,
-          }))}
-        />
-
-        <MarketSection
-          title="Hot RWA Tokens"
-          href="/rwa"
-          icon={<RiExchangeDollarLine className="size-5" />}
-          items={rwaAssets.map((item) => ({
-            title: item.name,
-            meta: `${item.symbol} · ${item.type}`,
-            description: item.underlying,
-            stat: item.nav,
-          }))}
-        />
       </div>
     </main>
   )
@@ -114,12 +63,16 @@ function MarketSection({
           <h2 className="font-semibold">{title}</h2>
         </div>
         <Link href={href} className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground">
-          View <RiArrowRightLine className="size-4" />
+          查看 <RiArrowRightLine className="size-4" />
         </Link>
       </div>
 
       <div className="space-y-3">
-        {items.map((item, index) => (
+        {items.length === 0 ? (
+          <div className="rounded-2xl border border-dashed bg-background p-4 text-sm leading-6 text-muted-foreground">
+            暂无已接入的真实数据。接入真实供应、价格、库存或链上记录后，这里才会展示列表。
+          </div>
+        ) : items.map((item, index) => (
           <Link key={item.title} href={href} className="block rounded-2xl border bg-background p-4 transition hover:border-primary/60">
             <div className="flex items-start justify-between gap-4">
               <div>

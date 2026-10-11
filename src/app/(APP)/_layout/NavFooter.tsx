@@ -6,15 +6,7 @@ import { usePathname, } from 'next/navigation'
 import type { ReactNode } from "react";
 import {
     RiApps2Line,
-    RiCpuFill,
-    RiCpuLine,
     RiDashboardHorizontalLine,
-    RiExchangeDollarFill,
-    RiExchangeDollarLine,
-    RiPuzzleFill,
-    RiPuzzleLine,
-    RiRobot2Fill,
-    RiRobot2Line,
     RiWalletLine,
 } from "react-icons/ri";
 
@@ -35,8 +27,8 @@ export default function NavFooter() {
                 <NavLink
                     href='/market'
                     activeHrefs={['/market']}
-                    icon={<RiApps2Line  className="size-7" />}
-                    activeIcon={<RiApps2Line  className="size-7" />}
+                    icon={<RiApps2Line className="size-7" />}
+                    activeIcon={<RiApps2Line className="size-7" />}
                 />
 
                 <NavLink
@@ -45,35 +37,6 @@ export default function NavFooter() {
                     icon={<RiWalletLine className="size-7" />}
                     activeIcon={<RiWalletLine className="size-7" />}
                 />
-
-
-                {/*                 <NavLink
-                    href='/ai'
-                    activeHrefs={['/ai']}
-                    icon={<RiCpuLine className="size-7" />}
-                    activeIcon={<RiCpuFill className="size-7" />}
-                />
-
-                <NavLink
-                    href='/agent'
-                    activeHrefs={['/agent']}
-                    icon={<RiRobot2Line className="size-7" />}
-                    activeIcon={<RiRobot2Fill className="size-7" />}
-                />
-
-                <NavLink
-                    href='/discover'
-                    activeHrefs={['/discover']}
-                    icon={<RiPuzzleLine className="size-7" />}
-                    activeIcon={<RiPuzzleFill className="size-7" />}
-                />
-
-                <NavLink
-                    href='/rwa'
-                    activeHrefs={['/rwa']}
-                    icon={<RiExchangeDollarLine className="size-7" />}
-                    activeIcon={<RiExchangeDollarFill className="size-7" />}
-                /> */}
             </div>
         </div>
     );
