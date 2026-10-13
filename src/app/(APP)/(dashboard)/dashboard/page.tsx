@@ -3,6 +3,7 @@ import {
   RiArrowRightLine,
   RiBankCardLine,
   RiCpuLine,
+  RiExchangeDollarLine,
   RiFireLine,
   RiRobot2Line,
   RiShieldCheckLine,
@@ -16,7 +17,7 @@ export default function DashboardPage() {
 
       <div className="grid gap-5 xl:grid-cols-2">
         <MarketSection
-          title="AI Token"
+          title="算力市场"
           href="/ai"
           icon={<RiCpuLine className="size-5" />}
           items={aiAssets.map((item) => ({
@@ -28,7 +29,7 @@ export default function DashboardPage() {
         />
 
         <MarketSection
-          title="履约与支付 Agent"
+          title="智能体市场"
           href="/agent"
           icon={<RiRobot2Line className="size-5" />}
           items={agentServices.map((item) => ({
@@ -39,6 +40,17 @@ export default function DashboardPage() {
           }))}
         />
 
+        <MarketSection
+          title="代币化市场"
+          href="/rwa"
+          icon={<RiExchangeDollarLine className="size-5" />}
+          items={agentServices.map((item) => ({
+            title: item.name,
+            meta: `${item.category} · ${item.settlement}`,
+            description: item.service,
+            stat: item.trust,
+          }))}
+        />
       </div>
     </main>
   )

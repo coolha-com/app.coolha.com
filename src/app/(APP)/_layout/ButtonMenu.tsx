@@ -53,13 +53,13 @@ export default function ButtonMenu() {
                             <Link href={`https://coolha.com`} target='_blank' className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors">
                                 {t('about')}
                             </Link>
-                            <Link href={`https://docs.coolha.com`} className="text-muted-foreground hover:text-foreground hover:underline transition-colors" target='_blank'>
+                            {/*                             <Link href={`https://docs.coolha.com`} className="text-muted-foreground hover:text-foreground hover:underline transition-colors" target='_blank'>
                                 {t('docs')}
-                            </Link>
-                            <Link href={`https://docs.coolha.com/docs/apps/privacy`} className="text-muted-foreground hover:text-foreground hover:underline transition-colors" target='_blank'>
+                            </Link> */}
+                            <Link href={`https://coolha.com/privacy`} className="text-muted-foreground hover:text-foreground hover:underline transition-colors" target='_blank'>
                                 {t('privacy')}
                             </Link>
-                            <Link href={`https://docs.coolha.com/docs/apps/terms`} className="text-muted-foreground hover:text-foreground hover:underline transition-colors" target='_blank'>
+                            <Link href={`https://coolha.com/terms`} className="text-muted-foreground hover:text-foreground hover:underline transition-colors" target='_blank'>
                                 {t('terms')}
                             </Link>
                         </div>
