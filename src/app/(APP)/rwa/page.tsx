@@ -8,7 +8,7 @@ export default function RwaMarketplacePage() {
       <div className="mb-8">
         <h1 className="text-3xl font-semibold tracking-normal">代币化市场</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          基于 Uniswap 流动性的代币化真实资产交易入口。每个资产必须区分代币、底层资产、发行方、法律权利、托管、赎回、合格投资者要求与风险披露。
+          基于链上流动性的代币化真实资产交易入口。每个资产必须区分代币、底层资产、发行方、法律权利、托管、赎回、合格投资者要求与风险披露。
         </p>
       </div>
 
@@ -50,7 +50,7 @@ export default function RwaMarketplacePage() {
         ))}
         {rwaAssets.length === 0 ? (
           <div className="rounded-2xl border border-dashed bg-card p-5 text-sm leading-6 text-muted-foreground xl:col-span-3">
-            暂无已接入的真实代币化资产。接入真实合约与 Uniswap 流动性后将在此展示。
+            暂无已接入的真实代币化资产。接入真实合约与链上流动性后将在此展示。
           </div>
         ) : null}
       </div>

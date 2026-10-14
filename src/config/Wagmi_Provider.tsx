@@ -6,6 +6,7 @@ import { createAppKit } from '@reown/appkit/react'
 import { useTheme } from 'next-themes'
 import { cookieToInitialState, WagmiProvider } from 'wagmi'
 import { defaultNetwork, getWalletRuntime, networks, resolveWalletProjectId } from './wagmi'
+import { siweConfig } from './siwe'
 
 // Set up queryClient
 export const queryClient = new QueryClient()
@@ -35,10 +36,12 @@ export default function Wagmi_Provider({ children, cookies, walletProjectId }: W
         if (!walletRuntime) return null
 
         return createAppKit({
-            adapters: [walletRuntime.wagmiAdapter],
-            projectId: walletRuntime.projectId,
-            networks,
-            defaultNetwork,
+          adapters: [walletRuntime.wagmiAdapter],
+          projectId: walletRuntime.projectId,
+          networks,
+          defaultNetwork,
+          // 连接 + SIWE 签名统一流程（One-Click Auth）；NEXT_PUBLIC_SIWE_ONECLICK=1 时启用
+          ...(siweConfig ? { siweConfig } : {}),
             allowUnsupportedChain: false,//允许用户切换到不支持的链条。
             chainImages: {
                 999: '/web3/world.jpg',

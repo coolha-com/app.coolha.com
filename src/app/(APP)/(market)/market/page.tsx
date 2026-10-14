@@ -27,7 +27,7 @@ const entries: Array<{
   },
   {
     title: "代币化市场",
-    description: "基于 Uniswap 流动性的代币化真实资产交易入口。",
+    description: "基于链上流动性的代币化真实资产交易入口。",
     href: "/rwa",
     icon: RiBankCardLine,
   },
@@ -39,7 +39,7 @@ export default function MarketPage() {
       <div className="mb-8 flex flex-col gap-3">
         <h1 className="text-3xl font-semibold tracking-normal">市场</h1>
         <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-          浏览 Coolha 提供的市场入口。所有交易与流动性均基于 Uniswap 与以太坊，Coolha 不托管用户资金。
+          浏览 Coolha 提供的市场入口。所有交易与流动性均基于链上与以太坊，Coolha 不托管用户资金。
         </p>
       </div>
 
