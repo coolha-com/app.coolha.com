@@ -1,26 +1,43 @@
+import "server-only"
+
+import { revalidateTag } from "next/cache"
 import { DEMO_MODELS } from "@/lib/compute/catalog"
+import { isDatabaseConfigured } from "@/lib/neon/postgres"
 import { deriveProviders } from "@/lib/compute/service"
 import type { ComputeModel, ComputeProvider } from "@/lib/compute/types"
+import {
+  CATALOG_CACHE_TAG,
+  CATALOG_REVALIDATE_SECONDS,
+} from "@/lib/ai-gateway/shared"
+import {
+  claimCatalogSync,
+  readCachedCatalogSnapshot,
+  readCatalogModelById,
+  releaseCatalogSync,
+  writeCatalogSnapshot,
+} from "@/lib/neon/model-catalog"
 import { normalizeGatewayModel } from "./normalize"
 import type { GatewayModelsResponse, GatewayRawModel } from "./types"
 
 /**
- * Vercel AI Gateway 模型目录拉取层（仅服务端调用）。
+ * Vercel AI Gateway 模型目录读取层（仅服务端调用）。
  *
- * 数据来自 AI Gateway 的 OpenAI 兼容端点 GET {base}/v1/models，
- * 需要服务端环境变量 AI_GATEWAY_API_KEY。该 Key 只在服务端使用，绝不下发到浏览器。
+ * 数据链路：上游 AI Gateway → Neon（model_catalog 表）→ 页面 / 公开 API。
+ * 读请求只查自有数据库，不回源上游；上游调用频率由「按流量」降为「按 TTL」，
+ * 大幅降低上游限额消耗，且数据持久可审计。
  *
- * 缓存策略：默认复用 Next.js Data Cache 1 小时（next.revalidate），
- * 单次请求内用 React cache 去重；?refresh=1 时强制回源。
+ * 同步时机：快照缺失或超过 CATALOG_REVALIDATE_SECONDS 时惰性同步，
+ * 由数据库认领锁保证同一时间窗口内最多一个实例回源；上游失败时继续使用
+ * 陈旧快照（stale=true），绝不把演示数据伪装成实时数据。
+ *
+ * 数据库未接线时回退到 Next.js Data Cache 策略（保持原行为）。
  */
 
 export const AI_GATEWAY_BASE_URL =
   process.env.AI_GATEWAY_BASE_URL ?? "https://ai-gateway.vercel.sh/v1"
 
-/** 目录缓存时长（秒） */
-export const CATALOG_REVALIDATE_SECONDS = 3600
-
-export const CATALOG_CACHE_TAG = "ai-gateway-models"
+/** 目录快照有效期（秒）：到期后才允许回源上游（定义在 shared，供客户端安全引用） */
+export { CATALOG_REVALIDATE_SECONDS, CATALOG_CACHE_TAG }
 
 export function isAiGatewayConfigured(): boolean {
   return Boolean(process.env.AI_GATEWAY_API_KEY)
@@ -51,8 +68,8 @@ function demoCatalog(error?: string): ModelCatalog {
   }
 }
 
-/** 拉取上游原始模型列表；失败时抛出带状态的错误 */
-async function requestGatewayModels(force: boolean): Promise<GatewayRawModel[]> {
+/** 拉取上游原始模型列表；失败时抛出带状态的错误。同步路径一律 no-store（快照新鲜度由库保证） */
+async function requestGatewayModels(): Promise<GatewayRawModel[]> {
   const apiKey = process.env.AI_GATEWAY_API_KEY
   if (!apiKey) throw new Error("AI_GATEWAY_API_KEY_NOT_SET")
 
@@ -61,9 +78,7 @@ async function requestGatewayModels(force: boolean): Promise<GatewayRawModel[]> 
       Authorization: `Bearer ${apiKey}`,
       Accept: "application/json",
     },
-    ...(force
-      ? { cache: "no-store" as const }
-      : { next: { revalidate: CATALOG_REVALIDATE_SECONDS, tags: [CATALOG_CACHE_TAG] } }),
+    cache: "no-store",
     signal: AbortSignal.timeout(15_000),
   })
 
@@ -77,32 +92,63 @@ async function requestGatewayModels(force: boolean): Promise<GatewayRawModel[]> 
   return raw
 }
 
+/** 上游原始列表 → 归一化模型（slug 去重，保证 /ai/models/[id] 可寻址） */
+function normalizeCatalog(raw: GatewayRawModel[]): ComputeModel[] {
+  const slugCount = new Map<string, number>()
+  return raw
+    .map((item) => normalizeGatewayModel(item))
+    .filter((model): model is ComputeModel => model !== null)
+    .map((model) => {
+      const seen = slugCount.get(model.id) ?? 0
+      slugCount.set(model.id, seen + 1)
+      return seen === 0 ? model : { ...model, id: `${model.id}-${seen + 1}` }
+    })
+}
+
 /**
- * 获取模型目录（归一化后）。
- * 上游不可用或未配置 Key 时降级为演示目录，并在 stale/error 中标记，
- * 保证页面永远有内容、且不会把演示数据伪装成真实数据。
+ * 获取模型目录：数据库快照优先。
+ * force = true 时强制回源上游并刷新快照（供 /api/v1/models?refresh=1 使用）。
  */
 export async function getModelCatalog(options?: { force?: boolean }): Promise<ModelCatalog> {
+  const force = Boolean(options?.force)
+
+  // 1) 读库（经 Data Cache：一次 TTL 内只读库一次，避免高频请求反复拉取全量目录）
+  const snapshot = await readCachedCatalogSnapshot()
+  const ageMs = snapshot ? Date.now() - new Date(snapshot.syncedAt).getTime() : Number.POSITIVE_INFINITY
+  const isFresh = Boolean(snapshot) && ageMs < CATALOG_REVALIDATE_SECONDS * 1000
+
+  if (snapshot && isFresh && !force) {
+    return {
+      models: snapshot.models,
+      providers: snapshot.providers,
+      source: snapshot.source,
+      fetchedAt: snapshot.syncedAt,
+      stale: false,
+    }
+  }
+
   if (!isAiGatewayConfigured()) {
-    return demoCatalog("AI_GATEWAY_API_KEY_NOT_SET")
+    // 未配置 Key：有快照就用快照（标注陈旧），否则演示目录
+    return snapshot ? toStaleCatalog(snapshot.models, snapshot.providers, "AI_GATEWAY_API_KEY_NOT_SET", snapshot.syncedAt) : demoCatalog("AI_GATEWAY_API_KEY_NOT_SET")
+  }
+
+  // 2) 快照缺失或过期：认领同步权（并发实例直接用现有快照，不重复回源）
+  const claimed = await claimCatalogSync()
+  if (!claimed) {
+    return snapshot
+      ? toStaleCatalog(snapshot.models, snapshot.providers, "SYNC_IN_PROGRESS", snapshot.syncedAt)
+      : demoCatalog("SYNC_IN_PROGRESS")
   }
 
   try {
-    const raw = await requestGatewayModels(Boolean(options?.force))
-    // slug 由模型 ID 推导，理论上唯一；出现重名时追加序号，保证 /ai/models/[id] 可寻址
-    const slugCount = new Map<string, number>()
-    const models = raw
-      .map((item) => normalizeGatewayModel(item))
-      .filter((model): model is ComputeModel => model !== null)
-      .map((model) => {
-        const seen = slugCount.get(model.id) ?? 0
-        slugCount.set(model.id, seen + 1)
-        return seen === 0 ? model : { ...model, id: `${model.id}-${seen + 1}` }
-      })
+    const raw = await requestGatewayModels()
+    const models = normalizeCatalog(raw)
+    if (models.length === 0) throw new Error("UPSTREAM_EMPTY")
 
-    if (models.length === 0) {
-      return demoCatalog("UPSTREAM_EMPTY")
-    }
+    await writeCatalogSnapshot(models)
+    await releaseCatalogSync(true, { count: models.length })
+    // 同步成功后让 Data Cache 失效，下一次读直接拿新快照（profile: max = 标记过期后按需后台重算）
+    revalidateTag(CATALOG_CACHE_TAG, "max")
 
     return {
       models,
@@ -113,8 +159,30 @@ export async function getModelCatalog(options?: { force?: boolean }): Promise<Mo
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "UNKNOWN_ERROR"
-    console.error("[ai-gateway] 拉取模型目录失败:", message)
-    return demoCatalog(message)
+    console.error("[ai-gateway] 同步模型目录失败:", message)
+    await releaseCatalogSync(false, { error: message }).catch(() => {})
+
+    // 兜底优先级：陈旧快照 > 演示目录
+    return snapshot
+      ? toStaleCatalog(snapshot.models, snapshot.providers, message, snapshot.syncedAt)
+      : demoCatalog(message)
+  }
+}
+
+/** 用陈旧快照构造返回值：数据真实但已过期，stale 标记为 true */
+function toStaleCatalog(
+  models: ComputeModel[],
+  providers: ComputeProvider[],
+  error: string,
+  syncedAt: string,
+): ModelCatalog {
+  return {
+    models,
+    providers,
+    source: "ai-gateway",
+    fetchedAt: syncedAt,
+    stale: true,
+    error,
   }
 }
 
@@ -155,8 +223,17 @@ export function toListModel(model: ComputeModel): ComputeModel {
   }
 }
 
-/** 按站内 slug 查找模型（slug 由 normalize.ts 生成） */
+/** 按站内 slug 查找模型：单行查询，避免为一条详情拉取整个目录 */
 export async function getCatalogModelBySlug(slug: string): Promise<ComputeModel | null> {
-  const catalog = await getModelCatalog()
+  if (!isDatabaseConfigured()) {
+    const catalog = await getModelCatalog()
+    return catalog.models.find((model) => model.id === slug) ?? null
+  }
+
+  const fromDb = await readCatalogModelById(slug)
+  if (fromDb) return fromDb
+
+  // 库中无此条目（如刚上线）→ 触发一次同步后重试
+  const catalog = await getModelCatalog({ force: true })
   return catalog.models.find((model) => model.id === slug) ?? null
 }

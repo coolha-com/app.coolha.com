@@ -7,7 +7,8 @@ import { CapabilityBadges } from "@/components/compute/CapabilityBadges"
 import { CopyButton } from "@/components/compute/CopyButton"
 import { ProviderLogo } from "@/components/compute/ProviderLogo"
 import { modelCapabilityTags } from "@/components/compute/capability-meta"
-import { DataSourceBadge, MockNotice } from "@/components/compute/MockBadge"
+import { DataSourceBadge } from "@/components/compute/DataSourceBadge"
+import { MockNotice } from "@/components/compute/MockNotice"
 import { CollapsibleNote } from "@/components/compute/CollapsibleNote"
 import { StatusBadge } from "@/components/compute/StatusBadge"
 import { AI_GATEWAY_BASE_URL, getCatalogModelBySlug } from "@/lib/ai-gateway/client"
@@ -52,7 +53,7 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
   }'`
 
   return (
-    <section className="mt-6 space-y-4">
+    <section className="m-6 space-y-4">
       <Link
         href="/ai/models"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -156,7 +157,7 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
           <section className="rounded-2xl border bg-card p-5 shadow-sm">
             <h2 className="font-semibold">在 Playground 中测试</h2>
             <Link
-              href="/ai/playground"
+              href="/chat"
               className="mt-4 inline-flex h-10 items-center rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-90"
             >
               打开 Playground

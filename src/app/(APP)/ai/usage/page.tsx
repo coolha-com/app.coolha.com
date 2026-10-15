@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { MockBadge } from "@/components/compute/MockBadge"
-import { CollapsibleNote } from "@/components/compute/CollapsibleNote"
+import { ModulePage } from "@/components/compute/ModulePage"
 import { ProviderLogo } from "@/components/compute/ProviderLogo"
 import { listRecentUsage, summarizeUsage } from "@/lib/neon/ai-usage"
 import { isDatabaseConfigured } from "@/lib/neon/postgres"
@@ -61,7 +61,11 @@ export default async function UsagePage() {
   const hasRealData = rows.length > 0
 
   return (
-    <section className="mt-6 space-y-4">
+    <ModulePage
+      title="用量记录"
+      description="Playground 每次真实调用的模型、Token 用量与成本，数据来自 AI Gateway。"
+    >
+      <div className="space-y-4">
       {summary ? (
         <div className="grid gap-3 sm:grid-cols-3">
           <Stat label="累计调用" value={summary.calls.toLocaleString("en-US")} />
@@ -171,14 +175,8 @@ export default async function UsagePage() {
           </tbody>
         </table>
       </div>
-
-      <CollapsibleNote title="本页说明">
-        <p>
-          成本优先采信上游返回的用量数据；上游未回传时按目录单价线性估算。调用日志只记录计费与排错所需元数据，
-          不保存完整提示词与模型回复。
-        </p>
-      </CollapsibleNote>
-    </section>
+      </div>
+    </ModulePage>
   )
 }
 

@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils"
 
 const TABS = [
   { href: "/ai/models", label: "模型广场" },
-  { href: "/ai/playground", label: "Playground" },
-  { href: "/ai/api-keys", label: "API Keys" },
+  { href: "/chat", label: "Chat" },
+  { href: "/ai/api-keys", label: "API 连接" },
   { href: "/ai/usage", label: "用量记录" },
   { href: "/ai/billing", label: "余额与账单" },
 ]

@@ -70,7 +70,7 @@ export default function ButtonMenu({ showLabels = false }: { showLabels?: boolea
                         <div className="text-xs text-muted-foreground/50 pt-2 border-t mt-2">
                             <span>©2026 app.coolha.com </span>
                             <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
-                                v0.1-alpha
+                                v0.1.1-alpha
                             </span>
                         </div>
 

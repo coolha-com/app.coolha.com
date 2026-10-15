@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto"
+import { cookies } from "next/headers"
 import { SiweMessage, SiweError } from "siwe"
 import { query } from "./postgres"
 
@@ -164,6 +165,21 @@ export async function getSessionByToken(token: string): Promise<WalletSessionInf
     address: session.address,
     chainId: session.chain_id ?? 1,
     expiresAt: session.expires_at,
+  }
+}
+
+/**
+ * 业务路由统一入口：从请求 Cookie 读取钱包会话。
+ * 未登录 / 会话失效 / DB 异常一律返回 null（调用方决定 401 还是降级）。
+ */
+export async function getWalletSessionFromCookies(): Promise<WalletSessionInfo | null> {
+  try {
+    const cookieStore = await cookies()
+    const token = cookieStore.get(WALLET_SESSION_COOKIE)?.value ?? ""
+    return await getSessionByToken(token)
+  } catch (error) {
+    console.error("[wallet-auth] 读取会话失败:", error)
+    return null
   }
 }
 
