@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import type { ComputeModel } from "@/lib/compute/types"
 import { estimateCost, formatPricePerMillion, formatTokens, formatUsd } from "@/lib/compute/service"
-import { DataSourceBadge } from "./MockBadge"
+import { DataSourceBadge } from "./DataSourceBadge"
 
 /** API 成本估算器：与 PRD 4.2 示例一致（输入/输出 Token 数可调） */
 export function CostEstimator({ model }: { model: ComputeModel }) {

@@ -35,10 +35,26 @@
 - 接线代码：`src/lib/neon/`（postgres=pg+attachDatabasePool；auth=@neondatabase/createNeonAuth；ai-gateway=@neon/ai-sdk-provider）；路由 `/api/health`、`/api/auth/[...path]`、`/api/neon/ai`。NEON_AUTH_COOKIE_SECRET 为应用自生成（存 .env.local 与 Vercel 云端）。
 - 已验证：Postgres 真实查询（PostgreSQL 18.6/neondb）；Auth 注册落库 neon_auth."user"（camelCase 列）；登录受邮箱验证门控；AI Gateway 未开通（Free 计划限制，代码就绪待开通）。
 - Vercel CLI 已登录 coolha-limited：AI 可直接 `vercel env add/ls` 管理云端；MCP（vercel/neon）已写入 ~/.workbuddy/mcp.json，待 Trust。
-- 坑：next dev 在 WorkBuddy 管道内会被删除保护击穿（须跑用户自己终端）；`vercel env add` 慢（~40s/次）且批量须后台+`--force`； Neon Managed Auth schema 列名为 camelCase。
+- 坑：next dev 在 WorkBuddy 管道内会被删除保护击穿（须跑用户自己终端）；`vercel env add` 慢（~40s/次）且批量须 `--force`； Neon Managed Auth schema 列名为 camelCase。
+- **Vercel env 两条铁律（2026-10-16 实测）**：① CLI 64 默认存 **Secret** → Dashboard 与 `env pull` 均显示 `[SENSITIVE]`，**写入后不可回读**（CLI 无 `env get`，REST `?decrypt=true` 对 sensitive 返回空）。连接串这类需复核的值必须加 `--type config`。② **禁止 `echo 值 | vercel env add`**：PowerShell 管道会加 UTF-8 BOM（U+FEFF/65279）污染首字符 → 连接串失效、密钥校验不过且无法回读发现。统一用 `vercel env add NAME production --force --type config --value "值"`。凭据文件：`%APPDATA%\com.vercel.cli\Data\auth.json`。`vercel env add KEY production preview` 在 agent 分支会报 gitBranch 错误，多环境须分开加。
+- 生产 `DATABASE_URL`/`DATABASE_URL_UNPOOLED` 已于 2026-10-16 统一为 dev 同款 Neon（`ep-broad-math-b361ynsa`）并改为 Config 可回读；迁移 001–007 已在生产库生效（public 13 表）。
 
 ## 认证体系（2026-10-14）
 
 - 三套并存：① Reown 钱包连接（仅客户端）；② **SIWE 自建钱包会话**（服务端鉴权主线，算力市场 API Key 的身份基础）：`/api/wallet-auth/*` + `wallet_users/nonces/sessions` 三表（迁移 `db/migrations/001_wallet_auth.sql`）；③ Neon Managed Auth 邮箱体系 `/api/auth/*`（管理向）。
 - SIWE 冒烟：构建后 `next start -p 3100` 再 `node scripts/siwe-smoke.mjs`（Hardhat 测试账户 #0）。
 - 项目文档：README.md（结构/流程/路线图）、docs/LOCAL_DEV.md、docs/COMPUTE_MARKET_UPSTREAM_PROVIDERS.md。
+
+## 定价 / 权益 / 账号分层（2026-10-16 定稿）
+
+- **四档（USD/月）**：Free $0 / Plus $6 / Pro $10 / Ultra $30。**仅链上收款，USDC/USDT，不接 Stripe**（Base + Ethereum 首批）。
+- **商业模式红线**：付费卖**软件能力**（同步/检索/导出/编排/出口/席位），**不卖算力**。定价页必须明示"推理费用由你自己的 Key 承担"。免费模型额度是 Coolha 赞助的**获客成本**，不是产品功能；超限解法是 BYOK，**不是付费墙**。
+- **免费模型必须签名登录**（匿名 401）。匿名仍可 BYOK（浏览器直连，不经我们服务端，不计量不限流）。
+- **额度按 token 计量**（input+output，UTC 自然日）+ 每日请求次数硬顶：Free 300K/30、Plus 1.5M/120、Pro 6M/400、Ultra 25M/1200。
+- 收款匹配：**订单匹配法 (from + amount + 时间窗)**，无托管无私钥管理；Alchemy Webhook 主 + Vercel Cron 兜底；入账幂等 `tx_hash+log_index`；无自动扣款（手动续费 + 3 天宽限）。**合规红线：链上支付不得绕过 `proxy.ts` 地理屏蔽，授予权益时二次校验 geo header。**
+- 身份模型：**四态** L0 匿名 / L1 已连接钱包 / L2 已登录 / L3 订阅；**连接钱包 ≠ 登录**，L1→L2 才是唯一有安全意义的跨越。内部唯一 ID 应是 `user_id`，EVM 地址只是身份锚点（见 `docs/ARCHITECTURE_IDENTITY_BILLING.md` 决策二/三）。
+- **用户的第三方 API Key 永不上行服务端**（同步只同步连接元信息）。
+- 关键文档：`docs/ACCOUNT_TIER_DESIGN.md`（身份四态 + 005 之前的分层提案）、`docs/PRICING_AND_ENTITLEMENTS.md`（权益矩阵 + 链上收款 + 状态机）。
+- 已建表：`entitlements`（档位判据）、`usage_daily`（每日 token 账本）、`users`/`user_identities`/`billing_addresses`、`subscription_orders`、`compute_ledger`；迁移 `005`~`007`。业务主键 `subject` = `users.id::text`（身份层不可用时降级 `wallet:0x...`）。熔断开关 env `FREE_MODELS_ENABLED=0`。
+- 链上收款代码已闭环：`src/lib/subscription/{config,scan}.ts` + `src/lib/neon/subscription.ts` + `/api/subscription/*` + `/ai/billing` 订阅页。入账三条冗余路径：用户点「我已完成支付」、轮询被动扫链（>60s 节流）、Vercel Cron（`vercel.json`，每 5 分钟）。**部署前必须配 `SUBSCRIPTION_TREASURY_ADDRESS`、`CRON_SECRET`**（缺失时对应端点 503，不会误开）。
+- **部署就绪状态（2026-10-16）**：生产 env 已配齐（`SUBSCRIPTION_TREASURY_ADDRESS=0x83e7…0182`、`CRON_SECRET` 自生成、`ALCHEMY_WEBHOOK_SIGNING_KEY`、`FREE_MODELS_ENABLED=1`，仅 Production，Preview 未加）；生产构建通过；生产模式冒烟 `/chat`200 `/ai/billing`200 `/api/health`200、匿名 POST 401。**待用户提交推送**（74 项改动，必须含 `server-only` 依赖）。P3（到期提醒+宽限降级）与 P4（权益中间件/团队席位）暂停不做。

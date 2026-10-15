@@ -1,5 +1,5 @@
 {
-  "version_notice": "Coolha is currently in v0.1-alpha version. We are working hard on development, please stay tuned.",
+  "version_notice": "Coolha is currently in v0.1.1-alpha version. We are working hard on development, please stay tuned.",
   "web3": {
     "connect_wallet": "Connect Wallet",
     "account": "Account"
@@ -24,9 +24,8 @@
   },
   "sidebar": {
     "dashboard": "Dashboard",
-    "ai": "Compute Market",
+    "chat": "AI Chat",
     "agent": "Agent Market",
-    "discover": "Extension Market",
     "rwa": "RWA Market",
     "wallet": "Wallet",
     "profile": "Profile",

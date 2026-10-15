@@ -7,7 +7,7 @@ import {
   RiLockLine,
   RiShieldCheckLine,
 } from "react-icons/ri"
-import { MockNotice } from "@/components/compute/MockBadge"
+import { MockNotice } from "@/components/compute/MockNotice"
 import { ChainLogos, RwaLogo } from "@/components/rwa/RwaLogo"
 import { TickerBoard } from "@/components/rwa/TickerBoard"
 import { getRwaSnapshot } from "@/lib/rwa/client"

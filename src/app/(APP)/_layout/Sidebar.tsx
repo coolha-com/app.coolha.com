@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import {
-    RiCpuLine,
+    RiChatSmileAiLine,
     RiDashboardHorizontalLine,
     RiExchangeDollarLine,
     RiMenuUnfoldLine,
@@ -109,38 +109,38 @@ function NavbarLink({ showLabels }: { showLabels: boolean }) {
             title: t('dashboard'),
             href: '/dashboard',
             icon: RiDashboardHorizontalLine,
-            startsWith: '/dashboard'
+            startsWith: ['/dashboard']
         },
         {
-            title: t('ai'),
-            href: '/ai',
-            icon: RiCpuLine,
-            startsWith: '/ai'
+            title: t('chat'),
+            href: '/chat',
+            icon: RiChatSmileAiLine,
+            startsWith: ['/chat', '/ai']
         },
         {
             title: t('agent'),
             href: '/agent',
             icon: RiRobot2Line,
-            startsWith: '/agent'
+            startsWith: ['/agent']
         },
         {
             title: t('rwa'),
             href: '/rwa',
             icon: RiExchangeDollarLine,
-            startsWith: '/rwa'
+            startsWith: ['/rwa']
         },
         {
             title: t('wallet'),
             href: '/wallet',
             icon: RiWallet3Line,
-            startsWith: '/wallet'
+            startsWith: ['/wallet']
         },
     ];
 
     return (
         <ul className={cn("flex w-full flex-col gap-1", showLabels ? "items-stretch" : "items-center")}>
             {links.map(link => {
-                const isActive = pathname?.startsWith(link.startsWith);
+                const isActive = link.startsWith.some(prefix => pathname?.startsWith(prefix));
                 return (
                     <li key={link.href} className={cn("w-auto", showLabels && "w-full")}>
                         <Button

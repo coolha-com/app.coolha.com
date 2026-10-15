@@ -7,7 +7,7 @@ import {
   formatPricePerMillion,
   formatTokens,
 } from "@/lib/compute/service"
-import { DataSourceBadge } from "./MockBadge"
+import { DataSourceBadge } from "./DataSourceBadge"
 import { CapabilityBadges } from "./CapabilityBadges"
 import { ProviderLogo } from "./ProviderLogo"
 import { modelCapabilityTags } from "./capability-meta"

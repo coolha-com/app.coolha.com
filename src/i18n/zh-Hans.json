@@ -1,5 +1,5 @@
 {
-  "version_notice": "Coolha目前处于v0.1-alpha版本，我们正在努力开发中，敬请期待。",
+  "version_notice": "Coolha目前处于v0.1.1-alpha版本，我们正在努力开发中，敬请期待。",
   "web3": {
     "connect_wallet": "连接钱包",
     "account": "账户"
@@ -24,9 +24,8 @@
   },
   "sidebar": {
     "dashboard": "仪表板",
-    "ai": "算力市场",
+    "chat": "智能对话",
     "agent": "智能体市场",
-    "discover": "扩展市场",
     "rwa": "代币化市场",
     "wallet": "钱包",
     "profile": "用户",
