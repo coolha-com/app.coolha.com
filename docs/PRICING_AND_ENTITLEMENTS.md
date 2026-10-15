@@ -235,8 +235,8 @@ billing_addresses(user_ref text, address text, label text, PRIMARY KEY (user_ref
 
 1. **用户主动确认**：`/api/subscription/orders/[id]/sync`（POST），回溯 ≈2.5 小时区块。
 2. **轮询被动兜底**：`GET /api/subscription/orders/[id]`，订单 pending 且距上次扫链 >60s 时顺带扫一次 —— 即使 Cron 完全不可用，用户轮询也能自行完成入账。
-3. **Vercel Cron**：`vercel.json` 每 5 分钟调 `/api/subscription/cron/sync`；仅在存在未过期 pending 订单时才扫链（省 RPC 配额）。
-   ⚠️ Hobby 计划对 Cron 频率有限制，这也是路径 2 存在的原因。
+3. **Vercel Cron**：`vercel.json` 每日一次（`0 21 * * *`，UTC 21:00）调 `/api/subscription/cron/sync`；仅在存在未过期 pending 订单时才扫链（省 RPC 配额）。
+   ⚠️ Hobby 计划**只允许每日 cron**（`*/5 * * * *` 会在部署时被 Vercel 校验拒绝，报 "Hobby accounts are limited to daily cron jobs"）。实时性由路径 1/2 保证，cron 只是兜底清账。升 Pro 后可改回更高频率。
 
 ### Alchemy Webhook（可选加速）
 
@@ -290,6 +290,7 @@ node scripts/apply-migration.mjs db/migrations/00X_xxx.sql
 
 ### 10.5 剩余步骤
 
-- 提交并推送代码（当前有 74 项改动未提交，含 `package.json` 新增的 `server-only` 依赖 —— 漏提交会导致构建失败）。
+- 提交并推送代码（**必须含 `package.json` 新增的 `server-only` 依赖** —— 漏提交会导致构建失败）。
 - Vercel 首次部署后访问 `/api/health` 确认 `postgres.ok = true`。
 - 在 Alchemy Dashboard 建 Address Activity webhook（可选，用于入账加速）。
+- ~~cron 频率~~：`vercel.json` 已改为每日 `0 21 * * *`（Hobby 计划限制，见 10.4）。
