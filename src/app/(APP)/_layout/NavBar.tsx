@@ -1,37 +1,33 @@
-'use client'
-import { usePathname } from "next/navigation";
+"use client"
+
 import dynamic from "next/dynamic";
+import { RiMenuLine } from "react-icons/ri";
 import ButtonMenu from "./ButtonMenu";
+import { setSidebarDrawer } from "./sidebar-store";
 
 const ConnectButton = dynamic(() => import("@/components/web3/ConnectButton"), { ssr: false });
 
+/**
+ * 移动端/平板顶栏（<lg）：汉堡唤出侧边栏抽屉 + 更多菜单与钱包。
+ * ≥lg 时侧边栏常驻（顶部已有 Logo 与导航），顶栏隐藏。
+ */
 export default function NavBar() {
-    const pathname = usePathname();
+  return (
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/95 px-2 backdrop-blur lg:hidden">
+      <button
+        type="button"
+        onClick={() => setSidebarDrawer(true)}
+        title="打开导航"
+        aria-label="打开导航"
+        className="inline-flex size-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-accent"
+      >
+        <RiMenuLine className="size-5" />
+      </button>
 
-    return (
-        <>
-            {["/dashboard", "/wallet"].includes(pathname) ? (
-                <div className="flex md:hidden w-full p-0 bg-background h-12 border-b">
-                    <div className="flex items-center justify-between w-full px-2 h-12">
-                        {pathname && pathname.startsWith("/dashboard") && null}
-                        {pathname === "/dashboard" && <Dashboard />}
-                    </div>
-                </div>
-            ) : null}
-        </>
-    )
-}
-
-function Dashboard() {
-    return (
-        <>
-            <div className="flex-1">
-            </div>
-            <div className="flex-none"> </div>
-            <div className="flex-1 flex justify-end items-center gap-2">
-                <ButtonMenu />
-                <ConnectButton />
-            </div>
-        </>
-    )
+      <div className="ml-auto flex shrink-0 items-center gap-1">
+        <ButtonMenu />
+        <ConnectButton />
+      </div>
+    </header>
+  );
 }

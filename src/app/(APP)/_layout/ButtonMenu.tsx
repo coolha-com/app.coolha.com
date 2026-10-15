@@ -1,15 +1,16 @@
 'use client'
 
-import { RxGrid } from "react-icons/rx";
 import Link from "next/link";
+import { LuGrip } from "react-icons/lu";
 import { useTranslations } from 'next-intl'
 import ThemeSwap from "@/components/ThemeSwap";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { RiSettingsLine } from "react-icons/ri";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-export default function ButtonMenu() {
+export default function ButtonMenu({ showLabels = false }: { showLabels?: boolean } = {}) {
     const t = useTranslations('menu')
 
     return (
@@ -17,9 +18,9 @@ export default function ButtonMenu() {
             {/* 菜单按钮 */}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild id="sidebar-more-menu-trigger">
-                    <button className="inline-flex size-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full p-0 text-sm font-medium transition-all outline-none disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:hover:bg-accent/50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 xl:h-11 xl:w-full xl:justify-start xl:px-4">
-                        <RxGrid className="size-6 md:size-6 " />
-                        <span className="hidden xl:flex text-lg">{t('more')}</span>
+                    <button className={cn("inline-flex size-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full p-0 text-sm font-medium transition-all outline-none disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:hover:bg-accent/50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4", showLabels && "h-11 w-full justify-start px-4")}>
+                        <LuGrip className="size-6 md:size-6 " />
+                        <span className={cn("text-lg", showLabels ? "flex" : "hidden")}>{t('more')}</span>
                     </button>
                 </DropdownMenuTrigger>
 

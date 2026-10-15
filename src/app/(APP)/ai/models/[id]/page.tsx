@@ -8,6 +8,7 @@ import { CopyButton } from "@/components/compute/CopyButton"
 import { ProviderLogo } from "@/components/compute/ProviderLogo"
 import { modelCapabilityTags } from "@/components/compute/capability-meta"
 import { DataSourceBadge, MockNotice } from "@/components/compute/MockBadge"
+import { CollapsibleNote } from "@/components/compute/CollapsibleNote"
 import { StatusBadge } from "@/components/compute/StatusBadge"
 import { AI_GATEWAY_BASE_URL, getCatalogModelBySlug } from "@/lib/ai-gateway/client"
 import {
@@ -89,8 +90,6 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
-        <p className="mt-4 text-sm leading-6 text-muted-foreground">{model.summary}</p>
-
         <dl className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Spec label="输入价格" value={formatPricePerMillion(model.inputPricePerMillionUsd)} />
           <Spec label="输出价格" value={formatPricePerMillion(model.outputPricePerMillionUsd)} />
@@ -122,12 +121,6 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
           <Spec label="网关模型 ID" value={model.gatewayModelId ?? "—"} />
         </dl>
 
-        {model.priceVariesByProvider ? (
-          <p className="mt-3 text-xs text-muted-foreground">
-            * 该模型价格随下游供应商浮动，展示值为目录基准价。
-          </p>
-        ) : null}
-
         <div className="mt-5">
           <CapabilityBadges tags={modelCapabilityTags(model)} max={12} />
         </div>
@@ -155,10 +148,6 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
               <h2 className="font-semibold">API 调用示例</h2>
               <CopyButton text={apiExample} />
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              示例直连 Vercel AI Gateway 官方端点，需使用你自己的 AI Gateway Key。Coolha
-              本页仅提供目录与价格查询，不提供 token 中转或转售服务。
-            </p>
             <pre className="mt-3 overflow-x-auto rounded-xl bg-muted p-4 text-xs leading-5">
               <code>{apiExample}</code>
             </pre>
@@ -166,9 +155,6 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
 
           <section className="rounded-2xl border bg-card p-5 shadow-sm">
             <h2 className="font-semibold">在 Playground 中测试</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Playground 目前仍运行 Phase 1 演示模式（本地模拟回复，不产生真实调用）。
-            </p>
             <Link
               href="/ai/playground"
               className="mt-4 inline-flex h-10 items-center rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-90"
@@ -178,6 +164,18 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
           </section>
         </div>
       </div>
+
+      <CollapsibleNote className="mt-4" title="本页说明">
+        <p>{model.summary}</p>
+        {model.priceVariesByProvider ? (
+          <p>* 该模型价格随下游供应商浮动，展示值为目录基准价。</p>
+        ) : null}
+        <p>
+          API 示例直连 Vercel AI Gateway 官方端点，需使用你自己的 AI Gateway Key。Coolha
+          本页仅提供目录与价格查询，不提供 token 中转或转售服务。
+        </p>
+        <p>Playground 目前仍运行 Phase 1 演示模式（本地模拟回复，不产生真实调用）。</p>
+      </CollapsibleNote>
     </section>
   )
 }

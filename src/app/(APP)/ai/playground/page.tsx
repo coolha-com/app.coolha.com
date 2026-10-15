@@ -17,12 +17,12 @@ export default async function PlaygroundPage() {
 
   return (
     <section className="mt-6">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold">Playground</h2>
-        <p className="text-sm text-muted-foreground">
-          直接向 Vercel AI Gateway 发起真实推理：流式输出、推理过程、Token 用量与成本均为真实数据。
-          {defaultIsFree ? "默认使用上游免费模型，不产生调用成本。" : ""}
-        </p>
+      <div className="flex flex-wrap items-center gap-3">
+        {defaultIsFree ? (
+          <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
+            默认免费模型 · 不产生成本
+          </span>
+        ) : null}
       </div>
 
       {configured ? null : (

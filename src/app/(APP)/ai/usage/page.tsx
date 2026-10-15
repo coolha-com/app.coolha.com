@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { MockBadge } from "@/components/compute/MockBadge"
+import { CollapsibleNote } from "@/components/compute/CollapsibleNote"
 import { ProviderLogo } from "@/components/compute/ProviderLogo"
 import { listRecentUsage, summarizeUsage } from "@/lib/neon/ai-usage"
 import { isDatabaseConfigured } from "@/lib/neon/postgres"
@@ -61,13 +62,6 @@ export default async function UsagePage() {
 
   return (
     <section className="mt-6 space-y-4">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold">用量记录</h2>
-        <p className="text-sm text-muted-foreground">
-          Playground 每次真实调用的 Request ID、模型、Token 用量、成本与延迟，数据来自 AI Gateway。
-        </p>
-      </div>
-
       {summary ? (
         <div className="grid gap-3 sm:grid-cols-3">
           <Stat label="累计调用" value={summary.calls.toLocaleString("en-US")} />
@@ -178,10 +172,12 @@ export default async function UsagePage() {
         </table>
       </div>
 
-      <p className="text-xs leading-5 text-muted-foreground">
-        说明：成本优先采信上游返回的用量数据；上游未回传时按目录单价线性估算。调用日志只记录计费与排错所需元数据，
-        不保存完整提示词与模型回复。
-      </p>
+      <CollapsibleNote title="本页说明">
+        <p>
+          成本优先采信上游返回的用量数据；上游未回传时按目录单价线性估算。调用日志只记录计费与排错所需元数据，
+          不保存完整提示词与模型回复。
+        </p>
+      </CollapsibleNote>
     </section>
   )
 }

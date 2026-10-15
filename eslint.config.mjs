@@ -10,9 +10,15 @@ const eslintConfig = defineConfig([
     // Default ignores of eslint-config-next:
     ".next/**",
     ".next.old/**",
+    ".next-build/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 工具目录（非应用源码）
+    ".vercel/**",
+    ".workbuddy/**",
+    ".agents/**",
+    ".claude/**",
   ]),
 ]);
 

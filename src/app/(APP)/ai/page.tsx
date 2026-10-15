@@ -9,7 +9,6 @@ import {
   RiTerminalBoxLine,
 } from "react-icons/ri"
 import type { IconType } from "react-icons"
-import { MockNotice } from "@/components/compute/MockBadge"
 import { CopyButton } from "@/components/compute/CopyButton"
 import { getModelCatalog } from "@/lib/ai-gateway/client"
 
@@ -83,10 +82,6 @@ export default async function ComputeMarketPage() {
     <div className="mt-8 space-y-8">
       <section className="rounded-3xl border bg-card p-6 shadow-sm sm:p-8">
         <h2 className="text-xl font-semibold">在这里发现、比较并调用 AI 模型</h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          第一版聚焦验证供需与交易闭环：模型聚合、统一 API、价格比较、在线测试与用量统计。
-          不自建 GPU 集群、不训练模型、不发行代币。所有调用均经过服务端网关，浏览器不接触上游密钥。
-        </p>
         <div className="mt-5 flex flex-wrap gap-2 text-xs text-muted-foreground">
           <span className="rounded-full bg-muted px-3 py-1">
             当前目录：{catalog.models.length} 个模型 ·{" "}
@@ -131,26 +126,10 @@ export default async function ComputeMarketPage() {
           <h2 className="text-lg font-semibold">快速开始 · 模型目录接口</h2>
           <CopyButton text={QUICKSTART} label="复制示例" />
         </div>
-        <ol className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
-          <li>1. 在模型广场按类型、价格与能力筛选，进入详情页查看计费规则。</li>
-          <li>2. 用下方公开接口把目录接进你自己的应用（默认缓存 1 小时，可按条件筛选）。</li>
-          <li>3. 到 Playground 用默认免费模型发起真实推理，用量与成本会写入 /ai/usage。</li>
-        </ol>
         <pre className="mt-4 overflow-x-auto rounded-xl bg-muted p-4 text-xs leading-5">
           <code>{QUICKSTART}</code>
         </pre>
       </section>
-
-      <MockNotice>
-        已接入真实数据：模型目录与价格（Vercel AI Gateway）、Playground 真实推理、用量记录。
-        仍未开放：API Key 与统一网关、计费账本（Phase 3）与稳定币充值（Phase
-        4）——这些模块当前展示的均为示例数据。
-      </MockNotice>
-
-      <p className="text-xs leading-5 text-muted-foreground">
-        合规说明：根据适用的法律、监管和合规要求，部分国家或地区暂不提供访问或相关服务
-        （见「访问受限」页）。调用日志默认不保存完整提示词与模型回复，仅记录计费与排错所需元数据。
-      </p>
     </div>
   )
 }

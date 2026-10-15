@@ -5,7 +5,6 @@ import { usePathname, } from 'next/navigation'
 
 import type { ReactNode } from "react";
 import {
-    RiApps2Line,
     RiDashboardHorizontalLine,
     RiWalletLine,
 } from "react-icons/ri";
@@ -22,13 +21,6 @@ export default function NavFooter() {
                     activeHrefs={['/dashboard']}
                     icon={<RiDashboardHorizontalLine className="size-7" />}
                     activeIcon={<RiDashboardHorizontalLine className="size-7" />}
-                />
-
-                <NavLink
-                    href='/market'
-                    activeHrefs={['/market']}
-                    icon={<RiApps2Line className="size-7" />}
-                    activeIcon={<RiApps2Line className="size-7" />}
                 />
 
                 <NavLink

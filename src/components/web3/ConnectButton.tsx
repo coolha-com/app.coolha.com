@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils'
 
 type ConnectButtonProps = {
   sidebar?: boolean
+  /** 侧边栏内是否展开文字标签（由侧边栏模式决定，与视口宽度无关） */
+  showLabels?: boolean
   className?: string
 }
 
@@ -24,7 +26,7 @@ function getPixelAvatar(address?: string) {
   return `https://api.dicebear.com/9.x/pixel-art-neutral/svg?seed=${seed}&radius=24`
 }
 
-export default function ConnectButton({ sidebar = false, className }: ConnectButtonProps) {
+export default function ConnectButton({ sidebar = false, showLabels = false, className }: ConnectButtonProps) {
   const t = useTranslations('web3')
   const { address, isConnected } = useAppKitAccount()
   const mounted = useSyncExternalStore(
@@ -63,26 +65,27 @@ export default function ConnectButton({ sidebar = false, className }: ConnectBut
 
   if (sidebar) {
     return (
-      <div className={cn('relative flex w-full justify-center xl:justify-start', className)}>
+      <div className={cn('relative flex w-full', showLabels ? 'justify-start' : 'justify-center', className)}>
         <Button
           onClick={() => open({ view: isConnected ? 'Account' : 'Connect', namespace: 'eip155' })}
           className={cn(
-            'size-11 rounded-full p-0 xl:h-11 xl:w-full',
-            mounted && isConnected ? 'xl:justify-start xl:gap-3 xl:px-4' : 'xl:justify-center xl:px-4'
+            'size-11 rounded-full p-0',
+            showLabels && 'h-11 w-full',
+            showLabels && (mounted && isConnected ? 'justify-start gap-3 px-4' : 'justify-center px-4')
           )}
           type="button"
         >
           {mounted && isConnected ? (
-            <Avatar size="md" className="size-6 shrink-0 xl:size-6">
+            <Avatar size="md" className="size-6 shrink-0">
               {avatarSrc ? <AvatarImage alt={displayName} src={avatarSrc} /> : null}
               <AvatarFallback className="bg-primary/15 font-semibold text-foreground">
                 {avatarLabel}
               </AvatarFallback>
             </Avatar>
           ) : (
-            <RiWallet3Line className="size-6 xl:hidden" />
+            <RiWallet3Line className={cn('size-6', showLabels && 'hidden')} />
           )}
-          <span className={cn('hidden text-sm font-bold xl:inline', mounted && isConnected && 'truncate')}>
+          <span className={cn('text-sm font-bold', !showLabels && 'hidden', mounted && isConnected && 'truncate')}>
             {mounted && isConnected ? displayName : t('connect_wallet')}
           </span>
         </Button>

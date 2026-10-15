@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { RiBankCardLine } from "react-icons/ri"
-import { MockBadge, MockNotice } from "@/components/compute/MockBadge"
+import { MockBadge } from "@/components/compute/MockBadge"
+import { CollapsibleNote } from "@/components/compute/CollapsibleNote"
 import { Button } from "@/components/ui/button"
 
 export const metadata: Metadata = {
@@ -29,17 +30,6 @@ const LAYERS = [
 export default function BillingPage() {
   return (
     <section className="mt-6 space-y-4">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold">余额与账单</h2>
-        <p className="text-sm text-muted-foreground">
-          余额、账本流水与充值订单。真实计费与充值机制验证通过前，不提供真实扣款。
-        </p>
-      </div>
-
-      <MockNotice className="mt-1">
-        本页全部内容为示例数据：余额、流水与订单均为占位展示，账本与充值尚未开放。
-      </MockNotice>
-
       <div className="grid gap-3 lg:grid-cols-3">
         <div className="rounded-2xl border bg-card p-5 shadow-sm">
           <div className="flex items-center justify-between">
@@ -99,9 +89,10 @@ export default function BillingPage() {
         </table>
       </div>
 
-      <p className="text-xs leading-5 text-muted-foreground">
-        说明：链上支付状态与站内用量账本分开管理；金额使用精确数值类型，账务处理支持幂等与审计。
-      </p>
+      <CollapsibleNote title="本页说明">
+        <p>本页全部内容为示例数据：余额、流水与订单均为占位展示，账本与充值尚未开放。</p>
+        <p>链上支付状态与站内用量账本分开管理；金额使用精确数值类型，账务处理支持幂等与审计。</p>
+      </CollapsibleNote>
     </section>
   )
 }

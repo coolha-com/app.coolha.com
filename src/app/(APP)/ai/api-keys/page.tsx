@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { RiKey2Line } from "react-icons/ri"
-import { MockBadge, MockNotice } from "@/components/compute/MockBadge"
+import { MockBadge } from "@/components/compute/MockBadge"
+import { CollapsibleNote } from "@/components/compute/CollapsibleNote"
 import { Button } from "@/components/ui/button"
 
 export const metadata: Metadata = {
@@ -18,17 +19,6 @@ const SECURITY_NOTES = [
 export default function ApiKeysPage() {
   return (
     <section className="mt-6 space-y-4">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold">API Keys</h2>
-        <p className="text-sm text-muted-foreground">
-          使用 Coolha API Key 通过统一网关调用模型，无需为每个供应商单独适配。
-        </p>
-      </div>
-
-      <MockNotice className="mt-1">
-        本页全部内容为示例数据：密钥列表、调用量与限额均为占位展示，统一网关与 Key 签发尚未开放。
-      </MockNotice>
-
       <div className="rounded-2xl border bg-card p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/15 text-primary">
@@ -37,10 +27,6 @@ export default function ApiKeysPage() {
           <MockBadge />
         </div>
         <h3 className="mt-4 font-semibold">密钥管理将在 Phase 2 开放</h3>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          API Key 体系依赖服务端密钥签发与钱包签名验证，属于 Phase 2
-          范围。在此之前不提供创建入口，以避免出现无法验证的密钥。
-        </p>
         <div className="mt-4">
           <Button disabled className="rounded-xl">
             创建密钥（即将开放）
@@ -48,9 +34,13 @@ export default function ApiKeysPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border bg-card p-5 shadow-sm">
-        <h3 className="font-semibold">已设计的安全约束</h3>
-        <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
+      <CollapsibleNote title="本页说明">
+        <p>本页全部内容为示例数据：密钥列表、调用量与限额均为占位展示，统一网关与 Key 签发尚未开放。</p>
+        <p>
+          API Key 体系依赖服务端密钥签发与钱包签名验证，属于 Phase 2
+          范围。在此之前不提供创建入口，以避免出现无法验证的密钥。
+        </p>
+        <ul className="space-y-2">
           {SECURITY_NOTES.map((note) => (
             <li key={note} className="flex gap-2">
               <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" />
@@ -58,7 +48,7 @@ export default function ApiKeysPage() {
             </li>
           ))}
         </ul>
-      </div>
+      </CollapsibleNote>
 
       <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
         <table className="w-full text-left text-sm">
