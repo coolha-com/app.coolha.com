@@ -1,6 +1,6 @@
 "use client"
 
-import { RiComputerLine, RiMoonLine, RiSunLine } from "react-icons/ri"
+import {  RiContrastFill, RiMoonLine, RiSunLine } from "react-icons/ri"
 import { useTheme } from "next-themes"
 import { useTranslations } from "next-intl"
 
@@ -20,7 +20,7 @@ export default function ThemeSwap() {
     const themes = [
         { key: "light" as const, icon: RiSunLine },
         { key: "dark" as const, icon: RiMoonLine },
-        { key: "system" as const, icon: RiComputerLine },
+        { key: "system" as const, icon: RiContrastFill   },
     ]
 
     return (

@@ -3,20 +3,37 @@
  * 禁止在此引入 server-only 依赖或环境变量。
  *
  * 定价、权益矩阵与链上收款方案见 docs/PRICING_AND_ENTITLEMENTS.md。
- * 核心红线：付费解锁的是**软件能力**，不是模型算力；推理费用由用户自己的 Key 承担。
+ *
+ * ⚠️ 两条不可碰的红线（已核实，见 docs/ENTITLEMENT_ENFORCEMENT_STATUS.md 第十节）：
+ *
+ * 1. **付费档位不得按 token 额度区分。**
+ *    Vercel AUP 禁 "sell access / make Services available to any third party"，
+ *    AI Product Terms §2 的许可仅限 personal or internal business use。
+ *    「Plus 1.5M / Pro 6M / Ultra 25M tokens」= 付钱买更多第三方模型算力访问权 = 变相转售。
+ *    因此赞助额度是**全体登录用户统一的常量**，与档位完全解耦：
+ *    所有档位拿到的免费模型额度一模一样，超限解法是接自己的 Key，不是升级。
+ *
+ * 2. 付费解锁的只能是 Coolha 自己的软件能力（历史 / 同步 / 检索 / 导出 / 编排）。
+ *
+ * 3. **已从档位中移除的两个字段**（曾存在，均为 access 差异，无法辩护）：
+ *    - `queuePriority`（付费优先排队）—— 优先处理付费请求 = 按付费分配推理资源。
+ *    - `concurrentSessions`（并发会话数）—— 若指同时发起的推理请求数，同样是 access 差异；
+ *      需要限流时用全局的 `SPONSORED_DAILY_REQUESTS`，与档位无关。
  */
 
 export type PlanId = "free" | "plus" | "pro" | "ultra"
 
 export const PLAN_ORDER: PlanId[] = ["free", "plus", "pro", "ultra"]
 
-/** 赞助额度（免费模型，Coolha 出钱的部分）；UTC 自然日窗口 */
-export interface PlanQuota {
-  /** 每日 token 上限（input + output） */
-  dailyTokens: number
-  /** 每日请求上限（防刷硬顶，长上下文单请求可能一次吃掉全天 token） */
-  dailyRequests: number
-}
+/**
+ * 赞助额度（免费模型通道，Coolha 出钱的部分）；UTC 自然日窗口。
+ *
+ * **刻意做成全局常量而非档位字段**：见文件头红线 1。
+ * 这是获客成本（营销预算），不是产品功能，因此对所有登录用户一视同仁。
+ * 调整它只影响我们烧多少钱，不影响任何人的付费权益——也就不构成「卖算力」。
+ */
+export const SPONSORED_DAILY_TOKENS = 300_000
+export const SPONSORED_DAILY_REQUESTS = 30
 
 export interface PlanLimits {
   /** BYOK 连接数；null = 无限 */
@@ -38,12 +55,8 @@ export interface PlanLimits {
   routingPolicies: boolean
   /** 成本看板回看天数；null = 永久 */
   costDashboardDays: number | null
-  /** 并发会话数；null = 无限 */
-  concurrentSessions: number | null
-  teamSeats: number
   /** API / Webhook / MCP 出口（用用户自己的 Key） */
   apiAccess: boolean
-  queuePriority: "low" | "normal" | "high" | "highest"
 }
 
 export interface PlanDefinition {
@@ -52,7 +65,6 @@ export interface PlanDefinition {
   /** 月价（USD）；链上以 USDC / USDT 结算 */
   priceUsd: number
   tagline: string
-  quota: PlanQuota
   limits: PlanLimits
 }
 
@@ -61,8 +73,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     id: "free",
     name: "Free",
     priceUsd: 0,
-    tagline: "体验免费模型，或接自己的 Key",
-    quota: { dailyTokens: 300_000, dailyRequests: 30 },
+    tagline: "本地历史 + 每日免费额度，或接自己的 Key",
     limits: {
       byokConnections: 2,
       historyDays: 0,
@@ -75,18 +86,14 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       parallelCompare: 0,
       routingPolicies: false,
       costDashboardDays: 0,
-      concurrentSessions: 1,
-      teamSeats: 0,
       apiAccess: false,
-      queuePriority: "low",
     },
   },
   plus: {
     id: "plus",
     name: "Plus",
     priceUsd: 6,
-    tagline: "同步与导出，多连接管理",
-    quota: { dailyTokens: 1_500_000, dailyRequests: 120 },
+    tagline: "云端历史与跨设备同步，导出",
     limits: {
       byokConnections: 5,
       historyDays: 90,
@@ -99,18 +106,14 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       parallelCompare: 0,
       routingPolicies: false,
       costDashboardDays: 90,
-      concurrentSessions: 3,
-      teamSeats: 0,
       apiAccess: false,
-      queuePriority: "normal",
     },
   },
   pro: {
     id: "pro",
     name: "Pro",
     priceUsd: 10,
-    tagline: "全文检索、模型对比、路由策略",
-    quota: { dailyTokens: 6_000_000, dailyRequests: 400 },
+    tagline: "全文检索，历史保留一年",
     limits: {
       byokConnections: 15,
       historyDays: 365,
@@ -123,18 +126,14 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       parallelCompare: 2,
       routingPolicies: true,
       costDashboardDays: 365,
-      concurrentSessions: 10,
-      teamSeats: 1,
       apiAccess: true,
-      queuePriority: "high",
     },
   },
   ultra: {
     id: "ultra",
     name: "Ultra",
     priceUsd: 30,
-    tagline: "永久归档、团队席位与最高优先级",
-    quota: { dailyTokens: 25_000_000, dailyRequests: 1_200 },
+    tagline: "永久归档，不限量",
     limits: {
       byokConnections: null,
       historyDays: null,
@@ -147,10 +146,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       parallelCompare: 4,
       routingPolicies: true,
       costDashboardDays: null,
-      concurrentSessions: null,
-      teamSeats: 5,
       apiAccess: true,
-      queuePriority: "highest",
     },
   },
 }

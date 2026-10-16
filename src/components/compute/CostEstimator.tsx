@@ -5,7 +5,10 @@ import type { ComputeModel } from "@/lib/compute/types"
 import { estimateCost, formatPricePerMillion, formatTokens, formatUsd } from "@/lib/compute/service"
 import { DataSourceBadge } from "./DataSourceBadge"
 
-/** API 成本估算器：与 PRD 4.2 示例一致（输入/输出 Token 数可调） */
+/**
+ * 费用估算器：评估「用你自己的 Key 调用该模型」时的成本。
+ * 这不是 Coolha 的收费——订阅只卖软件能力，不卖推理额度。
+ */
 export function CostEstimator({ model }: { model: ComputeModel }) {
   // 上游未公布上下文窗口时回退到 1M 上限，避免滑块区间为 0
   const inputMax = model.contextLength > 0 ? Math.min(model.contextLength, 1_000_000) : 1_000_000
@@ -21,13 +24,17 @@ export function CostEstimator({ model }: { model: ComputeModel }) {
   return (
     <section className="rounded-2xl border bg-card p-5 shadow-sm">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-semibold">API 成本估算器</h2>
+        <h2 className="font-semibold">费用参考</h2>
         <DataSourceBadge source={model.dataSource} />
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
         {model.dataSource === "mock"
           ? "以下为可调节的示例价格，非真实报价。价格单位为 USD / 百万 Token。"
           : "按上游目录单价线性估算，未计入缓存折扣、批处理折扣、图片/工具调用等附加计费项。价格单位为 USD / 百万 Token。"}
+      </p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+        这是你用<strong className="font-medium text-foreground">自己的模型服务</strong>调用时的成本参考，不是
+        Coolha 的收费；订阅只解锁软件能力，不包含推理额度。
       </p>
 
       <div className="mt-5 space-y-5">

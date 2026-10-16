@@ -101,7 +101,7 @@ export function ConnectionsManager() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          添加你自己的模型服务，Playground 会直接用它们对话。
+          添加你自己的模型服务，Chat 会直连调用它们对话。
         </p>
         <button
           type="button"
@@ -244,7 +244,7 @@ export function ConnectionsManager() {
                     </p>
                   ) : (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      未填写模型 ID，在 Playground 里也能直接输入使用
+                      未填写模型 ID，在 Chat 里也能直接输入使用
                     </p>
                   )}
                   {connection.lastTestedAt ? (

@@ -1,13 +1,19 @@
-# 本地开发指南（Neon via Vercel 托管）
+# 本地开发指南（Neon via Vercel托管）
 
 ## 环境文件地图
 
 | 文件 | 加载时机 | 内容 |
 |---|---|---|
-| `.env.local` | dev / build / start 都加载（test 除外） | 应用密钥（`REOWN_ID`、`AI_GATEWAY_API_KEY`、`ALCHEMY_KEY/ID`、`VERCEL_OIDC_TOKEN`）+ 标准名 Neon 变量（`DATABASE_URL`、`DATABASE_URL_UNPOOLED`、`NEON_AUTH_BASE_URL`、`NEON_AUTH_COOKIE_SECRET`） |
+| `.env.local.example` | **不入库**，是唯一的公开模板 | 全部变量清单与用途注释，值留空 |
+| `.env.local` | dev / build / start 都加载（test 除外） | **基线文件**：应用密钥（`REOWN_ID`、`AI_GATEWAY_API_KEY`、`ALCHEMY_KEY/ID`）+ 标准名 Neon 变量（`DATABASE_URL`、`DATABASE_URL_UNPOOLED`、`NEON_AUTH_BASE_URL`、`NEON_AUTH_COOKIE_SECRET`、`SUBSCRIPTION_TREASURY_ADDRESS`、`CRON_SECRET`…）。完整清单见 `.env.local.example` |
 | `.env.development.local` | **仅 `next dev`** 加载 | `vercel env pull` 写入的 `coolha_*` 前缀变量（Vercel→Neon 集成产物） |
+| `.env.production.local` / `.env.preview.local` | Next 不加载，仅作对照 | 本地 Prod / Preview 镜像，人工维护 |
 
-加载顺序（先定义者胜，后者不覆盖）：`.env.development.local` → `.env.local` → `.env.development` → `.env`。全部被 `.gitignore` 的 `.env*` 覆盖，不会入库。
+⚠️ **`.env.local` 是基线，最容易漏改**：新发现的变量若只写进三个 `.env.*.local` 镜像，dev 能跑但 build/生产会缺。2026-10-16 就出现过 `.env.local` 缺 `AI_GATEWAY_API_KEY`（只存在于镜像里）导致构建期静默失败。**加变量时四个文件一起改。**
+
+加载顺序（先定义者胜，后者不覆盖）：`.env.development.local` → `.env.local` → `.env.development` → `.env`。除 `.env.local.example` 外全部被 `.gitignore` 的 `.env*` 覆盖，不会入库。
+
+值一律**不加引号**——`scripts/apply-migration.mjs` 是朴素解析器，带引号会把引号当成值的一部分。
 
 ## 日常命令
 
@@ -15,6 +21,7 @@
 npm run dev            # http://localhost:3000
 npx tsc --noEmit       # 类型检查
 npm run lint           # lint
+npm run build          # 生产构建（类型+lint 门禁）
 ```
 
 **改 env 文件后必须重启 dev**——Next.js 只在进程启动时读取 env 文件。

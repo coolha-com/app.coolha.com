@@ -8,6 +8,8 @@ import {
   RiAttachmentLine,
   RiBrainLine,
   RiCloseLine,
+  RiCloudLine,
+  RiCloudOffLine,
   RiDeleteBinLine,
   RiHistoryLine,
   RiLineChartLine,
@@ -19,17 +21,32 @@ import {
 } from "react-icons/ri"
 import { TbCoins } from "react-icons/tb"
 import type { ComputePlaygroundMeta } from "@/lib/compute/types"
-import { isFreeModel, type PlaygroundModel } from "@/lib/ai-gateway/shared"
+import type { PlaygroundModel } from "@/lib/ai-gateway/shared"
 import { useWalletAuth } from "@/hooks/useWalletAuth"
 import { useConnections } from "@/lib/compute/connections"
 import { streamCustomModel, type ByokUsage } from "@/lib/compute/byok-client"
 import {
   newId,
-  removeConversation,
-  saveConversation,
-  useConversations,
   type ByokHistoryMessage,
-} from "@/lib/compute/conversations"
+} from "@/lib/compute/thread-store"
+import {
+  clearCloudHistory,
+  createCloudThread,
+  deleteCloudThread,
+  refreshCloudThreads,
+  saveCloudMessages,
+  toCloudMessages,
+  useCloudThreads,
+} from "@/lib/compute/cloud-threads"
+import {
+  loadThread,
+  markThreadSynced,
+  removeThread,
+  saveThread,
+  useThreadStore,
+  type ThreadSummary,
+} from "@/lib/compute/thread-store"
+import type { LocalMessage } from "@/lib/compute/local-db"
 import {
   connModelOf,
   isConnKey,
@@ -92,11 +109,110 @@ async function compressImage(file: File): Promise<{ dataUrl: string; mediaType: 
   }
 }
 
+/** 历史抽屉里的统一条目：永远来自本地 IndexedDB（本地优先） */
+interface HistoryEntry {
+  id: string
+  title: string
+  updatedAt: number
+  syncState: ThreadSummary["syncState"]
+}
+
+/** 双通道消息 → 本地存储格式（图片 dataUrl 已在此前被压缩/剥离，不落库） */
+function toLocalMessages(
+  threadId: string,
+  modelKey: string,
+  gateway: UIMessage[],
+  byok: ByokHistoryMessage[],
+): LocalMessage[] {
+  const byokChannel = modelKey.startsWith("conn:")
+  const out: LocalMessage[] = []
+  if (byokChannel) {
+    byok.forEach((message, index) => {
+      const text = message.error ?? message.text
+      out.push({
+        id: `${threadId}-b${index}`,
+        threadId,
+        seq: index,
+        role: message.role === "assistant" ? "assistant" : "user",
+        parts: [{ type: "text", text }],
+        text,
+        modelKey,
+        source: "byok",
+        inputTokens: 0,
+        outputTokens: 0,
+        createdAt: Date.now() + index,
+      })
+    })
+    return out
+  }
+  gateway.forEach((message, index) => {
+    const text = message.parts
+      .map((part) => (part.type === "text" ? part.text : part.type === "file" ? "[附件]" : ""))
+      .join("")
+      .trim()
+    out.push({
+      id: `${threadId}-g${index}`,
+      threadId,
+      seq: index,
+      role: message.role === "assistant" ? "assistant" : "user",
+      parts: [{ type: "text", text }],
+      text,
+      modelKey,
+      source: "gateway",
+      inputTokens: 0,
+      outputTokens: 0,
+      createdAt: Date.now() + index,
+    })
+  })
+  return out
+}
+
+/** 本地存储 → 双通道消息（还原进 Chat） */
+function localToChat(messages: LocalMessage[]): {
+  gatewayMessages: UIMessage[]
+  byokMessages: ByokHistoryMessage[]
+} {
+  const gatewayMessages: UIMessage[] = []
+  const byokMessages: ByokHistoryMessage[] = []
+  messages.forEach((message) => {
+    if (message.source === "byok") {
+      if (message.role === "system") return
+      byokMessages.push({
+        id: message.id,
+        role: message.role === "assistant" ? "assistant" : "user",
+        text: message.text,
+      })
+      return
+    }
+    gatewayMessages.push({
+      id: message.id,
+      role: message.role === "assistant" ? "assistant" : "user",
+      parts: (message.parts?.length
+        ? message.parts
+        : [{ type: "text", text: message.text }]) as UIMessage["parts"],
+    })
+  })
+  return { gatewayMessages, byokMessages }
+}
+
+/** 从 URL 读取 ?model=<slug>，用于模型广场跳转后预选模型 */
+function readRequestedModelSlug(): string | null {
+  if (typeof window === "undefined") return null
+  try {
+    const value = new URLSearchParams(window.location.search).get("model")
+    return value && value.trim() ? value.trim() : null
+  } catch {
+    return null
+  }
+}
+
 /**
- * Playground：全高 AI 对话工作台。
+ * Chat：全高 AI 对话工作台。
  *
- * 两条通道：免费模型（服务端代理 Gateway，硬门禁只允许免费）/ 自带连接（浏览器直连）。
- * 对话历史与连接信息只存浏览器 localStorage。
+ * 两条推理通道：赞助模型（服务端代理 Gateway，硬门禁只放行 ZDR+不训练模型）/
+ * 自带连接（浏览器直连，不经过我们）。
+ *
+ * 存储是**本地优先**：IndexedDB 是唯一读源，云端只是可选镜像（见 thread-store.ts）。
  */
 export function PlaygroundChat({
   models,
@@ -106,11 +222,22 @@ export function PlaygroundChat({
   defaultSlug: string | null
 }) {
   const connections = useConnections()
-  const conversations = useConversations()
-  // 免费模型由 Coolha 赞助算力，需签名登录；BYOK 走浏览器直连，不受此限制
+  const store = useThreadStore()
+  const cloud = useCloudThreads()
+  // 赞助模型由 Coolha 出钱，需签名登录；BYOK 走浏览器直连，不受此限制
   const { signedIn, isConnected, signIn } = useWalletAuth()
 
-  const [modelKey, setModelKey] = useState(`free:${defaultSlug ?? models[0]?.id ?? ""}`)
+  /**
+   * 初始模型：优先读 URL 上的 ?model=<slug>（模型广场「在 Chat 中对话」入口带过来），
+   * 否则用服务端给的默认模型。只在挂载时求值一次，不随 URL 变化重置。
+   */
+  const [modelKey, setModelKey] = useState(() => {
+    const requested = readRequestedModelSlug()
+    const matched = requested
+      ? models.find((item) => item.id === requested || item.modelId === requested)
+      : undefined
+    return `free:${matched?.id ?? defaultSlug ?? models[0]?.id ?? ""}`
+  })
   const [conversationId, setConversationId] = useState(() => newId())
   const [deepThinking, setDeepThinking] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
@@ -156,11 +283,15 @@ export function PlaygroundChat({
   const gatewayBusy = status === "submitted" || status === "streaming"
   const busy = gatewayBusy || byokBusy
 
-  const freeModels = useMemo(() => models.filter(isFreeModel), [models])
+  /**
+   * models 已是服务端筛好的「Coolha 赞助」集合（零数据保留 + 不用于训练 + 非 stealth），
+   * 这里不再做二次过滤——按价格 0 判免费会把它们全部误杀。
+   */
+  const sponsoredModels = models
   const isConn = isConnKey(modelKey)
   const selectedModel = isConn
     ? undefined
-    : (models.find((model) => model.id === modelKey.replace("free:", "")) ?? freeModels[0])
+    : (models.find((model) => model.id === modelKey.replace("free:", "")) ?? sponsoredModels[0])
   const selectedConnection = isConn
     ? connections.find((item) => modelKey.startsWith(`conn:${item.id}:`))
     : undefined
@@ -169,11 +300,45 @@ export function PlaygroundChat({
   /** 当前选的是免费模型但未签名登录 → 拦截发送并给出登录入口 */
   const needsSignIn = !isConn && !signedIn
 
-  // 对话历史自动落盘（仅浏览器）
+  // 对话历史自动落盘到本地 IndexedDB（本地优先：这是唯一读源，任何模式都写）
   useEffect(() => {
+    if (!store.ready) return
     if (messages.length === 0 && byokMessages.length === 0) return
-    saveConversation({ id: conversationId, modelKey, gatewayMessages: messages, byokMessages })
-  }, [messages, byokMessages, conversationId, modelKey])
+    void saveThread({
+      id: conversationId,
+      modelKey,
+      messages: toLocalMessages(conversationId, modelKey, messages, byokMessages),
+    })
+  }, [store.ready, messages, byokMessages, conversationId, modelKey])
+
+  /**
+   * 云端镜像（可选）：仅当用户在设置里打开「云端备份」、且档位含云历史时，
+   * 才在本地写完后后台推一份。本地失败/云端失败都不影响对话本身。
+   */
+  const pushKeyRef = useRef("")
+  const backupEnabled = store.mode === "backup" && cloud.status === "ready"
+  useEffect(() => {
+    if (!backupEnabled) return
+    if (busy) return
+    const payload = toCloudMessages({ modelKey, gatewayMessages: messages, byokMessages })
+    if (payload.length === 0) return
+    const key = `${conversationId}|${modelKey}|${payload.length}`
+    if (pushKeyRef.current === key) return
+    pushKeyRef.current = key
+    void (async () => {
+      const known = cloud.threads.some((thread) => thread.id === conversationId)
+      if (!known) {
+        const created = await createCloudThread({
+          id: conversationId,
+          title: payload[0]?.text?.slice(0, 24) || "新对话",
+          modelKey,
+        })
+        if (!created.id) return
+      }
+      await saveCloudMessages(conversationId, { messages: payload, modelKey })
+      await refreshCloudThreads()
+    })()
+  }, [backupEnabled, busy, cloud.status, cloud.threads, conversationId, modelKey, messages, byokMessages])
 
   useEffect(() => {
     scrollAnchor.current?.scrollIntoView({ behavior: "smooth", block: "end" })
@@ -192,20 +357,68 @@ export function PlaygroundChat({
     setLocalError(null)
     setConversationId(newId())
     setHistoryOpen(false)
+    pushKeyRef.current = ""
   }, [setMessages, stop])
 
-  const openConversation = useCallback(
-    (entry: { id: string; modelKey: string; gatewayMessages: UIMessage[]; byokMessages: ByokHistoryMessage[] }) => {
-      abortRef.current?.abort()
-      stop()
-      setMessages(entry.gatewayMessages as PlaygroundMessage[])
-      setByokMessages(entry.byokMessages)
-      setModelKey(entry.modelKey)
-      setConversationId(entry.id)
-      setHistoryOpen(false)
+  /** 历史列表：永远来自本地 IndexedDB（本地优先，不依赖云端可用性） */
+  const historyEntries = useMemo<HistoryEntry[]>(
+    () =>
+      store.threads.map((thread) => ({
+        id: thread.id,
+        title: thread.title,
+        updatedAt: thread.updatedAt,
+        syncState: thread.syncState,
+      })),
+    [store.threads],
+  )
+
+  const openHistoryEntry = useCallback(
+    (entry: HistoryEntry) => {
+      void (async () => {
+        const detail = await loadThread(entry.id)
+        if (!detail) {
+          setLocalError("读取本地会话失败，请重试")
+          return
+        }
+        const restored = localToChat(detail.messages)
+        abortRef.current?.abort()
+        stop()
+        setMessages(restored.gatewayMessages as PlaygroundMessage[])
+        setByokMessages(restored.byokMessages)
+        if (detail.thread.modelKey) setModelKey(detail.thread.modelKey)
+        setConversationId(entry.id)
+        pushKeyRef.current = `${entry.id}|${detail.thread.modelKey}|${detail.messages.length}`
+        setHistoryOpen(false)
+      })()
     },
     [setMessages, stop],
   )
+
+  const removeHistoryEntry = useCallback(
+    (entry: HistoryEntry) => {
+      void (async () => {
+        await removeThread(entry.id)
+        // 备份模式下同步删云端，避免恢复时又冒出来
+        if (backupEnabled) await deleteCloudThread(entry.id)
+        if (entry.id === conversationId) startNewConversation()
+      })()
+    },
+    [backupEnabled, conversationId, startNewConversation],
+  )
+
+  const onClearCloudHistory = useCallback(() => {
+    void (async () => {
+      const result = await clearCloudHistory()
+      if (!result.ok) {
+        setLocalError(result.message ?? "清空云端备份失败")
+        return
+      }
+      // 云端清空后，本地会话需重新标记为待同步，否则不会再次上传
+      pushKeyRef.current = ""
+      for (const thread of store.threads) await markThreadSynced(thread.id)
+      startNewConversation()
+    })
+  }, [startNewConversation, store.threads])
 
   const onPickFiles = async (files: FileList | null) => {
     if (!files) return
@@ -350,24 +563,29 @@ export function PlaygroundChat({
               <RiAddLine className="size-4" />
               新对话
             </button>
-            {conversations.length === 0 ? (
+            {historyEntries.length === 0 ? (
               <p className="px-2 py-8 text-center text-xs text-muted-foreground">
                 还没有历史对话
               </p>
             ) : (
               <ul className="space-y-0.5">
-                {conversations.map((entry) => (
+                {historyEntries.map((entry) => (
                   <li key={entry.id} className="group flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => openConversation(entry)}
+                      onClick={() => openHistoryEntry(entry)}
                       className={cn(
                         "min-w-0 flex-1 rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent",
                         entry.id === conversationId && "bg-accent",
                       )}
                     >
                       <span className="block truncate">{entry.title}</span>
-                      <span className="block text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                        {entry.syncState === "synced" ? (
+                          <RiCloudLine className="size-3" aria-label="已备份到云端" />
+                        ) : entry.syncState === "pending" ? (
+                          <RiCloudOffLine className="size-3" aria-label="仅本地" />
+                        ) : null}
                         {new Date(entry.updatedAt).toLocaleString("zh-CN", {
                           month: "2-digit",
                           day: "2-digit",
@@ -378,10 +596,7 @@ export function PlaygroundChat({
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        removeConversation(entry.id)
-                        if (entry.id === conversationId) startNewConversation()
-                      }}
+                      onClick={() => removeHistoryEntry(entry)}
                       aria-label={`删除对话 ${entry.title}`}
                       className="inline-flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
                     >
@@ -391,6 +606,49 @@ export function PlaygroundChat({
                 ))}
               </ul>
             )}
+          </div>
+
+          <div className="border-t px-3 py-2.5">
+            {!store.dbAvailable ? (
+              <p className="text-[11px] leading-4 text-destructive">
+                浏览器存储不可用（隐私模式或空间不足），本次对话不会被保存。
+              </p>
+            ) : store.mode === "backup" ? (
+              cloud.status === "ready" ? (
+                <>
+                  <p className="text-[11px] leading-4 text-muted-foreground">
+                    本地优先：对话保存在本机，云端备份已开启（{cloud.plan} 档）。
+                    API Key 永不上传，服务端只保存对话正文。
+                  </p>
+                  <button
+                    type="button"
+                    onClick={onClearCloudHistory}
+                    className="mt-2 w-full rounded-lg border border-destructive/40 px-2 py-1.5 text-[11px] text-destructive transition-colors hover:bg-destructive/10"
+                  >
+                    清空云端备份
+                  </button>
+                </>
+              ) : cloud.status === "anonymous" ? (
+                <p className="text-[11px] leading-4 text-muted-foreground">
+                  本地优先：对话只保存在本机。签名登录并订阅后可开启云端备份。
+                </p>
+              ) : (
+                <p className="text-[11px] leading-4 text-muted-foreground">
+                  本地优先：对话只保存在本机。当前档位不含云端备份，升级 Plus 起可开启。
+                </p>
+              )
+            ) : (
+              <p className="text-[11px] leading-4 text-muted-foreground">
+                <strong className="font-medium text-foreground">本地优先</strong>
+                ：对话只保存在这台设备的浏览器里，不上传、不同步。可在设置中开启云端备份。
+              </p>
+            )}
+            <a
+              href="/settings"
+              className="mt-2 inline-block text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            >
+              设置与隐私
+            </a>
           </div>
         </div>
       ) : null}
@@ -430,10 +688,11 @@ export function PlaygroundChat({
           </nav>
           <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden />
           <ModelSelector
-            freeModels={freeModels}
+            freeModels={sponsoredModels}
             connections={connections}
             modelKey={modelKey}
             disabled={busy}
+            signedIn={signedIn}
             onChange={(key) => {
               setModelKey(key)
               setByokError(null)
@@ -506,8 +765,8 @@ export function PlaygroundChat({
         <div className="border-t bg-background/95 px-4 py-2 backdrop-blur">
           <div className="mx-auto flex w-full max-w-3xl items-center gap-2 rounded-xl border border-dashed px-3 py-2">
             <RiShieldKeyholeLine className="size-4 shrink-0 text-muted-foreground" />
-            <span className="min-w-0 flex-1 text-xs leading-tight text-muted-foreground">
-              免费模型由 Coolha 赞助，需签名登录后使用；你也可以添加自己的模型与 API Key 直接对话。
+            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+              免费模型需签名登录 · 每日额度全档位统一，订阅不增加
             </span>
             <button
               type="button"

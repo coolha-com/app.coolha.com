@@ -148,4 +148,9 @@ export interface ComputePlaygroundMeta {
   generationId?: string
   /** 上游实际承接的供应商（真实调用） */
   resolvedProvider?: string
+  /**
+   * true = 本次请求带上了 `disallowPromptTraining` 过滤（只路由给承诺不用数据训练的供应商）。
+   * false = 该模型无合规供应商，已按降级策略重试（见 route.ts），此时训练限制不生效。
+   */
+  promptTrainingFiltered?: boolean
 }

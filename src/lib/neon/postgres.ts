@@ -1,4 +1,4 @@
-import { Pool } from "pg"
+import { Pool, type PoolClient } from "pg"
 import { attachDatabasePool } from "@vercel/functions"
 
 /**
@@ -51,4 +51,27 @@ export async function query<T = unknown>(
   }
   const result = await pool.query(text, params as never[] | undefined)
   return { rows: result.rows as T[], rowCount: result.rowCount ?? 0 }
+}
+
+/**
+ * 显式事务：从池里独占一条连接，BEGIN/COMMIT 包裹回调。
+ * 用于「删旧消息 + 插新消息 + 更新会话元信息」这类必须原子完成的多语句操作。
+ */
+export async function transaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const pool = getPool()
+  if (!pool) {
+    throw new Error("DATABASE_URL 未配置（Neon Postgres 未接线）")
+  }
+  const client = await pool.connect()
+  try {
+    await client.query("BEGIN")
+    const result = await fn(client)
+    await client.query("COMMIT")
+    return result
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {})
+    throw error
+  } finally {
+    client.release()
+  }
 }

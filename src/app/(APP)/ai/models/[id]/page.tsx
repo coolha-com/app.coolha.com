@@ -1,17 +1,17 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { RiArrowLeftLine } from "react-icons/ri"
-import { CostEstimator } from "@/components/compute/CostEstimator"
+import { RiArrowLeftLine, RiChatSmileAiLine, RiKey2Line, RiLockLine } from "react-icons/ri"
 import { CapabilityBadges } from "@/components/compute/CapabilityBadges"
-import { CopyButton } from "@/components/compute/CopyButton"
 import { ProviderLogo } from "@/components/compute/ProviderLogo"
 import { modelCapabilityTags } from "@/components/compute/capability-meta"
 import { DataSourceBadge } from "@/components/compute/DataSourceBadge"
 import { MockNotice } from "@/components/compute/MockNotice"
 import { CollapsibleNote } from "@/components/compute/CollapsibleNote"
 import { StatusBadge } from "@/components/compute/StatusBadge"
-import { AI_GATEWAY_BASE_URL, getCatalogModelBySlug } from "@/lib/ai-gateway/client"
+import { CostEstimator } from "@/components/compute/CostEstimator"
+import { getCatalogModelBySlug } from "@/lib/ai-gateway/client"
+import { isSponsorableModel } from "@/lib/ai-gateway/shared"
 import {
   DATA_SOURCE_NOTICE,
   MODEL_TYPE_LABELS,
@@ -39,18 +39,8 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
   if (!model) notFound()
 
   const isLive = model.dataSource !== "mock"
-
-  // 合规：本页只做目录展示，示例指向上游官方端点，不提供 token 中转/转售
-  const apiExample = `curl ${AI_GATEWAY_BASE_URL}/chat/completions \\
-  -H "Authorization: Bearer $AI_GATEWAY_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "model": "${model.modelId}",
-    "messages": [
-      {"role": "user", "content": "Hello"}
-    ],
-    "stream": false
-  }'`
+  /** 是否在 Coolha 赞助范围：判据是数据政策（零数据保留 + 不训练 + 非 stealth），不是价格 */
+  const sponsored = isSponsorableModel(model)
 
   return (
     <section className="m-6 space-y-4">
@@ -85,8 +75,18 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={model.status} />
+            <span
+              className={
+                isSponsorableModel(model)
+                  ? "inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
+                  : "inline-flex items-center gap-1 rounded-full border bg-background px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
+              }
+            >
+              {isSponsorableModel(model) ? null : <RiLockLine className="size-3" />}
+              {isSponsorableModel(model) ? "零数据保留 · 不训练" : "不在赞助范围"}
+            </span>
             <DataSourceBadge source={model.dataSource} />
           </div>
         </div>
@@ -119,7 +119,6 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
           />
           <Spec label="数据来源" value={DATA_SOURCE_NOTICE[model.dataSource]} />
           <Spec label="更新时间" value={model.updatedAt} />
-          <Spec label="网关模型 ID" value={model.gatewayModelId ?? "—"} />
         </dl>
 
         <div className="mt-5">
@@ -141,29 +140,69 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
+        {/* 使用方式：赞助模型直接进 Chat；其余走自己的 Key */}
+        <section className="rounded-2xl border bg-card p-5 shadow-sm">
+          <h2 className="font-semibold">怎么在 Chat 里用</h2>
+
+          {sponsored ? (
+            <>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                该模型由 Coolha 赞助推理费用，且供应商承诺
+                <strong className="font-medium text-foreground">零数据保留、不用于训练</strong>
+                ，可直接在 Chat 中对话。需要签名登录，用量计入每日统一额度
+                （所有登录用户相同，与是否订阅无关）。
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  href={`/chat?model=${encodeURIComponent(model.id)}`}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+                >
+                  <RiChatSmileAiLine className="size-4" />
+                  在 Chat 中对话
+                </Link>
+                <Link
+                  href="/ai/usage"
+                  className="inline-flex h-10 items-center rounded-xl border px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  查看我的用量
+                </Link>
+              </div>
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                超出每日额度后，接入你自己的模型服务即可继续使用——升级订阅不会增加免费额度，
+                订阅解锁的是云端历史、同步、检索与导出等软件能力。
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                该模型不满足 Coolha 的赞助标准（需同时满足零数据保留、不用于训练、非预发布测试模型）。
+                要使用它，请在「API 连接」中添加你自己的模型服务——密钥只保存在你的浏览器，Chat
+                会直连调用，推理费用由你自己承担。
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  href="/ai/api-keys"
+                  className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+                >
+                  <RiKey2Line className="size-4" />
+                  配置自定义模型
+                </Link>
+                <Link
+                  href="/chat"
+                  className="inline-flex h-10 items-center rounded-xl border px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  去 Chat
+                </Link>
+              </div>
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                订阅解锁的是 Coolha 的软件能力（云端历史、跨设备同步、检索、导出），不包含第三方模型的推理额度。
+              </p>
+            </>
+          )}
+        </section>
+
+        {/* 费用估算：从「API 成本」改述为「用你自己 Key 时的成本参考」 */}
         <CostEstimator model={model} />
-
-        <div className="space-y-4">
-          <section className="rounded-2xl border bg-card p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="font-semibold">API 调用示例</h2>
-              <CopyButton text={apiExample} />
-            </div>
-            <pre className="mt-3 overflow-x-auto rounded-xl bg-muted p-4 text-xs leading-5">
-              <code>{apiExample}</code>
-            </pre>
-          </section>
-
-          <section className="rounded-2xl border bg-card p-5 shadow-sm">
-            <h2 className="font-semibold">在 Playground 中测试</h2>
-            <Link
-              href="/chat"
-              className="mt-4 inline-flex h-10 items-center rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-90"
-            >
-              打开 Playground
-            </Link>
-          </section>
-        </div>
       </div>
 
       <CollapsibleNote className="mt-4" title="本页说明">
@@ -172,10 +211,13 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
           <p>* 该模型价格随下游供应商浮动，展示值为目录基准价。</p>
         ) : null}
         <p>
-          API 示例直连 Vercel AI Gateway 官方端点，需使用你自己的 AI Gateway Key。Coolha
-          本页仅提供目录与价格查询，不提供 token 中转或转售服务。
+          模型广场是目录与价格查询。免费模型的推理由 Coolha
+          赞助并计入你的每日配额；其他模型请接入你自己的服务使用。Coolha
+          不提供 token 中转或转售服务。
         </p>
-        <p>Playground 目前仍运行 Phase 1 演示模式（本地模拟回复，不产生真实调用）。</p>
+        <p>
+          上方的费用估算用于评估「用你自己的 Key 调用该模型」的成本，不代表 Coolha 的收费。
+        </p>
       </CollapsibleNote>
     </section>
   )

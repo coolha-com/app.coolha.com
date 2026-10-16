@@ -9,7 +9,7 @@ import {
   type UIMessage,
 } from "ai"
 import { getCatalogModelBySlug } from "@/lib/ai-gateway/client"
-import { isFreeModel } from "@/lib/ai-gateway/shared"
+import { isSponsorableModel } from "@/lib/ai-gateway/shared"
 import { estimateCost } from "@/lib/compute/service"
 import { recordUsage } from "@/lib/neon/ai-usage"
 import { getWalletSessionFromCookies } from "@/lib/neon/wallet-auth"
@@ -162,16 +162,20 @@ export async function POST(req: Request) {
     return jsonError(
       400,
       "UNSUPPORTED_MODEL_TYPE",
-      "Playground 仅支持对话类（language）模型",
+      "Chat 仅支持对话类（language）模型",
       requestId,
     )
   }
-  // 公开访问仅允许免费模型：付费模型随订阅制开放（服务端硬门禁，客户端过滤仅为体验）
-  if (!isFreeModel(model)) {
+  // 硬门禁（与 getPlaygroundModels 同源）：只放行「零数据保留 + 不用于训练 + 非 stealth」的模型。
+  // 注意判据是数据政策而非价格——实测价格 0 的免费语言模型全部 zdr=none/noTrain=none，
+  // 即免费额度靠让供应商拿数据训练换来，Coolha 不做这个交易。
+  if (!isSponsorableModel(model)) {
     return jsonError(
       403,
-      "PAID_MODEL_NOT_ALLOWED",
-      "公开 Playground 仅支持免费模型；付费模型将在订阅制开放后提供。你也可以在 Playground 中添加自己的模型与 API Key 直接对话。",
+      "MODEL_NOT_SPONSORED",
+      model.inputPricePerMillionUsd === 0 && model.outputPricePerMillionUsd === 0
+        ? "该免费模型会使用你的对话数据训练模型（非零数据保留），Coolha 不提供这类赞助。请在「API 连接」中添加你自己的模型服务。"
+        : "该模型不在 Coolha 的赞助范围内。请在「API 连接」中添加你自己的模型服务后使用，推理费用由你自己的 Key 承担。",
       requestId,
     )
   }
@@ -179,13 +183,14 @@ export async function POST(req: Request) {
     return jsonError(400, "INVALID_MESSAGES", "messages 必须为数组", requestId)
   }
 
-  // 免费额度：按「每日 token + 每日请求次数」双上限计量（UTC 自然日）
+  // 赞助额度：按「每日 token + 每日请求次数」双上限计量（UTC 自然日）。
+  // 上限是全局常量、与档位无关——付费档位若按 token 区分即构成变相转售（AUP "sell access"）。
   const quota = await checkQuota(subject)
   if (!quota.allowed) {
     const message =
       quota.reason === "REQUEST_LIMIT"
-        ? `今日免费额度已用完（${quota.used.requests}/${quota.plan.quota.dailyRequests} 次）。额度 UTC 明日 00:00 重置，你也可以切换自己的模型继续。`
-        : `今日免费额度已用完（${formatTokens(quota.used.tokens)}/${formatTokens(quota.plan.quota.dailyTokens)} tokens）。额度 UTC 明日 00:00 重置，你也可以切换自己的模型继续。`
+        ? `今日免费对话次数已用完（${quota.used.requests}/${quota.dailyRequests} 次）。额度 UTC 明日 00:00 重置；所有档位额度相同，升级不会增加——你可以切换自己的模型继续。`
+        : `今日免费 token 额度已用完（${formatTokens(quota.used.tokens)}/${formatTokens(quota.dailyTokens)} tokens）。额度 UTC 明日 00:00 重置；所有档位额度相同，升级不会增加——你可以切换自己的模型继续。`
     return Response.json(
       {
         error: {
@@ -197,8 +202,8 @@ export async function POST(req: Request) {
             reason: quota.reason,
             usedRequests: quota.used.requests,
             usedTokens: quota.used.tokens,
-            limitRequests: quota.plan.quota.dailyRequests,
-            limitTokens: quota.plan.quota.dailyTokens,
+            limitRequests: quota.dailyRequests,
+            limitTokens: quota.dailyTokens,
             resetAt: quota.resetAt,
           },
         },
@@ -213,30 +218,87 @@ export async function POST(req: Request) {
     ...(process.env.AI_GATEWAY_BASE_URL ? { baseURL: process.env.AI_GATEWAY_BASE_URL } : {}),
   })
 
+  // 禁止提示训练：只把请求路由给承诺「不用 Inputs 训练模型」的供应商。
+  // 免费、全计划可用（per-request providerOptions）；不适用于 BYOK——但本路径本就只用系统凭证。
+  // 置 AI_GATEWAY_DISALLOW_TRAINING=0 可整体关掉（不建议）。
+  const disallowTraining = process.env.AI_GATEWAY_DISALLOW_TRAINING !== "0"
+  let trainingFiltered = disallowTraining
+
   let result: ReturnType<typeof streamText>
   try {
     result = streamText({
       model: gateway(model.modelId),
       messages: await convertToModelMessages(body.messages as UIMessage[]),
+      ...(disallowTraining
+        ? { providerOptions: { gateway: { disallowPromptTraining: true } } }
+        : {}),
     })
   } catch (error) {
     console.error("[compute/playground] 构造请求失败:", error)
     return jsonError(400, "INVALID_REQUEST", "无法构造模型请求", requestId)
   }
 
+  /** 上游返回「没有合规供应商」时降级重试一次：模型可用性优先，但要在元数据里标注 */
+  function isNoProviderError(error: unknown): boolean {
+    const message = error instanceof Error ? error.message : String(error ?? "")
+    return /no_providers_available|disallow prompt training/i.test(message)
+  }
+
+  /** 上游已知错误 → 人话；返回 null 表示用通用兜底文案 */
+  function humanizeUpstreamError(error: unknown): string | null {
+    const raw = error instanceof Error ? error.message : String(error ?? "")
+    if (/insufficient|402|payment|credit/i.test(raw)) {
+      return "免费通道额度暂时用尽（Coolha 的 AI Gateway Credits 已耗尽）。你可以在「API 连接」中添加自己的模型服务继续对话。"
+    }
+    if (/429|rate limit|too many requests/i.test(raw)) {
+      return "请求过于频繁，上游限流中，请稍等十几秒再试。"
+    }
+    if (/401|unauthor|authentication/i.test(raw)) {
+      return "免费通道暂时不可用（上游凭证异常）。请稍后重试，或在「API 连接」中使用自己的模型服务。"
+    }
+    if (/timeout|timed out|ETIMEDOUT/i.test(raw)) {
+      return "上游响应超时，请重试；若持续失败请换一个模型。"
+    }
+    return null
+  }
+
   const stream = createUIMessageStream<ComputePlaygroundMessage>({
     execute: async ({ writer }) => {
-      // sendReasoning：nemotron 等推理模型会把思考过程放在 reasoning 分片
-      await writer.merge(
-        toUIMessageStream({
-          stream: result.fullStream,
-          sendReasoning: true,
-          onError: (error) => {
-            console.error("[compute/playground] 上游流错误:", error)
-            return "上游模型返回错误，请稍后重试"
-          },
-        }),
-      )
+      // sendReasoning：推理模型会把思考过程放在 reasoning 分片
+      try {
+        await writer.merge(
+          toUIMessageStream({
+            stream: result.fullStream,
+            sendReasoning: true,
+            onError: (error) => {
+              console.error("[compute/playground] 上游流错误:", error)
+              return humanizeUpstreamError(error) ?? "上游模型返回错误，请稍后重试"
+            },
+          }),
+        )
+      } catch (error) {
+        // 该模型没有任何「禁止训练」的合规供应商：降级重试一次（不带过滤器），
+        // 并在元数据里标注 promptTrainingFiltered=false，让用量与设置页可见。
+        if (!disallowTraining || !isNoProviderError(error)) throw error
+        console.warn(
+          `[compute/playground] ${model.modelId} 无禁止训练的合规供应商，降级重试（训练限制不生效）`,
+        )
+        trainingFiltered = false
+        result = streamText({
+          model: gateway(model.modelId),
+          messages: await convertToModelMessages(body.messages as UIMessage[]),
+        })
+        await writer.merge(
+          toUIMessageStream({
+            stream: result.fullStream,
+            sendReasoning: true,
+            onError: (streamError) => {
+              console.error("[compute/playground] 上游流错误（降级后）:", streamError)
+              return humanizeUpstreamError(streamError) ?? "上游模型返回错误，请稍后重试"
+            },
+          }),
+        )
+      }
 
       const usage = await result.usage
       let providerMetadata: unknown
@@ -265,6 +327,7 @@ export async function POST(req: Request) {
         estimated: gatewayMeta.cost === null,
         generationId: gatewayMeta.generationId,
         resolvedProvider: gatewayMeta.resolvedProvider,
+        promptTrainingFiltered: trainingFiltered,
       }
       writer.write({ type: "data-compute-meta", data: meta, transient: true })
 

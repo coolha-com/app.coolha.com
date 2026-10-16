@@ -22,6 +22,8 @@ export interface CatalogSnapshot {
   syncedAt: string
   /** 上游最近一次同步失败原因 */
   lastError?: string
+  /** 上游最近一次同步失败时刻（ISO）；用于退避窗口判定 */
+  failedAt?: string
 }
 
 interface SyncMetaRow {
@@ -30,6 +32,7 @@ interface SyncMetaRow {
   synced_at: Date
   syncing_at: Date | null
   last_error: string | null
+  failed_at: Date | null
 }
 
 interface ModelRow {
@@ -42,7 +45,7 @@ export async function readCatalogSnapshot(): Promise<CatalogSnapshot | null> {
 
   try {
     const meta = await query<SyncMetaRow>(
-      `SELECT source, model_count, synced_at, syncing_at, last_error
+      `SELECT source, model_count, synced_at, syncing_at, last_error, failed_at
        FROM model_catalog_sync WHERE id = 1`,
     )
     const row = meta.rows[0]
@@ -63,6 +66,7 @@ export async function readCatalogSnapshot(): Promise<CatalogSnapshot | null> {
       source: row.source,
       syncedAt: row.synced_at.toISOString(),
       lastError: row.last_error ?? undefined,
+      failedAt: row.failed_at ? row.failed_at.toISOString() : undefined,
     }
   } catch (error) {
     console.error("[model-catalog] 读取目录快照失败:", error instanceof Error ? error.message : error)
@@ -143,7 +147,8 @@ export async function writeCatalogSnapshot(models: ComputeModel[]): Promise<void
 
     await client.query(
       `UPDATE model_catalog_sync
-       SET source = 'ai-gateway', model_count = $1, synced_at = now(), syncing_at = NULL, last_error = NULL
+       SET source = 'ai-gateway', model_count = $1, synced_at = now(), syncing_at = NULL,
+           last_error = NULL, failed_at = NULL
        WHERE id = 1`,
       [models.length],
     )
@@ -181,7 +186,10 @@ export async function claimCatalogSync(lockTimeoutSeconds = 120): Promise<boolea
   }
 }
 
-/** 释放同步锁并记录结果 */
+/**
+ * 释放同步锁并记录结果。
+ * 失败时写入 failed_at —— 客户端据此判断退避窗口，避免每次渲染都重试同一个坏 key。
+ */
 export async function releaseCatalogSync(ok: boolean, options?: { count?: number; error?: string }): Promise<void> {
   if (!isDatabaseConfigured()) return
   try {
@@ -190,7 +198,8 @@ export async function releaseCatalogSync(ok: boolean, options?: { count?: number
        SET syncing_at = NULL,
            synced_at = CASE WHEN $1 THEN now() ELSE synced_at END,
            model_count = CASE WHEN $1 THEN $2 ELSE model_count END,
-           last_error = $3
+           last_error = $3,
+           failed_at = CASE WHEN $1 THEN NULL ELSE now() END
        WHERE id = 1`,
       [ok, options?.count ?? 0, ok ? null : (options?.error ?? "UNKNOWN")],
     )
@@ -216,6 +225,45 @@ export async function readCachedCatalogSnapshot(): Promise<CatalogSnapshot | nul
   } catch (error) {
     console.error("[model-catalog] 读取缓存快照失败，回源直查:", error instanceof Error ? error.message : error)
     return readCatalogSnapshot()
+  }
+}
+
+/**
+ * 只读同步元信息（单行、不带模型），**不走 Data Cache**。
+ *
+ * 退避判定必须读到最新的 failed_at：如果复用 readCachedCatalogSnapshot，
+ * 拿到的会是失败发生前缓存下来的快照（failed_at 为空），
+ * 判定永远不成立 → 每次渲染都重新打上游，退避形同虚设。
+ */
+export interface CatalogSyncMeta {
+  lastError: string | null
+  failedAt: string | null
+  syncedAt: string | null
+}
+
+export async function readCatalogSyncMeta(): Promise<CatalogSyncMeta | null> {
+  if (!isDatabaseConfigured()) return null
+  try {
+    const { rows } = await query<{
+      last_error: string | null
+      failed_at: Date | null
+      synced_at: Date
+    }>(
+      `SELECT last_error, failed_at, synced_at FROM model_catalog_sync WHERE id = 1`,
+    )
+    const row = rows[0]
+    if (!row) return null
+    return {
+      lastError: row.last_error,
+      failedAt: row.failed_at ? row.failed_at.toISOString() : null,
+      syncedAt: row.synced_at ? row.synced_at.toISOString() : null,
+    }
+  } catch (error) {
+    console.error(
+      "[model-catalog] 读取同步元信息失败:",
+      error instanceof Error ? error.message : error,
+    )
+    return null
   }
 }
 

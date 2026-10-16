@@ -2,19 +2,23 @@ import "server-only"
 
 import { isDatabaseConfigured, query } from "./postgres"
 import {
+  SPONSORED_DAILY_REQUESTS,
+  SPONSORED_DAILY_TOKENS,
   nextUtcMidnightIso,
   resolvePlan,
   type PlanDefinition,
 } from "@/lib/compute/plans"
 
 /**
- * 权益判定 + 免费模型额度的每日计量（UTC 自然日窗口）。
- * 表见 db/migrations/005_entitlements_and_quota.sql。
+ * 赞助额度的每日计量（UTC 自然日窗口）。
  *
- * 设计要点：
- * - 计量对象是「走我们 Gateway 的免费模型」；BYOK 直连不经服务端，不计量也不限流。
- * - DB 不可用时**fail-open**（按 free 档放行并记日志）：免费模型边际成本≈0，
- *   宁可短时少记账，也不要因为账本抖动把产品打挂。真正的熔断靠 FREE_MODELS_ENABLED 开关。
+ * ⚠️ 额度是**全局常量**，不随档位变化——见 plans.ts 文件头红线 1：
+ * 付费档位按 token 数区分 = 变相转售第三方模型算力（Vercel AUP "sell access"）。
+ * 档位只决定软件能力；超限的正确解法是接自己的 Key，不是升级。
+ *
+ * 计量对象是「走我们 Gateway 的赞助模型」；BYOK 直连不经服务端，不计量也不限流。
+ * DB 不可用时**fail-open**（按 0 放行并记日志）：宁可短时少记账，
+ * 也不要因为账本抖动把产品打挂。真正的熔断靠 FREE_MODELS_ENABLED 开关。
  */
 
 export interface DailyUsage {
@@ -31,6 +35,9 @@ export interface QuotaDecision {
   reason?: "REQUEST_LIMIT" | "TOKEN_LIMIT"
   used: DailyUsage
   resetAt: string
+  /** 当日统一额度上限（与档位无关，仅用于错误提示） */
+  dailyTokens: number
+  dailyRequests: number
 }
 
 const ZERO_USAGE: DailyUsage = {
@@ -91,21 +98,45 @@ export async function readTodayUsage(subject: string): Promise<DailyUsage> {
 
 /**
  * 请求前判定：次数上限与 token 上限同时校验，任一触发即拒绝。
- * 只做「已用 vs 上限」的粗校验，不做单次预估扣减——流结束再按真实 usage 记账，
- * 允许小幅溢出（换来实现简单，且不会因一次长对话把用户彻底锁死）。
+ *
+ * 上限取全局常量（与档位无关），只做「已用 vs 上限」的粗校验，不做单次预估扣减——
+ * 流结束再按真实 usage 记账，允许小幅溢出（换来实现简单，且不会因一次长对话把用户彻底锁死）。
  */
 export async function checkQuota(subject: string): Promise<QuotaDecision> {
   const plan = await readPlan(subject)
   const used = await readTodayUsage(subject)
   const resetAt = nextUtcMidnightIso()
 
-  if (used.requests >= plan.quota.dailyRequests) {
-    return { allowed: false, plan, reason: "REQUEST_LIMIT", used, resetAt }
+  if (used.requests >= SPONSORED_DAILY_REQUESTS) {
+    return {
+      allowed: false,
+      plan,
+      reason: "REQUEST_LIMIT",
+      used,
+      resetAt,
+      dailyTokens: SPONSORED_DAILY_TOKENS,
+      dailyRequests: SPONSORED_DAILY_REQUESTS,
+    }
   }
-  if (used.tokens >= plan.quota.dailyTokens) {
-    return { allowed: false, plan, reason: "TOKEN_LIMIT", used, resetAt }
+  if (used.tokens >= SPONSORED_DAILY_TOKENS) {
+    return {
+      allowed: false,
+      plan,
+      reason: "TOKEN_LIMIT",
+      used,
+      resetAt,
+      dailyTokens: SPONSORED_DAILY_TOKENS,
+      dailyRequests: SPONSORED_DAILY_REQUESTS,
+    }
   }
-  return { allowed: true, plan, used, resetAt }
+  return {
+    allowed: true,
+    plan,
+    used,
+    resetAt,
+    dailyTokens: SPONSORED_DAILY_TOKENS,
+    dailyRequests: SPONSORED_DAILY_REQUESTS,
+  }
 }
 
 /** 流结束后按真实 usage 记账（幂等累加；失败不影响响应） */

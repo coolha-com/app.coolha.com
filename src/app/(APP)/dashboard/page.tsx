@@ -1,14 +1,12 @@
 import Link from "next/link"
 import {
   RiArrowRightLine,
-  RiBankCardLine,
   RiCpuLine,
   RiExchangeDollarLine,
   RiFireLine,
   RiRobot2Line,
-  RiShieldCheckLine,
 } from "react-icons/ri"
-import { aiAssets, agentServices, settlementSteps, subscriptionProducts } from "@/lib/aifi-data"
+import { aiAssets, agentServices } from "@/lib/aifi-data"
 
 export default function DashboardPage() {
   return (
