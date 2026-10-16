@@ -8,7 +8,6 @@ import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import {
     RiChatSmileAiLine,
-    RiDashboardHorizontalLine,
     RiExchangeDollarLine,
     RiMenuUnfoldLine,
     RiRobot2Line,
@@ -84,7 +83,7 @@ function Logo({ showLabels }: { showLabels: boolean }) {
         <div className={cn("flex w-full", showLabels ? "justify-start" : "justify-center")}>
             <motion.div className="w-auto" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Link
-                    href={`/dashboard`}
+                    href={`/chat`}
                     className={cn(
                         "flex size-11 items-center justify-center rounded-full hover:bg-accent",
                         showLabels && "h-11 w-full justify-start gap-3 px-4",
@@ -106,22 +105,16 @@ function NavbarLink({ showLabels }: { showLabels: boolean }) {
     const t = useTranslations('sidebar')
     const links = [
         {
-            title: t('dashboard'),
-            href: '/dashboard',
-            icon: RiDashboardHorizontalLine,
-            startsWith: ['/dashboard']
-        },
-        {
             title: t('chat'),
             href: '/chat',
             icon: RiChatSmileAiLine,
-            startsWith: ['/chat', '/ai']
+            startsWith: ['/chat']
         },
         {
-            title: t('agent'),
-            href: '/agent',
+            title: t('ai'),
+            href: '/ai',
             icon: RiRobot2Line,
-            startsWith: ['/agent']
+            startsWith: ['/ai']
         },
         {
             title: t('rwa'),

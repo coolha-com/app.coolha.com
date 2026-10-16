@@ -4,7 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import {
   RiArrowRightUpLine,
-  RiBrain4Line,
+  RiCpuLine,
   RiKey2Line,
   RiLockLine,
 } from "react-icons/ri"
@@ -238,7 +238,7 @@ export function ModelSelector({
           <DropdownMenuItem
             render={
               <Link href="/ai/models">
-                <RiBrain4Line className="size-4" />
+                <RiCpuLine className="size-4" />
                 从模型广场添加
               </Link>
             }

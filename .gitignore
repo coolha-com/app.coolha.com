@@ -42,3 +42,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# WorkBuddy 本地对话副本（含多会话 jsonl，体积大且非源码，勿提交）
+# 仅忽略从本机 .workbuddy/projects 复制进来的对话导出目录
+.workbuddy/c-AAAAAA-Code-coolha-com-app.coolha.com/
+# 由 scripts/extract-conversation.mjs 生成的对话导出（按需保留/提交）
+conversation-export.md

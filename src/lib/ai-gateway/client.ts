@@ -121,6 +121,11 @@ function isNextControlFlowSignal(error: unknown): boolean {
 function isInBackoffWindow(meta: CatalogFailureMeta | null, force: boolean, nowMs: number): boolean {
   if (force) return false
   if (!meta?.failedAt || !meta.lastError) return false
+  // RENDER_ABORTED 是框架中断预渲染的正常路径，不是上游故障：
+  // 它由 releaseCatalogSync(false, …) 释放锁时写入，会连带置位 failed_at。
+  // 若不在此排除，构建期一次正常的预渲染中断就会挡住之后 300 秒内的真实回源，
+  // 表现为「刚换好 key 却仍然读陈旧快照」。
+  if (!isRealGatewayFailure(meta.lastError)) return false
   const windowSeconds = isAuthFailure(meta.lastError)
     ? CATALOG_AUTH_BACKOFF_SECONDS
     : CATALOG_RETRY_BACKOFF_SECONDS

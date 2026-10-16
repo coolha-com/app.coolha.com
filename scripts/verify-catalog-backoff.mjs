@@ -29,18 +29,28 @@ const RETRY_BACKOFF = 300
 const isAuthFailure = (e) =>
   e?.startsWith("UPSTREAM_401") === true || e?.startsWith("UPSTREAM_403") === true
 
-const inBackoff = (meta, nowMs) => {
-  if (!meta.failed_at || !meta.last_error) return false
-  const win = isAuthFailure(meta.last_error) ? AUTH_BACKOFF : RETRY_BACKOFF
-  const t = new Date(meta.failed_at).getTime()
-  if (Number.isNaN(t)) return false
-  return nowMs - t < win * 1000
-}
-
 const gatewayErrorCode = (e) => {
   if (!e) return "UNKNOWN"
   const i = e.indexOf(":")
   return i > 0 ? e.slice(0, i) : e
+}
+
+const isRealGatewayFailureErr = (e) => {
+  if (!e) return false
+  const code = gatewayErrorCode(e)
+  return code !== "RENDER_ABORTED" && code !== "SYNC_IN_PROGRESS"
+}
+
+// 必须与 client.ts 的 isInBackoffWindow 保持一致：
+// RENDER_ABORTED 由 releaseCatalogSync(false, …) 写入并连带置位 failed_at，
+// 它是预渲染中断的正常路径；若不排除，一次正常中断会挡住后续 300 秒的真实回源。
+const inBackoff = (meta, nowMs) => {
+  if (!meta.failed_at || !meta.last_error) return false
+  if (!isRealGatewayFailureErr(meta.last_error)) return false
+  const win = isAuthFailure(meta.last_error) ? AUTH_BACKOFF : RETRY_BACKOFF
+  const t = new Date(meta.failed_at).getTime()
+  if (Number.isNaN(t)) return false
+  return nowMs - t < win * 1000
 }
 
 const isRealGatewayFailure = (e) => {
@@ -121,6 +131,29 @@ await setRow("UPSTREAM_500")
 check("500 刚失败 → 退避中", inBackoff(await readRow(), Date.now()), true)
 await setRow("UPSTREAM_429")
 check("429 刚失败 → 退避中", inBackoff(await readRow(), Date.now()), true)
+
+console.log("\n=== F. 正常路径不得触发退避（回归：RENDER_ABORTED 曾挡住真实回源）===")
+await setRow("RENDER_ABORTED")
+check("RENDER_ABORTED 刚写入 → 不退避", inBackoff(await readRow(), Date.now()), false)
+check(
+  "RENDER_ABORTED 即使 failed_at 是刚才也不退避",
+  inBackoff(await readRow(), Date.now()),
+  false,
+)
+await setRow("SYNC_IN_PROGRESS")
+check("SYNC_IN_PROGRESS → 不退避", inBackoff(await readRow(), Date.now()), false)
+await setRow("RENDER_ABORTED", "now() - interval '10 seconds'")
+check(
+  "RENDER_ABORTED 刚发生 → 仍不退避（允许立即回源）",
+  inBackoff(await readRow(), Date.now()),
+  false,
+)
+await setRow("UPSTREAM_401:Authentication failed")
+check(
+  "对照组：真实 401 仍退避（确保上一条不是因为逻辑写坏了）",
+  inBackoff(await readRow(), Date.now()),
+  true,
+)
 
 // 还原为干净状态
 await c.query(

@@ -6,20 +6,20 @@ import { useChat } from "@ai-sdk/react"
 import {
   RiAddLine,
   RiAttachmentLine,
+  RiBankCardLine,
+  RiBarChartBoxLine,
   RiBrainLine,
   RiCloseLine,
   RiCloudLine,
   RiCloudOffLine,
   RiDeleteBinLine,
   RiHistoryLine,
-  RiLineChartLine,
   RiRefreshLine,
   RiSendPlaneLine,
   RiShieldKeyholeLine,
   RiStopLine,
   RiStore2Line,
 } from "react-icons/ri"
-import { TbCoins } from "react-icons/tb"
 import type { ComputePlaygroundMeta } from "@/lib/compute/types"
 import type { PlaygroundModel } from "@/lib/ai-gateway/shared"
 import { useWalletAuth } from "@/hooks/useWalletAuth"
@@ -683,8 +683,8 @@ export function PlaygroundChat({
           </button>
           <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden />
           <nav aria-label="数据" className="flex shrink-0 items-center gap-0.5">
-            <ModuleLink href="/ai/usage" icon={RiLineChartLine} label="用量记录" />
-            <ModuleLink href="/ai/billing" icon={TbCoins} label="余额与账单" />
+            <ModuleLink href="/ai/usage" icon={RiBarChartBoxLine} label="用量记录" />
+            <ModuleLink href="/ai/billing" icon={RiBankCardLine} label="余额与账单" />
           </nav>
           <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden />
           <ModelSelector

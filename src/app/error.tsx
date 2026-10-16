@@ -30,7 +30,7 @@ export default function GlobalError({
           重试
         </Button>
         <Button asChild variant="outline" className="rounded-xl">
-          <a href="/dashboard">返回仪表板</a>
+          <a href="/chat">返回 Chat</a>
         </Button>
       </div>
     </div>

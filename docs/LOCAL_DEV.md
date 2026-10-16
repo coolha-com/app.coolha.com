@@ -42,6 +42,43 @@ npm run build          # 生产构建（类型+lint 门禁）
 | 迁移 / DDL / dump | `DATABASE_URL_UNPOOLED`（direct，PgBouncer 事务模式不支持会话级操作） |
 | 临时 SQL | `node -e` + `pg`（`DATABASE_URL` 已在 env，无需手输） |
 
+### 怎么执行迁移
+
+```bash
+# 1. 先看有哪些迁移
+ls db/migrations/
+
+# 2.（推荐）先查库里到底有没有，别盲跑
+node -e "
+const fs=require('fs'),pg=require('pg');
+const g=(p,k)=>{const l=fs.readFileSync(p,'utf8').split(/\r?\n/).find(x=>x.startsWith(k+'='));return l?l.split('=').slice(1).join('=').replace(/^\"|\"\$/g,''):null};
+(async()=>{const c=new pg.Client({connectionString:g('.env.local','DATABASE_URL')});await c.connect();
+const r=await c.query(\"SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY 1\");
+console.log(r.rows.map(x=>x.table_name).join(', '));await c.end()})();
+"
+
+# 3. 执行单个迁移
+node scripts/apply-migration.mjs db/migrations/008_chat_history.sql
+```
+
+**三点须知**：
+
+1. **没有迁移历史表**，脚本也不记录 —— 全靠 DDL 自己的 `IF NOT EXISTS` 幂等性保护，
+   所以重复执行安全，但仍建议先查再跑。
+2. **本地 `.env.local` 的 `DATABASE_URL` 指向的就是生产库**（同一个 Neon 实例
+   `ep-broad-math-…`，ap-southeast-1）。**没有独立的「生产环境」**——本地跑迁移 = 改生产库。
+   这正是「先查再跑」格外重要的原因。
+3. 脚本读 `.env.local` / `.env.development.local`，用的是**朴素解析器**：值不能带引号，
+   不能有行内注释（`KEY=value # 注释` 会把注释当成值的一部分）。
+
+## 数据库迁移状态（2026-10-16 实测）
+
+| 迁移 | 内容 | 状态 |
+|---|---|---|
+| 001~007 | 钱包认证 / 目录 / 权益配额 / 身份 / 订阅订单 | ✅ 已应用 |
+| 008_chat_history | `chat_threads` / `chat_messages` + GIN 全文检索 | ✅ 已应用（0 条数据，等真实流量） |
+| 009_catalog_sync_backoff | `model_catalog_sync.failed_at` | ✅ 已应用 |
+
 ## Neon 服务接线状态（2026-10-14 实测）
 
 | 服务 | 状态 | 证明 |
