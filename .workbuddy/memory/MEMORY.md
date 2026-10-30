@@ -11,6 +11,10 @@
 
 ## 环境 / Vercel env 铁律
 - 本地四文件：`.env.local`=基线（**值一律不加引号**）、`.env.development.local`、`.env.production.local`、`.env.preview.local`（Next 不加载，仅对照）。新变量四文件一起改。
+- **⚠️ `vercel env pull` 会把所有值写成带双引号**，且**只改 `.env.local`**。两个后果必须处理：
+  1. 应用读 `process.env.DATABASE_URL` 拿到带引号串 → `28P01 password authentication failed`。→ 用脚本剥掉所有值的首尾引号。
+  2. 其余三个文件仍是旧值，而 **Next dev 优先 `.env.development.local`、build 优先 `.env.production.local`**（都高于 `.env.local`）→ 本地/构建连旧库。→ 必须把 `.env.local` 同名变量同步进这三个文件。
+- 脚本层同样要剥引号：`apply-migration.mjs` 曾因此报 `getaddrinfo base`。
 - CLI 默认存 **Secret → 不可回读**；需复核值用 `--type config`。`env pull` 输出统一带引号（格式非内容）。
 - **密钥值写入防 BOM**：禁 `echo | vercel env add`（PS 管道加 UTF-8 BOM）；统一 `vercel env add NAME <env> --force --type config --value "值"`。`preview` 须加 `--yes`，多环境分开加。核验扫 `env pull` 值是否含 `\uFEFF`。
 - `vercel env rm` 同名多条目静默不删 → 走 REST `GET/DELETE /v9/projects/prj_2Zd9dENYklxBIQeAyKS6UMRUcLAH/env[/{envId}]`，token 读 `%APPDATA%\com.vercel.cli\Data\auth.json`。

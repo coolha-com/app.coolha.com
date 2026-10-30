@@ -27,7 +27,16 @@ async function loadEnv() {
         if (eq <= 0) continue
         const key = trimmed.slice(0, eq).trim()
         if (process.env[key]) continue
-        process.env[key] = trimmed.slice(eq + 1).trim()
+        // vercel env pull 的输出会给值加引号；必须剥掉，
+        // 否则 DATABASE_URL 会带上引号，pg 解析出的 host 变成 "base" 之类的错误值。
+        let value = trimmed.slice(eq + 1).trim()
+        if (
+          (value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))
+        ) {
+          value = value.slice(1, -1)
+        }
+        process.env[key] = value
       }
     } catch {
       // 文件不存在则跳过

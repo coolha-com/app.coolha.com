@@ -223,4 +223,3 @@ Coolha 不是一个新开的独立产品线，而是现有 `/ai` 算力市场的
 1. **`/ai/tools` 的 31 个工具仍是空壳**：全部「未接入」，不提供实际调用。要变成真产品，先接 P0 只读数据源（Alchemy / DefiLlama / Slither）与签名流。（注：`/ai/research` 已于 2026-10-17 先行接真实源，可作为接入范式。）
 2. **合规文案待补齐**：§8.3 要求的独立 ToS、隐私政策、AI 披露尚未完成；Gateway Credits 与 Budgets 待配置。
 3. **密钥轮换**：`AI_GATEWAY_API_KEY` 需轮换（见 `.env.local`）。
-</content>
