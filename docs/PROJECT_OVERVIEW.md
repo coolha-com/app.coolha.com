@@ -14,7 +14,7 @@
 | 品牌 | Coolha / 酷哈（Coolha Limited，中国香港） |
 | 应用 | `app.coolha.com`（本文档描述对象） |
 | 一句话定位 | **浏览器打开即用的 Web3 通用 AI 工作台**：连你自己的钱包，用任意模型，做链上研究/开发/执行；给 AI 的每一分授权都在链上有边界、可撤销 |
-| 当前阶段 | **Phase 1 起步**——工作台壳层与目录已建成，**工具层尚未真接入**（详见 §3） |
+| 当前阶段 | **Phase 1 起步**——工作台壳层与目录已建成，**工具层已接入第 1 个**（Alchemy 读链），其余 30 个尚未接入（详见 §3） |
 | 版本 | `0.1.2-alpha`（`package.json` 为版本唯一真相源；无 CI，手动维护） |
 | 技术栈 | Next 16 / React 19 / TS 5.9 / Tailwind 4 / shadcn+base-ui / Reown AppKit + wagmi / next-intl |
 | 数据 | Neon Postgres（本地与生产同一实例）；对话内容本地 IndexedDB 优先 |
@@ -118,7 +118,8 @@ Coolha 不是一个新开的独立产品线，而是现有 `/ai` 算力市场的
 ### 3.2 尚未真接入的部分 ⚠️
 
 - **`/ai/tools` 31 个工具中，30 个仍标记 `integration: "none"`**：页面只做**选型展示**，不提供实际调用。P0 待接的是读数据/查链类（DefiLlama / Slither）与签名流（request-wallet-sign）。
-- **`/ai/tools` 已接入 1 个（2026-11-03）**：`alchemy-mcp-server` → `integration: "live"`，执行点为服务端路由 `/api/ai/tools/[slug]`（Alchemy JSON-RPC 只读：区块高度 / 区块时间 / 原生币余额 / 交易计数，Base + Ethereum）。页面卡片内嵌「实测台」，点击即真实读链。Alchemy key 只在服务端读取；未配置时该路由返回 503 `not_configured`，**不返回任何链上数值**。⚠️ 接入的是 Alchemy 的链上数据能力，**不是官方 mcp.alchemy.com 的 MCP 端点**。
+- **`/ai/tools` 已接入 1 个（2026-11-03）**：`alchemy-mcp-server` → `integration: "live"`，执行点为服务端路由 `/api/ai/tools/[slug]`（Alchemy JSON-RPC 只读：区块高度 / 区块时间 / 原生币余额 / 交易计数，Base + Ethereum）。页面卡片内嵌「实测台」，点击即真实读链。Alchemy key 只在服务端读取；未配置时该路由返回 503 `not_configured`，**不返回任何链上数值**。返回值统一装在**证据信封** `ToolResult<T>` 里（数据源 / 方法 / 端点 / 链 / 抓取时间 / 延迟 / 覆盖范围 / 明确的「没查到」项），取不到的项如实标「未取到」，不填占位数值。⚠️ 接入的是 Alchemy 的链上数据能力，**不是官方 mcp.alchemy.com 的 MCP 端点**。
+- **Alchemy 调用统一到 `src/lib/alchemy/client.ts`**：此前仓库里有三份各自为政的 Alchemy 代码（投前侦察硬编码 eth-mainnet、订阅扫链自己拼 URL、工具层又写一份）。现在只有一份实现，凭证读取、错误分类（未配置/超时/限流/鉴权/上游故障）与密钥脱敏都在这一处，投前侦察与工具层共用。
 - **`/ai/research` 已接入真实数据源（2026-10-17 起）**：
   - 已接真数据：合约安全（Sourcify + Alchemy）、链上数据（Alchemy）、代币（DefiLlama）。报告数值均为真实抓取。
   - 未接入：项目方 / 团队（需链上实体图谱）、媒体情绪（需社交聚合源）——**这两类维度标记「数据源未接入」，不给任何数值与判断**。

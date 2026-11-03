@@ -1,5 +1,9 @@
-import { AlchemyNotConfiguredError, AlchemyUpstreamError, fetchChainSnapshot, isAlchemyConfigured, isToolChain, TOOL_CHAIN_KEYS } from "@/lib/web3-tools/alchemy"
 import { WEB3_TOOLS } from "@/lib/web3-tools/catalog"
+import { fetchChainSnapshot, isAlchemyConfigured, isToolChain, TOOL_CHAIN_KEYS } from "@/lib/web3-tools/alchemy"
+import {
+  TOOL_ERROR_CODES,
+  type ToolError,
+} from "@/lib/web3-tools/evidence"
 
 export const dynamic = "force-dynamic"
 // Alchemy 密钥只在服务端读取（process.env），必须跑在 Node runtime
@@ -34,16 +38,6 @@ const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/
 /** 只认我们真正接了执行点的那一个工具；其余一律「未接入」 */
 const LIVE_TOOL_IDS = new Set(["alchemy-mcp-server"])
 
-/** 上游错误信息里可能夹带 key，输出前先抹掉（红线 11：凭证值不得出现在任何响应里） */
-function sanitize(message: string): string {
-  for (const candidate of [process.env.ALCHEMY_KEY, process.env.ALCHEMY_ID]) {
-    const key = candidate?.trim()
-    if (!key) continue
-    message = message.split(key).join("[redacted]")
-  }
-  return message
-}
-
 function toolMeta(slug: string) {
   const tool = WEB3_TOOLS.find((t) => t.id === slug)
   return {
@@ -57,9 +51,10 @@ function toolMeta(slug: string) {
  * GET /api/ai/tools/[slug] —— 工具层的真实执行点（当前只有 Alchemy 读链）。
  *
  * ⚠️ 诚实口径：
- * - 未接入的工具返回 404 + `status: "not_integrated"`，**不返回任何模拟数据**。
- * - 密钥未配置返回 503 + `status: "not_configured"`，**不伪装成「查不到」**。
- * - 只有真实 RPC 成功时才返回 `status: "live"` 与实测数值。
+ * - 未接入的工具返回 404 + `not_integrated`，**不返回任何模拟数据**。
+ * - 密钥未配置返回 503 + `not_configured`，**不伪装成「查不到」**。
+ * - 只有真实 RPC 成功时才返回 `status:"live"` 与实测数值。
+ * - 取不到的项进 `unknown`，不填占位数值。
  */
 export async function GET(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -118,62 +113,48 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
     )
   }
 
-  const startedAt = Date.now()
-  try {
-    const snapshot = await fetchChainSnapshot(chainParam, addressParam)
+  const result = await fetchChainSnapshot({ chain: chainParam, address: addressParam })
 
-    const unknown: string[] = []
-    if (snapshot.blockTime === null) unknown.push("最新区块时间戳未取到")
-    if (addressParam && snapshot.balanceEth === null) unknown.push("原生币余额未取到")
-    if (addressParam && snapshot.txCount === null) unknown.push("交易计数（nonce）未取到")
-
-    return Response.json(
-      {
-        tool: toolMeta(slug),
-        status: "live",
-        chain: { key: snapshot.chain, id: snapshot.chainId, label: snapshot.label },
-        address: snapshot.address,
-        data: {
-          blockNumber: snapshot.blockNumber,
-          blockTime: snapshot.blockTime,
-          balanceEth: snapshot.balanceEth,
-          balanceWei: snapshot.balanceWei,
-          txCount: snapshot.txCount,
-        },
-        source: {
-          provider: "alchemy-rpc",
-          method: addressParam
-            ? "eth_blockNumber / eth_getBlockByNumber / eth_getBalance / eth_getTransactionCount"
-            : "eth_blockNumber / eth_getBlockByNumber",
-        },
-        unknown,
-        fetchedAt: new Date().toISOString(),
-        latencyMs: Date.now() - startedAt,
-      },
-      { headers: { "Cache-Control": "no-store" } },
-    )
-  } catch (error) {
-    if (error instanceof AlchemyNotConfiguredError) {
-      return Response.json(
-        {
-          tool: toolMeta(slug),
-          status: "not_configured",
-          message: "服务端未配置 ALCHEMY_KEY，Alchemy 读链当前不可用（未接入）。",
-        },
-        { status: 503 },
-      )
+  // 上游异常已被 trace() 归一成结构化错误，这里只做 HTTP 状态映射
+  if (!result.ok) {
+    const error: ToolError = result.error ?? {
+      code: TOOL_ERROR_CODES.UPSTREAM_ERROR,
+      message: "工具执行失败，未取到任何数据",
     }
-
-    const reason =
-      error instanceof AlchemyUpstreamError ? sanitize(error.message) : "上游请求失败"
-    console.error("[api/ai/tools] Alchemy 读链失败:", reason)
+    const mapped = mapError(error)
     return Response.json(
       {
         tool: toolMeta(slug),
-        status: "upstream_error",
-        message: `Alchemy 上游不可用：${reason}`,
+        status: mapped.status,
+        message: error.message,
+        error,
       },
-      { status: 502 },
+      { status: mapped.httpStatus },
     )
+  }
+
+  return Response.json(
+    {
+      tool: toolMeta(slug),
+      status: "live",
+      result,
+    },
+    { headers: { "Cache-Control": "no-store" } },
+  )
+}
+
+/** 对外状态标识 + HTTP 状态码 */
+function mapError(error: ToolError): { status: string; httpStatus: number } {
+  switch (error.code) {
+    case TOOL_ERROR_CODES.NOT_CONFIGURED:
+      return { status: "not_configured", httpStatus: 503 }
+    case TOOL_ERROR_CODES.UPSTREAM_RATE_LIMIT:
+      return { status: "rate_limited", httpStatus: 429 }
+    case TOOL_ERROR_CODES.INVALID_REQUEST:
+      return { status: "invalid_request", httpStatus: 400 }
+    case TOOL_ERROR_CODES.NOT_INTEGRATED:
+      return { status: "not_integrated", httpStatus: 404 }
+    default:
+      return { status: "upstream_error", httpStatus: 502 }
   }
 }

@@ -26,20 +26,45 @@
 
 | 工具 | 状态 | 说明 |
 |---|---|---|
-| **Alchemy MCP Server** | ✅ `integration: "live"` | 服务端 Alchemy 读链。真实执行点：`GET /api/ai/tools/alchemy-mcp-server` |
+| **Alchemy MCP Server** | ✅ `integration: "live"` | 服务端 Alchemy 读链。真实执行点：`GET /api/ai/tools/alchemy-mcp-server`。⚠️ 接的是**链上数据读链**，不是官方 `mcp.alchemy.com` 的 MCP 端点 |
 | 其余 30 条 | ⚠️ `integration: "none"` | **仅为静态目录条目**，无调用入口，页面上会明确标注「未接入」 |
 
 **诚实口径是硬性要求**：
 - 未接入的工具 → `404` + `status: "not_integrated"`
 - 服务端凭证缺失 → `503` + `status: "not_configured"`
 - 上游异常 → `502` + `status: "upstream_error"`
+- 参数非法 → `400` + `status: "invalid_request"`；触发限流 → `429`
 - **任何情况下都不返回模拟或占位的链上数据。** 取不到的字段返回 `null` 并在 `unknown[]` 中列明原因。
+
+### 返回值是「证据信封」
+
+工具层的返回值统一是 `ToolResult<T>`（契约见 `docs/WEB3_TOOL_REGISTRY_PHASE1_PLAN.md` §4，
+实现见 `src/lib/web3-tools/evidence.ts`）。每条结论都能溯源，没查到的照实说，边界必须声明：
+
+| 字段 | 作用 |
+|---|---|
+| `ok` / `data` | 先取数再断言：上游没返回 → `ok:false`、`data:null` |
+| `source` | 可溯源：`provider` / `method` / `endpoint`（不含密钥）/ `chain` / `chainId` / `fetchedAt` / `latencyMs` |
+| `unknown[]` | 明确「没查到」的项（如「原生币余额未取到」） |
+| `coverage` / `warnings[]` | 声明覆盖边界（只覆盖 latest 区块、未查询历史区块/代币持仓/转账记录） |
+| `error` | 结构化失败（`code` / `message` / `retryable`），不抛异常给上层 |
+
+⛔ 工具层**不生成任何评分、概率或评级**，只搬运上游真实返回的原始事实。
+
+### Alchemy 调用只有一份实现
+
+`src/lib/alchemy/client.ts`（`server-only`）是**全站唯一**的 Alchemy JSON-RPC 客户端，
+投前侦察（`src/lib/research/sources.ts`）、工具层（`src/lib/web3-tools/alchemy.ts`）、
+订阅扫链（`src/lib/subscription/scan.ts`）共用。凭证读取、错误分类与密钥脱敏都在这一处。
 
 ### 手动验证
 
 ```bash
 # 已接入 —— 真实链上读数
 curl "http://localhost:3000/api/ai/tools/alchemy-mcp-server?chain=ethereum"
+
+# 带地址 —— 追加余额与 nonce
+curl "http://localhost:3000/api/ai/tools/alchemy-mcp-server?chain=ethereum&address=0x..."
 
 # 未接入 —— 应返回 404 与 not_integrated
 curl "http://localhost:3000/api/ai/tools/<其他工具 id>"

@@ -63,9 +63,9 @@ export default function ToolsPage() {
               {STATS.live > 0 ? (
                 <>
                   <span className="text-foreground">
-                    {LIVE_NAMES.join("、")} 已接入真实数据源
+                    其中 {LIVE_NAMES.join("、")} 已接入真实数据源
                   </span>
-                  ，卡片里可以直接实测；
+                  ，卡片里可以直接实测，页面会如实标出数据源、覆盖范围与没查到的项；
                 </>
               ) : (
                 <>
@@ -88,8 +88,17 @@ export default function ToolsPage() {
             第一批要接的 {P0_NAMES.length} 个
           </p>
           <p className="mt-1.5 text-xs leading-6 text-muted-foreground">
-            {P0_NAMES.join(" · ")}。
-            选型逻辑很简单：<span className="text-foreground">读数据的和查链的</span>先接
+            {P0_NAMES.map((name, index) => (
+              <span key={name}>
+                {index > 0 ? " · " : ""}
+                {LIVE_NAMES.includes(name) ? (
+                  <span className="text-foreground">{name}（已接入）</span>
+                ) : (
+                  name
+                )}
+              </span>
+            ))}
+            。选型逻辑很简单：<span className="text-foreground">读数据的和查链的</span>先接
             （Alchemy 拿数据、DefiLlama 拿 TVL、Slither 做审计分析），
             <span className="text-foreground">签名流</span>用来定死「服务端永不持钥」这条红线的实现方式
             （request-wallet-sign 是唯一被官方收录的成熟参考实现）。

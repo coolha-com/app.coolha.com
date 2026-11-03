@@ -58,10 +58,12 @@ export const WEB3_TOOLS: Web3Tool[] = [
     plannedPhase: 1,
     access: "direct",
     priority: "p0",
+    liveScope:
+      "我们接入的是 Alchemy 的链上数据读链（服务端 JSON-RPC，只读），只覆盖 Base 与 Ethereum 两条链；不是官方 mcp.alchemy.com 的 MCP 端点。",
     caveats: [
       "项目已有 Alchemy key，可直接复用，无需新增密钥",
       "✅ 已接入（2026-11-03）：服务端 Alchemy JSON-RPC 只读，执行点 /api/ai/tools/alchemy-mcp-server，页面可实测",
-      "接入范围仅限区块高度 / 区块时间 / 原生币余额 / 交易计数，Base 与 Ethereum 两条链；官方 mcp.alchemy.com 的 MCP 端点尚未接入",
+      "接入范围仅限最新区块高度/时间 + 指定地址的原生币余额与交易计数，Base 与 Ethereum 两条链；官方 mcp.alchemy.com 的 MCP 端点尚未接入",
       "Alchemy key 只在服务端读取，永不下发浏览器；查不到的项如实标「未取到」，不填占位数值",
     ],
   },

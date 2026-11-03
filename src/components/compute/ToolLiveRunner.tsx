@@ -9,22 +9,55 @@ import {
 } from "react-icons/ri"
 import { cn } from "@/lib/utils"
 
-interface LiveToolResponse {
-  status: "live" | "not_configured" | "not_integrated" | "upstream_error" | "invalid_request" | "rate_limited"
-  message?: string
-  chain?: { key: string; id: number; label: string }
-  address?: string | null
-  data?: {
+/** 工具层证据信封的前端视图（只声明用到的字段，服务端类型见 src/lib/web3-tools/evidence.ts） */
+interface ToolSourceView {
+  provider: string
+  method: string
+  endpoint: string
+  chain: string
+  chainId: number
+  fetchedAt: string
+  latencyMs: number
+}
+
+interface ToolCoverageView {
+  requestedWindow?: string
+  truncated?: boolean
+  returnedItems?: number
+  note?: string
+}
+
+interface ToolResultView {
+  ok: boolean
+  tool: string
+  source: ToolSourceView
+  data: {
+    chain: string
+    chainId: number
+    label: string
     blockNumber: number
     blockTime: string | null
+    address: string | null
     balanceEth: number | null
     balanceWei: string | null
     txCount: number | null
-  }
-  source?: { provider: string; method: string }
-  unknown?: string[]
-  fetchedAt?: string
-  latencyMs?: number
+  } | null
+  warnings: string[]
+  unknown: string[]
+  coverage?: ToolCoverageView
+  error?: { code: string; message: string; retryable?: boolean }
+}
+
+interface LiveToolResponse {
+  status:
+    | "live"
+    | "not_configured"
+    | "not_integrated"
+    | "upstream_error"
+    | "invalid_request"
+    | "rate_limited"
+  message?: string
+  result?: ToolResultView
 }
 
 const CHAINS = [
@@ -39,7 +72,10 @@ const CHAINS = [
  * 真实链上查询只在用户点击时通过我们自己的服务端路由发起 ——
  * Alchemy 密钥只在服务端读取，永远不到浏览器。
  *
- * 诚实纪律：拿不到就如实显示「未配置 / 上游不可用」，不显示任何占位数值。
+ * 诚实纪律：
+ * - 拿不到就如实显示「未配置 / 上游不可用」，不显示任何占位数值。
+ * - 展示证据信封的 source（数据源/方法/端点/链/抓取时间/延迟）。
+ * - 展示 coverage（覆盖边界）与 unknown（没查到的项），不把「没查到」藏起来。
  */
 export function ToolLiveRunner({ toolId }: { toolId: string }) {
   const [chain, setChain] = useState("ethereum")
@@ -110,7 +146,10 @@ export function ToolLiveRunner({ toolId }: { toolId: string }) {
 }
 
 function ResultPanel({ result }: { result: LiveToolResponse }) {
-  if (result.status !== "live") {
+  const envelope = result.result
+  const d = envelope?.data ?? null
+
+  if (result.status !== "live" || !envelope || !d) {
     const notConfigured = result.status === "not_configured"
     return (
       <p
@@ -127,15 +166,12 @@ function ResultPanel({ result }: { result: LiveToolResponse }) {
     )
   }
 
-  const d = result.data
-  if (!d) return null
-
   return (
     <div className="mt-2 rounded-lg border bg-background p-2.5">
       <p className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
         <RiCheckboxCircleLine className="size-3.5" aria-hidden />
-        真实数据 · {result.chain?.label}
-        {result.latencyMs !== undefined ? ` · ${result.latencyMs}ms` : ""}
+        真实数据 · {d.label}
+        {envelope.source.latencyMs !== undefined ? ` · ${envelope.source.latencyMs}ms` : ""}
       </p>
 
       <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-4">
@@ -146,24 +182,37 @@ function ResultPanel({ result }: { result: LiveToolResponse }) {
         />
         <Fact
           label="原生币余额"
-          value={d.balanceEth === null ? "未查（未填地址）" : `${d.balanceEth} ETH`}
+          value={d.balanceEth === null ? "未取到" : `${d.balanceEth} ETH`}
         />
-        <Fact
-          label="交易计数"
-          value={d.txCount === null ? "未查（未填地址）" : String(d.txCount)}
-        />
+        <Fact label="交易计数" value={d.txCount === null ? "未取到" : String(d.txCount)} />
       </dl>
 
-      {result.unknown && result.unknown.length > 0 ? (
+      {envelope.unknown.length > 0 ? (
         <p className="mt-2 text-[11px] leading-5 text-amber-600 dark:text-amber-400">
-          未取到的项：{result.unknown.join("、")}
+          未取到的项：{envelope.unknown.join("、")}
+        </p>
+      ) : null}
+
+      {envelope.warnings.length > 0 ? (
+        <p className="mt-1 text-[11px] leading-5 text-amber-600 dark:text-amber-400">
+          口径提醒：{envelope.warnings.join("；")}
+        </p>
+      ) : null}
+
+      {envelope.coverage?.note ? (
+        <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+          覆盖边界：{envelope.coverage.note}
         </p>
       ) : null}
 
       <p className="mt-2 flex flex-wrap items-center gap-x-2 border-t pt-2 text-[11px] text-muted-foreground">
-        <span>数据源：{result.source?.provider}</span>
-        <span>方法：{result.source?.method}</span>
-        {result.fetchedAt ? <span>抓取时间：{new Date(result.fetchedAt).toLocaleString()}</span> : null}
+        <span>数据源：{envelope.source.provider}</span>
+        <span>方法：{envelope.source.method}</span>
+        <span>端点：{envelope.source.endpoint}</span>
+        <span>链 ID：{envelope.source.chainId}</span>
+        {envelope.source.fetchedAt ? (
+          <span>抓取时间：{new Date(envelope.source.fetchedAt).toLocaleString()}</span>
+        ) : null}
       </p>
     </div>
   )

@@ -5,9 +5,19 @@
  * 1. 只返回真实抓取到的数据。抓不到就返回 null，由 engine 判定为 unavailable。
  * 2. 绝不用随机数、模板或「看起来合理」的默认值填充任何指标。
  * 3. Alchemy 密钥只在服务端读取（process.env），永不传到浏览器。
+ *
+ * Alchemy 调用统一走 `@/lib/alchemy/client`（全站唯一实现），本文件只负责
+ * 「把某个上游响应翻译成投前侦察需要的事实」。
  */
 
+import "server-only"
+
+import { alchemyRpc, hexToBigInt, isContractBytecode } from "@/lib/alchemy/client"
+
 const DEFAULT_TIMEOUT_MS = 12_000
+
+/** 本模块只查以太坊主网（投前侦察的历史口径，与工具层的多链口径不同） */
+const RESEARCH_CHAIN = "ethereum" as const
 
 async function getJson<T>(url: string): Promise<T | null> {
   try {
@@ -22,21 +32,17 @@ async function getJson<T>(url: string): Promise<T | null> {
   }
 }
 
-/** Alchemy JSON-RPC（服务端专用；无 key 返回 null，不降级为假数据） */
-async function alchemyRpc(method: string, params: unknown[]): Promise<string | null> {
-  const key = process.env.ALCHEMY_KEY ?? process.env.ALCHEMY_ID ?? ""
-  if (!key) return null
+/**
+ * Alchemy JSON-RPC（服务端专用）。
+ *
+ * 这里刻意吞掉异常并返回 null：投前侦察的契约是「取不到就返回 null → unavailable」，
+ * 由 engine 决定怎么表达。错误分类（未配置 / 超时 / 限流 / 鉴权失败）是工具层
+ * `/api/ai/tools/[slug]` 的需求，那边直接调用 `alchemyRpc` 拿 `AlchemyError`。
+ */
+async function alchemyRpcOrNull(method: string, params: unknown[]): Promise<string | null> {
   try {
-    const res = await fetch(`https://eth-mainnet.g.alchemy.com/v2/${key}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
-    })
-    if (!res.ok) return null
-    const json = (await res.json()) as { result?: string }
-    return json.result ?? null
+    const result = await alchemyRpc(RESEARCH_CHAIN, method, params)
+    return typeof result === "string" ? result : null
   } catch {
     return null
   }
@@ -68,12 +74,12 @@ export async function fetchContractFacts(address: string): Promise<ContractFacts
     verifiedAt?: string
   }>(`https://sourcify.dev/server/v2/contract/1/${lower}`)
 
-  const code = await alchemyRpc("eth_getCode", [lower, "latest"])
+  const code = await alchemyRpcOrNull("eth_getCode", [lower, "latest"])
 
   // Alchemy 未配置且 Sourcify 也没查到 → 无事实可报
   if (!code && !sourcify) return null
 
-  const isContract = typeof code === "string" && code !== "0x" && code.length > 2
+  const isContract = isContractBytecode(code)
   const bytecodeBytes =
     typeof code === "string" && code.startsWith("0x") ? (code.length - 2) / 2 : null
 
@@ -97,9 +103,16 @@ export interface OnchainFacts {
   txCount: number | null
 }
 
+/**
+ * hex → 数值。
+ *
+ * ⚠️ 余额用 BigInt 而不是 `Number.parseInt`：wei 数量轻易超过 2^53
+ * （1 ETH = 1e18 wei），用 Number 解析会静默丢精度。取整除的 nonce 用 BigInt 同样安全。
+ */
 function hexToNumber(hex: string | null): number | null {
-  if (!hex || typeof hex !== "string" || !hex.startsWith("0x")) return null
-  const n = Number.parseInt(hex, 16)
+  const wei = hexToBigInt(hex)
+  if (wei === null) return null
+  const n = Number(wei)
   return Number.isFinite(n) ? n : null
 }
 
@@ -107,15 +120,15 @@ function hexToNumber(hex: string | null): number | null {
 export async function fetchOnchainFacts(address: string): Promise<OnchainFacts | null> {
   const lower = address.toLowerCase()
   const [balanceHex, txHex] = await Promise.all([
-    alchemyRpc("eth_getBalance", [lower, "latest"]),
-    alchemyRpc("eth_getTransactionCount", [lower, "latest"]),
+    alchemyRpcOrNull("eth_getBalance", [lower, "latest"]),
+    alchemyRpcOrNull("eth_getTransactionCount", [lower, "latest"]),
   ])
 
   if (balanceHex === null && txHex === null) return null
 
-  const wei = hexToNumber(balanceHex)
+  const wei = hexToBigInt(balanceHex)
   return {
-    balanceEth: wei === null ? null : wei / 1e18,
+    balanceEth: wei === null ? null : Number(wei) / 1e18,
     txCount: hexToNumber(txHex),
   }
 }

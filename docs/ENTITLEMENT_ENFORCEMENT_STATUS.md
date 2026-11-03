@@ -346,15 +346,36 @@ AI Product Terms §8.3 要求向 End User 提供单独 ToS + 隐私政策、**�
 | --- | --- |
 | 服务端执行点 | `src/app/api/ai/tools/[slug]/route.ts`（GET，`runtime = nodejs`） |
 | 数据客户端 | `src/lib/web3-tools/alchemy.ts`（`import "server-only"`） |
+| 共享 RPC 客户端 | `src/lib/alchemy/client.ts`（`import "server-only"`，**全站唯一实现**） |
+| 证据信封 | `src/lib/web3-tools/evidence.ts`（`ToolResult<T>` + `trace()`，契约见 `docs/WEB3_TOOL_REGISTRY_PHASE1_PLAN.md` §4） |
 | 实际调用 | Alchemy JSON-RPC：`eth_blockNumber` / `eth_getBlockByNumber` / `eth_getBalance` / `eth_getTransactionCount` |
 | 覆盖链 | Base（8453）+ Ethereum（1），只读 |
 | 前端入口 | `/ai/tools` 卡片内嵌「实测台」（`src/components/compute/ToolLiveRunner.tsx`，客户端组件，点击后才发请求） |
-| 凭证 | `ALCHEMY_KEY`（`ALCHEMY_ID` 兜底），**只在服务端读取**，永不下发浏览器 |
-| 降级行为 | 凭证缺失 → 503 `not_configured`；上游异常 → 502 `upstream_error`；未接入的工具 → 404 `not_integrated`。**任何分支都不返回占位或模拟数值** |
+| 凭证 | `ALCHEMY_KEY`（`ALCHEMY_ID` 兜底），**只在服务端读取**，永不下发浏览器。共享客户端在抛错前统一脱敏（key → `[redacted]`） |
+| 降级行为 | 凭证缺失 → 503 `not_configured`；上游异常 → 502 `upstream_error`；未接入的工具 → 404 `not_integrated`；参数非法 → 400 `invalid_request`；限流 → 429 `rate_limited`。**任何分支都不返回占位或模拟数值** |
 | 可观测性 | `/api/health` → `services.alchemy.{configured, ok, detail}`（只报配置存在性，健康检查不消耗上游配额） |
 | 限流 | 进程内滑动窗口 20 次/分钟/IP（兜底；跨实例不共享） |
 | 边界 | ⚠️ 接入的是 **Alchemy 的链上数据能力**，**不是官方 `mcp.alchemy.com` 的 MCP 端点**。不含任何写操作、不持钥、不需要用户签名 |
 
+**证据信封的落地方式**：工具层返回值统一是 `ToolResult<T>`（`ok` / `tool` / `source` /
+`data` / `warnings` / `unknown` / `coverage` / `error`）。三条硬规则在信封里有对应字段：
+
+| 硬规则 | 信封字段 | 实际表现 |
+| --- | --- | --- |
+| 先取数再断言 | `ok` + `data` | 上游没返回 → `ok:false`、`data:null`，不返回任何推断值 |
+| 每条结论可溯源 | `source.{provider,method,endpoint,chain,chainId,fetchedAt,latencyMs}` | 页面上直接展示端点、方法、链 ID、抓取时间与延迟 |
+| 没查到就说没查到 | `unknown[]` | 逐项列出「原生币余额未取到」「未提供地址：本次未查询…」 |
+| 声明覆盖边界 | `coverage` + `warnings[]` | 明确只覆盖 latest 区块，并声明「未查询历史区块、代币持仓、转账记录与合约源码」 |
+
+⛔ 工具层**不生成任何评分、概率或评级**。它只搬运上游真实返回的原始事实 ——
+项目历史上已经因为假风险分出过一次事故（见 `src/lib/research/engine.ts` 顶部注释）。
+
 **未接入的 30 条**：DefiLlama Skills / Slither MCP / Tenderly MCP / request-wallet-sign 等，
 `integration` 保持 `"none"`，页面显示「未接入」。它们的接入顺序见
 `src/lib/web3-tools/catalog.ts` 的 `priority` 字段与 `docs/WEB3_TOOL_REGISTRY_PHASE1_PLAN.md`。
+
+> ⚠️ **陈列即承诺**（红线 7）：已接入条目的 `name` 是以太坊官方目录的原名，
+> 与「我们实际接的能力」不总是同一件事。`catalog.ts` 的 `liveScope` 字段负责写清
+> 接入范围，`ToolCard` 把它渲染在**卡片正文（不折叠）**，避免用户把
+> 「Alchemy MCP Server」误读成我们接了官方 MCP 端点。
+

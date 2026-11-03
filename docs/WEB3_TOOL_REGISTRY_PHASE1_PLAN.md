@@ -29,6 +29,24 @@
 - **上游文档**：`docs/WEB3_AI_WORKBENCH_PRD.md`（产品定位与路线图）
 - **目标**：在现有 AI 推理链路中加入可靠的 Web3 工具层，先落地**真实、可追溯的只读链上查询**，把 `/chat` 从通用聊天升级为 Web3 AI 工作台的第一块地基
 
+> ### 📌 2026-11-03 落地记录：第一个工具已接入
+>
+> 本文档**仍是工具层的契约来源**，但落地位置与 §3 的原始文件清单不同：
+>
+> | 本文档 §3 设想 | 实际落地 |
+> | --- | --- |
+> | `src/lib/web3/evidence.ts` | `src/lib/web3-tools/evidence.ts`（`ToolResult<T>` + `trace()`，字段与 §4 一致） |
+> | `src/lib/web3/clients.ts` | `src/lib/alchemy/client.ts`（**全站唯一**的 Alchemy JSON-RPC 实现，投前侦察 / 工具层 / 订阅扫链共用） |
+> | `src/app/api/web3/tools/route.ts` | `src/app/api/ai/tools/[slug]/route.ts`（GET，`runtime = nodejs`） |
+> | `src/components/compute/ToolEvidenceCard.tsx` | `src/components/compute/ToolLiveRunner.tsx`（卡片内嵌「实测台」，客户端组件） |
+>
+> **§4 的证据信封契约已经落地并生效** —— 工具层返回值统一是 `ToolResult<T>`，
+> 四条反幻觉硬规则分别对应 `ok`+`data` / `source` / `unknown[]` / `coverage`+`warnings[]`。
+> 登记台账见 `docs/ENTITLEMENT_ENFORCEMENT_STATUS.md` §14。
+>
+> **§8 的接线（挂进 `streamText`）尚未做** —— 工具目前只能从 `/ai/tools` 页面手动触发，
+> 还没有接入 Chat 的工具调用链路。
+
 ---
 
 ## 0. 范围

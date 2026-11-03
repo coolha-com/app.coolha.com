@@ -4,6 +4,7 @@ import { createPublicClient, http, type Chain } from "viem"
 import { base, mainnet } from "viem/chains"
 
 import { SUBSCRIPTION_CHAINS, type ChainKey, type TokenSymbol } from "./config"
+import { alchemyRpcUrl } from "@/lib/alchemy/client"
 import { getTreasuryAddress, settleWithTransfer, type ObservedTransfer } from "@/lib/neon/subscription"
 
 /**
@@ -27,13 +28,6 @@ const TRANSFER_EVENT = {
 const CHAIN_OBJECTS: Record<ChainKey, Chain> = {
   base,
   ethereum: mainnet,
-}
-
-export function alchemyRpcUrl(chain: ChainKey): string | null {
-  const key = process.env.ALCHEMY_KEY ?? process.env.ALCHEMY_ID ?? ""
-  if (!key) return null
-  const config = SUBSCRIPTION_CHAINS[chain]
-  return `https://${config.rpcSubdomain}.g.alchemy.com/v2/${key}`
 }
 
 export interface ScanOptions {

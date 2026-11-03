@@ -1,4 +1,5 @@
 import { DIMENSION_BY_ID, RESEARCH_DIMENSIONS } from "./dimensions"
+import { RISK_LABEL } from "./labels"
 import { fetchContractFacts, fetchOnchainFacts, fetchTokenFacts } from "./sources"
 import type {
   DimensionFinding,
@@ -19,13 +20,6 @@ import type {
  * 3. 不再有 0-100 风险分：评分精度无法由现有真实事实支撑，编造分数即假数据。
  *    改为「定性结论 + 依据说明（basis）」，让每个判断都可追溯到具体事实。
  */
-
-const RISK_LABEL: Record<RiskLevel, string> = {
-  low: "低风险",
-  medium: "中风险",
-  high: "高风险",
-  critical: "极高风险",
-}
 
 const RISK_ORDER: Record<RiskLevel, number> = { low: 0, medium: 1, high: 2, critical: 3 }
 
@@ -399,4 +393,3 @@ function buildVerdict(
   return `对 ${target} 的侦察基于 ${liveCount} 个数据源的真实事实，综合定性为「${riskText}」。${tail}报告只呈现已确认的事实，未接入的部分不做推测。`
 }
 
-export { RISK_LABEL }

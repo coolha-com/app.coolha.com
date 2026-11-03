@@ -118,6 +118,19 @@ export function ToolCard({ tool }: { tool: Web3Tool }) {
 
       <p className="mt-2 text-xs leading-5 text-muted-foreground">{tool.summary}</p>
 
+      {/*
+        接入范围必须摊在正文里，不能折叠。
+        条目名是以太坊官方目录的原名，「已接入」徽章指的是我们实际接的能力 ——
+        两者不总是同一件事（Alchemy 条目叫 MCP Server，我们接的是链上数据读链）。
+        折叠起来就等于陈列即承诺。
+      */}
+      {tool.liveScope ? (
+        <p className="mt-2 rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-xs leading-5">
+          <span className="font-medium text-primary">接入范围：</span>
+          {tool.liveScope}
+        </p>
+      ) : null}
+
       {tool.integration === "live" ? <ToolLiveRunner toolId={tool.id} /> : null}
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -151,8 +164,15 @@ export function ToolCard({ tool }: { tool: Web3Tool }) {
             : " · 暂无排期"}
       </p>
 
+      {/*
+        「支持」描述的是**第三方工具本身**的能力，不是我们的接入范围。
+        对已接入的条目尤其要分清 —— Alchemy 那条写「支持 100+ 链」是官方条目
+        的能力，我们实际只接了 Base + Ethereum（见上面的接入范围）。
+      */}
       {tool.chains.length > 0 ? (
-        <p className="mt-1 text-xs text-muted-foreground">支持：{tool.chains.join(" · ")}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          该工具支持：{tool.chains.join(" · ")}
+        </p>
       ) : null}
 
       <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs">

@@ -14,7 +14,7 @@ import {
 } from "react-icons/ri"
 import { cn } from "@/lib/utils"
 import { RESEARCH_DIMENSIONS } from "@/lib/research/dimensions"
-import { RISK_LABEL } from "@/lib/research/engine"
+import { RISK_LABEL } from "@/lib/research/labels"
 import type {
   DimensionFinding,
   DimensionId,
