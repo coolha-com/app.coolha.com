@@ -1,5 +1,5 @@
 import { DIMENSION_BY_ID, RESEARCH_DIMENSIONS } from "./dimensions"
-import { RISK_LABEL } from "./labels"
+import { REPORT_DISCLAIMER, RISK_LABEL } from "./labels"
 import { fetchContractFacts, fetchOnchainFacts, fetchTokenFacts } from "./sources"
 import type {
   DimensionFinding,
@@ -46,9 +46,16 @@ function unavailable(id: DimensionId, reason: string): DimensionFinding {
   }
 }
 
+/**
+ * 构造一个 live 维度结论。
+ *
+ * ⚠️ `riskLevel` 允许为 `null` —— **「取到了真实数据但无法定级」是一种正常状态**，
+ * 不能强制回落成 `low`（那是假安全感）或 `medium`（那是假异常）。
+ * 典型场景：`onchain` 的地址从未发过交易、`token` 的核心指标未接入。
+ */
 function live(
   id: DimensionId,
-  riskLevel: RiskLevel,
+  riskLevel: RiskLevel | null,
   summary: string,
   signals: FindingSignal[],
   recommendations: string[],
@@ -97,7 +104,15 @@ async function buildContract(target: string): Promise<DimensionFinding> {
     },
     {
       label: "源码验证（Sourcify）",
-      value: verified === true ? "已验证开源" : verified === false ? "未验证" : "无记录",
+      // ⛔ 四态必须说四句不同的话 —— 「未验证」与「查不到」不可混为一谈
+      value:
+        verified === true
+          ? "已验证开源"
+          : verified === false
+            ? "有验证记录但与链上字节码不匹配"
+            : verified === "not-found"
+              ? "无验证记录"
+              : "未知（验证状态取数失败）",
       tone: verified === true ? "ok" : verified === false ? "bad" : "warn",
     },
   ]
@@ -109,20 +124,31 @@ async function buildContract(target: string): Promise<DimensionFinding> {
     })
   }
 
-  const riskLevel: RiskLevel =
-    verified === true ? "low" : verified === false ? "high" : "medium"
+  // ⛔ 只有 `false`（有记录但不匹配）是明确的负面事实，才可定级为「发现明确异常」。
+  // 「not-found」（确认无记录）与 `null`（取数失败）都是**无法判定** → null。
+  // 缺失 ≠ 异常。
+  const riskLevel: RiskLevel | null =
+    verified === true ? "low" : verified === false ? "high" : null
 
   const summary =
     verified === true
       ? "合约源码已在 Sourcify 验证开源，链上字节码与公开源码一致，可自行核对实现。"
       : verified === false
-        ? "合约源码未在 Sourcify 验证，无法核对链上代码的实际行为，交互风险显著升高。"
-        : "Sourcify 没有该合约的验证记录，无法确认源码是否与链上字节码一致。"
+        ? "Sourcify 有该合约的验证记录，但记录与链上字节码不匹配，无法据此核对链上代码的实际行为。"
+        : verified === "not-found"
+          ? "Sourcify 没有该合约的验证记录。这是确定结论（上游确认无记录），不等于源码有问题。代币流动性深度、持仓集中度、解锁节奏、部署者与团队背景均需其他数据源，当前未接入，不作判断。"
+          : "本次未能取到 Sourcify 的验证状态（数据源不可用或返回了未知格式），无法判定源码是否与链上字节码一致。代币流动性深度、持仓集中度、解锁节奏、部署者与团队背景均需其他数据源，当前未接入，不作判断。"
 
+  // ⛔ 行动建议只给**技术核实路径**，不给资金操作指令
   const recommendations =
     verified === true
-      ? ["在 Sourcify / 区块浏览器核对源码后小额测试", "关注合约是否可升级（proxy）"]
-      : ["未验证源码前不要转入主资金", "要求项目方提供验证源码或第三方审计", "仅用可亏损额度参与"]
+      ? ["在区块浏览器核对合约源码与当前字节码是否一致", "关注合约是否可升级（proxy）"]
+      : verified === false
+        ? [
+            "在区块浏览器核对合约源码与当前字节码是否一致",
+            "查阅该合约的验证页与项目方公布的第三方审计报告",
+          ]
+        : ["在区块浏览器核对合约源码与当前字节码是否一致", "查阅该合约的验证页与项目方公布的第三方审计报告"]
 
   return live(
     id,
@@ -161,10 +187,13 @@ async function buildOnchain(target: string): Promise<DimensionFinding> {
     },
   ]
 
-  const riskLevel: RiskLevel = facts.txCount === 0 ? "medium" : "low"
+  // ⛔ `txCount === 0` **不是异常** —— 刚部署的合约、刚创建的钱包必然如此。
+  // 「没有链上历史」是**覆盖盲区**，不是风险证据 → 不定级（null）。
+  // ⚠️ 原实现在此定为 medium，会让「第一个查自己新钱包的用户」被告知「发现部分异常」。
+  const riskLevel: RiskLevel | null = facts.txCount === 0 ? null : "low"
   const summary =
     facts.txCount === 0
-      ? "该地址尚未发出过任何交易，缺乏链上历史可供判断，建议谨慎。"
+      ? "该地址尚未发出过任何交易，链上历史不足，无法判定。"
       : "已取到该地址的真实余额与交易数。注意：活跃地址趋势、资金净流入、鲸鱼动向需要更完整的数据源，当前未接入，本报告不作推测。"
 
   return live(
@@ -221,11 +250,14 @@ async function buildToken(
 
   return live(
     id,
-    "low",
-    "已取到 DefiLlama 的真实市场数据。注意：代币投资风险还需流动性深度、持仓集中度、解锁节奏等指标，这些数据源当前未接入，本报告只呈现已确认的事实，不作推测。",
+    // ⛔ 不再恒为 "low" —— 本维度只查了价格与 TVL 两项，流动性深度/持仓集中度/
+    // 解锁节奏三项**未接入**。标成「未发现异常」是**假安全感**（把「没查」
+    // 说成「查了没有」）→ 改为 null（数据不足以判定）。
+    null,
+    "已取到 DefiLlama 的真实市场数据（价格与 TVL）。注意：代币流动性深度、持仓集中度、解锁节奏等指标需专门数据源，当前未接入，不作判断。",
     signals,
     ["结合已取到的真实价格/TVL 判断", "持仓集中度与解锁数据待接入后再评估"],
-    "依据：DefiLlama coins/prices 或 protocol API（真实抓取）",
+    "依据：DefiLlama coins/prices 或 protocol API（真实抓取，仅价格与 TVL 两项）",
   )
 }
 
@@ -353,15 +385,31 @@ export async function generateResearchReport(
   const liveDims = dimensions.filter((d) => d.status === "live")
   const unavailableDims = dimensions.filter((d) => d.status === "unavailable")
 
+  // ⛔ **零结论优先**。
+  //
+  // 事故背景：原实现用 reduce 的种子值 "low"，而 `d.riskLevel &&` 会跳过 null 维度
+  // → 所有 live 维度都无结论时，reduce 直接返回种子 "low" → 零结论却输出
+  // 「已查项未发现异常」。那比原来的「低风险」更糟：原来是模糊判断，
+  // 新标签是一句**明确的事实断言**（宣称查过且没发现），实际是什么都没判定。
+  //
+  // 正确语义：「有结论的维度中最差的那个」；**一个结论都没有 → null**。
+  const judgedDims = liveDims.filter((d) => d.riskLevel !== null)
   const overallRisk =
-    liveDims.length === 0
+    judgedDims.length === 0
       ? null
-      : liveDims.reduce<RiskLevel>(
-          (worst, d) => (d.riskLevel && RISK_ORDER[d.riskLevel] > RISK_ORDER[worst] ? d.riskLevel : worst),
+      : judgedDims.reduce<RiskLevel>(
+          (worst, d) =>
+            d.riskLevel && RISK_ORDER[d.riskLevel] > RISK_ORDER[worst] ? d.riskLevel : worst,
           "low",
         )
 
-  const verdict = buildVerdict(trimmed, liveDims.length, unavailableDims.length, overallRisk)
+  const verdict = buildVerdict(
+    trimmed,
+    liveDims.length,
+    unavailableDims.length,
+    overallRisk,
+    liveDims.length - judgedDims.length,
+  )
 
   return {
     target: trimmed,
@@ -373,23 +421,44 @@ export async function generateResearchReport(
     executionPlan: buildExecutionPlan(targetType, trimmed),
     liveCount: liveDims.length,
     unavailableCount: unavailableDims.length,
+    disclaimer: REPORT_DISCLAIMER,
   }
 }
 
+/**
+ * 构建报告结论句 —— **三态**。
+ *
+ * ① 完全无数据 → 不给任何结论
+ * ② 取到了数据但**无一维度能定级** → 明确说「缺少可判定的结论」
+ * ③ 有结论 → 给出已查项的结论
+ */
 function buildVerdict(
   target: string,
   liveCount: number,
   unavailableCount: number,
   overallRisk: RiskLevel | null,
+  unjudgedCount: number,
 ): string {
   if (liveCount === 0) {
     return `本次对 ${target} 的侦察**没有取到任何真实数据**（数据源未接入或目标未被收录），因此不给出任何结论——不做无依据的推测。请检查数据源配置，或换用 DefiLlama 收录的目标。`
   }
-  const riskText = overallRisk ? RISK_LABEL[overallRisk] : "无结论"
+
+  // ⚠️ tail 有两种「没有结论」：数据源未接入（unavailable）与取到了但无法定级
+  // （live + riskLevel=null）。后者数据是取到了的，不能说成「未接入」。
+  const unjudgedNote =
+    unjudgedCount > 0
+      ? `其中 ${unjudgedCount} 个维度的数据不足以判定，不参与定级。`
+      : ""
   const tail =
     unavailableCount > 0
       ? `另有 ${unavailableCount} 个维度的数据源未接入，这些维度**不给任何数值与判断**。`
       : "所选维度均已取到真实数据。"
-  return `对 ${target} 的侦察基于 ${liveCount} 个数据源的真实事实，综合定性为「${riskText}」。${tail}报告只呈现已确认的事实，未接入的部分不做推测。`
+
+  // ⚠️ 零结论时**不能**输出「已查项未发现异常」—— 那是宣称「查过且没发现」。
+  const riskText = overallRisk ? `，已查项的核查结论为「${RISK_LABEL[overallRisk]}」` : ""
+  if (!overallRisk) {
+    return `本次对 ${target} 的核查取到 ${liveCount} 个数据源的真实事实，但当前缺少可判定的结论。${unjudgedNote}${tail}报告只呈现已确认的事实，未接入的部分不做推测。`
+  }
+  return `本次对 ${target} 的核查取到 ${liveCount} 个数据源的真实事实${riskText}。${unjudgedNote}${tail}报告只呈现已确认的事实，未接入的部分不做推测。`
 }
 

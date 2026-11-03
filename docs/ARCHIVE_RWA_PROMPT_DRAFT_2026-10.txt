@@ -1,0 +1,368 @@
+下面是**可直接复制到 TraeAI IDE / Copilot / Cursor / GPT 工程模式**的高质量提示词（已结构化，适配你现有 Next.js + Web3 项目）。  
+目标：在你当前项目中**增量集成 RWA Aggregator + AI 模块**。
+
+---
+
+# 一、全局系统提示词（先喂给 TraeAI）
+
+```txt id="hhna1s"
+你是一个资深 Web3 + AI 全栈架构师。
+
+正在开发一个 RWA Aggregator 平台（类似 Uniswap + Nansen + Bloomberg Terminal），
+技术栈为：
+
+- Next.js (App Router)
+- TypeScript
+- wagmi + viem
+- TailwindCSS
+- Supabase（可选）
+- EVM chains
+
+目标：在现有项目中集成 RWA资产展示、交易路由、AI分析、资产管理系统。
+
+核心约束：
+1. 不做托管，不做撮合，只做前端 + Router
+2. 所有交易通过外部协议执行（如 Uniswap / Ondo / Aave）
+3. 代码必须模块化，支持后续扩展多RWA协议
+4. UI风格偏 Web3 Dashboard（类似 Nansen / Dune）
+5. 所有数据结构需要可扩展（不同RWA协议不统一）
+
+输出要求：
+- 使用清晰的文件结构
+- 所有组件 typed
+- API 层与 UI 层解耦
+- 提供 mock 数据结构 + 接口定义
+```
+
+---
+
+# 二、发现页（RWA Marketplace）提示词
+
+```txt id="xyhwip"
+在 Next.js App Router 项目中新增页面：
+
+/app/discover/page.tsx
+
+实现一个 RWA Marketplace 页面，包含：
+
+## 1. 资产列表（Table/Grid）
+字段：
+- name
+- protocol（Centrifuge / Ondo 等）
+- apy
+- riskScore（AI生成）
+- liquidity（high/low）
+- maturityDate
+- tvl
+
+## 2. 筛选条件
+- 收益率范围（APY）
+- 风险等级（低/中/高）
+- 资产类型（债券 / 信贷 / 房地产）
+- 流动性（可赎回 / 锁仓）
+
+## 3. 排行榜模块
+- 热门资产（按TVL）
+- 收益最高
+- 风险最低
+
+## 4. 组件拆分
+- RwaTable.tsx
+- FilterBar.tsx
+- AssetCard.tsx
+- RankingPanel.tsx
+
+## 5. 数据层
+创建：
+/lib/rwa/types.ts
+/lib/rwa/mockData.ts
+
+类型定义必须支持不同协议扩展，例如：
+
+type RWAAsset = {
+  id: string
+  name: string
+  protocol: string
+  apy: number
+  riskScore: number
+  liquidityType: "liquid" | "locked"
+  maturityDate?: string
+  tvl: number
+}
+
+先用 mock 数据实现 UI
+```
+
+---
+
+# 三、资产详情页（核心页）提示词
+
+```txt id="v6z4wv"
+创建页面：
+
+/app/rwa/[id]/page.tsx
+
+实现 RWA 资产详情页，包含：
+
+## 1. 基本信息
+- 项目介绍
+- 收益率 APY
+- 协议来源
+
+## 2. AI风险评分组件
+组件：
+- RiskScoreBadge.tsx
+- 显示：
+  - 分数（0-100）
+  - 等级（AAA / BBB / High Risk）
+
+## 3. 资金流（链上）
+组件：
+- FundFlowChart.tsx
+使用 mock 数据模拟：
+- inflow
+- outflow
+
+## 4. 历史表现
+- APY变化折线图
+
+## 5. 资金流可视化
+- 简单 Sankey 或列表形式
+
+## 6. 交易模块（核心）
+组件：
+- TradePanel.tsx
+
+功能：
+- 输入金额
+- 选择 token（USDC）
+- 调用 Uniswap Router 合约（用 wagmi）
+
+不要实现真实 swap，先 mock：
+- simulateTransaction()
+
+结构必须预留：
+- routerAdapter（未来接不同协议）
+
+## 7. 文件结构
+/components/rwa/
+  AssetHeader.tsx
+  RiskPanel.tsx
+  FundFlow.tsx
+  TradePanel.tsx
+```
+
+---
+
+# 四、AI页提示词（核心壁垒）
+
+```txt id="46s2xo"
+创建页面：
+
+/app/ai/page.tsx
+
+实现 AI 分析系统，分三块：
+
+--------------------------------
+
+## 1. Asset Analysis
+
+组件：
+- AssetAnalysisCard.tsx
+
+内容：
+- 收益来源拆解（mock文本）
+- 风险评分（AI生成）
+- 结构解析（SPV / 债权）
+
+--------------------------------
+
+## 2. Onchain Tracking
+
+组件：
+- WhaleTracker.tsx
+- LiquidationAlert.tsx
+
+功能：
+- 大户交易记录（mock）
+- 资金流变化
+- 风险提示
+
+--------------------------------
+
+## 3. AI Advisor
+
+组件：
+- PortfolioSuggestion.tsx
+
+功能：
+- 推荐组合（3个RWA）
+- 每个占比
+- 预期收益
+
+--------------------------------
+
+## 4. AI服务层
+
+创建：
+
+/lib/ai/aiService.ts
+
+方法：
+
+generateRiskScore(asset)
+generateAnalysis(asset)
+generatePortfolio(user)
+
+全部先用 mock + rule-based 实现
+
+--------------------------------
+
+## 5. 自动跟踪系统（重要）
+
+实现：
+
+- 用户订阅资产
+- mock 推送：
+
+类型：
+- 风险变化
+- 收益变化
+- 异常事件
+
+创建：
+/lib/ai/alertEngine.ts
+```
+
+---
+
+# 五、钱包页（Portfolio）提示词
+
+```txt id="5zkwjg"
+创建页面：
+
+/app/portfolio/page.tsx
+
+实现用户资产页面：
+
+--------------------------------
+
+## 1. 总资产
+- 总余额（USD）
+- 今日收益
+
+--------------------------------
+
+## 2. 持仓列表
+字段：
+- asset name
+- amount
+- value
+- apy
+- maturityDate
+
+--------------------------------
+
+## 3. 分布图
+- 按资产类型
+- 按协议
+
+--------------------------------
+
+## 4. 收益趋势
+- 折线图（mock）
+
+--------------------------------
+
+## 5. 风险敞口
+- 高风险占比
+- AI提示
+
+--------------------------------
+
+## 6. 数据来源
+
+创建：
+/lib/portfolio/portfolioService.ts
+
+支持：
+- 多协议聚合（mock）
+
+--------------------------------
+
+## 7. Web3连接
+
+使用：
+- wagmi useAccount()
+
+但不强依赖链上数据（先mock）
+```
+
+---
+
+# 六、交易路由抽象（关键架构提示词）
+
+```txt id="emzqck"
+实现一个 DeFi Router 抽象层：
+
+/lib/defi/router.ts
+
+目标：
+统一调用不同协议（Uniswap / Aave / Ondo）
+
+接口：
+
+swap(params)
+lend(params)
+buyRWA(params)
+
+设计模式：
+Adapter Pattern
+
+创建：
+
+- uniswapAdapter.ts
+- aaveAdapter.ts
+
+要求：
+- 可扩展
+- 解耦 UI
+```
+
+---
+
+# 七、最关键补一句（避免你走偏）
+
+在 TraeAI 最后加这一句：
+
+```txt id="t4m85v"
+所有实现优先保证：
+
+1. UI先跑通（mock数据）
+2. 架构可扩展（未来接真实协议）
+3. 不做真实资金交互（开发阶段）
+
+代码要接近生产级结构，而不是demo拼接
+```
+
+---
+
+# 总结（你现在这套提示词本质）
+
+你在让 AI 帮你生成一个：
+
+> **RWA Aggregator MVP（可扩展成链上资产银行入口）**
+
+结构已经是对的，关键执行顺序：
+
+1. 先 Discover + Detail（交易入口）
+2. 再 AI（壁垒）
+3. 最后 Portfolio（留存）
+
+---
+
+如果你下一步要，我可以直接给你：
+
+- 👉 **真实可接协议清单（每个RWA怎么接）**
+- 👉 或 **完整数据库 schema（Supabase版）**
+- 👉 或 **Coolha 产品商业闭环设计（怎么赚钱）**

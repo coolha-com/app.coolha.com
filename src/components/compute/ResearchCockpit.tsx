@@ -274,10 +274,17 @@ function ReportView({
   showPlan: boolean
   setShowPlan: (v: boolean) => void
 }) {
+  // ⛔ 三态样式必须分开：
+  // - overallRisk 有值 → 风险色
+  // - overallRisk 为 null 但 liveCount > 0 → **中性**（取了数据但无法定级）
+  // - liveCount === 0 → 无数据（红）
+  // 混用 UNAVAILABLE_STYLE 会让「有真实数据但无结论」显示成「未接入」的灰卡片。
+  const noData = report.liveCount === 0
   const overall = report.overallRisk
     ? RISK_STYLE[report.overallRisk]
-    : UNAVAILABLE_STYLE
-  const noData = report.liveCount === 0
+    : noData
+      ? UNAVAILABLE_STYLE
+      : NO_ASSESSMENT_STYLE
 
   return (
     <div className="space-y-5">
@@ -318,9 +325,16 @@ function ReportView({
       <div className={cn("rounded-2xl border p-5", overall.bg, overall.border)}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs text-muted-foreground">综合结论 · 对「{report.target}」</p>
+            <p className="text-xs text-muted-foreground">核查结论 · 对「{report.target}」</p>
             <p className={cn("mt-1 text-2xl font-semibold", overall.text)}>
-              {noData ? "未取到真实数据" : `定性：${RISK_LABEL[report.overallRisk!]}`}
+              {/* ⛔ 不得用 `RISK_LABEL[report.overallRisk!]` —— `!` 是编译期断言，
+                  运行时 `RISK_LABEL[null]` 返回 undefined 且**不抛异常** →
+                  页面静默显示「定性：undefined」。类型检查与构建都测不出这种失败。 */}
+              {noData
+                ? "未取到真实数据"
+                : report.overallRisk
+                  ? `已查项结论：${RISK_LABEL[report.overallRisk]}`
+                  : "已取到事实，但未形成结论"}
             </p>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -331,9 +345,21 @@ function ReportView({
         <p className="mt-3 text-sm leading-6 text-foreground/90">{report.verdict}</p>
         {!noData ? (
           <p className="mt-2 text-[11px] text-muted-foreground">
-            说明：已移除 0-100 风险分——现有真实事实不足以支撑评分精度，编造分数等同于假数据。
+            本报告只列出已核查的链上事实与未接入项，不给出投资定级。
           </p>
         ) : null}
+      </div>
+
+      {/* 免责与「不构成投资建议」声明 —— §1.2 成稿 */}
+      <div className="rounded-2xl border bg-muted/30 p-4">
+        <p className="text-xs font-medium">关于这份报告</p>
+        <div className="mt-1.5 space-y-1.5">
+          {REPORT_DISCLAIMER_DETAILED.map((line, i) => (
+            <p key={i} className="text-[11px] leading-5 text-muted-foreground">
+              {line}
+            </p>
+          ))}
+        </div>
       </div>
 
       {/* 维度卡 */}
@@ -381,7 +407,14 @@ function DimensionCard({ d }: { d: DimensionFinding }) {
   const meta = RESEARCH_DIMENSIONS.find((x) => x.id === d.id)!
   const Icon = meta.Icon
   const isLive = d.status === "live"
-  const style = d.riskLevel ? RISK_STYLE[d.riskLevel] : UNAVAILABLE_STYLE
+  // ⛔ live + riskLevel === null（「取到数据但无法定级」）**不能**套 UNAVAILABLE_STYLE
+  // —— 那是「数据源未接入」卡片的灰色样式，用在这里会让一张有真实数据的卡片
+  // 显示成「未接入」的混合态。改用中性样式（无风险色）。
+  const style = d.riskLevel
+    ? RISK_STYLE[d.riskLevel]
+    : isLive
+      ? NO_ASSESSMENT_STYLE
+      : UNAVAILABLE_STYLE
 
   // 未接入：不给任何数值、不渲染信号格
   if (!isLive) {

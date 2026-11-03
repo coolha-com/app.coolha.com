@@ -78,4 +78,11 @@ export interface ResearchReport {
   liveCount: number
   /** 未取到数据（未接入/抓取失败）的维度数 */
   unavailableCount: number
+  /**
+   * 免责与「不构成投资建议」声明。
+   *
+   * ⚠️ **必须存在于 API 响应体里**，不能只落在页面 ——
+   * 未登录调用者只看 JSON，不看页面；只加页面免责等于没加。
+   */
+  disclaimer: string
 }

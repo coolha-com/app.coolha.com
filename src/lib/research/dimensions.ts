@@ -45,8 +45,8 @@ export const RESEARCH_DIMENSIONS: DimensionMeta[] = [
   },
   {
     id: "onchain",
-    title: "链上数据投资研究",
-    blurb: "当前 ETH 余额、累计发出交易数等真实链上事实（活跃度/资金流需更完整数据源，未接入则不推测）。",
+    title: "链上数据核查",
+    blurb: "当前 ETH 余额、累计发出交易数等真实链上事实。活跃趋势、资金净流入、鲸鱼动向需更完整数据源，当前未接入，不作判断。",
     Icon: RiLineChartLine,
     dataSourceId: "alchemy",
     dataSourceLabel: "Alchemy 链上数据",
@@ -56,8 +56,8 @@ export const RESEARCH_DIMENSIONS: DimensionMeta[] = [
   },
   {
     id: "token",
-    title: "代币投资风险",
-    blurb: "DefiLlama 真实价格与协议 TVL；流动性深度、持仓集中度、解锁节奏需专门数据源，未接入则不推测。",
+    title: "代币数据核查",
+    blurb: "DefiLlama 真实价格与协议 TVL。流动性深度、持仓集中度、解锁节奏需专门数据源，当前未接入，不作判断。",
     Icon: RiCoinLine,
     dataSourceId: "defillama",
     dataSourceLabel: "DefiLlama",
@@ -67,25 +67,26 @@ export const RESEARCH_DIMENSIONS: DimensionMeta[] = [
   },
   {
     id: "team",
-    title: "项目方 / 团队分析",
-    blurb: "部署者画像、关联 scam 地址、资金是否多签托管。需链上实体图谱数据源，当前未接入。",
+    title: "项目方公开足迹",
+    blurb:
+      "部署记录、公开身份（ENS / 社媒账号）、公开代码仓库活跃度、融资与安全事件披露。实体关联与多签托管需付费标签源，当前未接入，不作判断。",
     Icon: RiTeamLine,
     dataSourceId: "entity-cluster",
-    dataSourceLabel: "链上实体图谱（未接入）",
+    dataSourceLabel: "Blockscout + ENS + GitHub + DefiLlama",
     live: false,
     realSource:
-      "需要付费/自建的实体聚类与地址标签数据源（以部署者为种子做关联聚类、标注 scam 触碰、多签占比）。未接入 → 该维度不给任何结论。",
+      "Blockscout v2 取部署者地址与 ENS 反解；ensdata.net 取正/反向档案；GitHub API 取仓库与提交活跃度、贡献者数；DefiLlama 取融资轮次与安全事件（经 DefiLlama 汇编，非一手审计结论）。",
   },
   {
     id: "sentiment",
-    title: "媒体热度 / 情绪分析",
-    blurb: "社媒讨论量、情绪极性、刷量检测、负面预警。需社交聚合数据源，当前未接入。",
+    title: "媒体情绪 / 社媒热度",
+    blurb: "需付费社交聚合源，当前未接入。情绪极性、社媒讨论量、刷量检测均不提供任何数值。",
     Icon: RiMegaphoneLine,
     dataSourceId: "media-signals",
-    dataSourceLabel: "社交情绪源（未接入）",
+    dataSourceLabel: "社交情绪源（需付费，当前未接入）",
     live: false,
     realSource:
-      "需要聚合 X / RootData / 行业媒体的提及量与情感模型。未接入 → 该维度不给任何数值（不编造热度或极性）。",
+      "X API Free 档 100 reads/月、Reddit 公开 API 不可达、LunarCrush 无免费档、CryptoPanic 免费档已取消 —— 免费档均不可用。未接入 → 该维度不给任何数值。",
   },
 ]
 
