@@ -11,6 +11,7 @@ import {
   TOOL_PRIORITY_LABELS,
   TOOL_RISK_LABELS,
 } from "@/lib/web3-tools/service"
+import { ToolLiveRunner } from "./ToolLiveRunner"
 import { cn } from "@/lib/utils"
 
 /**
@@ -117,6 +118,8 @@ export function ToolCard({ tool }: { tool: Web3Tool }) {
 
       <p className="mt-2 text-xs leading-5 text-muted-foreground">{tool.summary}</p>
 
+      {tool.integration === "live" ? <ToolLiveRunner toolId={tool.id} /> : null}
+
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
         <PriorityBadge priority={tool.priority} />
         <RiskBadge risk={tool.risk} />
@@ -141,7 +144,11 @@ export function ToolCard({ tool }: { tool: Web3Tool }) {
 
       <p className="mt-2 text-xs text-muted-foreground">
         接入方式：{TOOL_ACCESS_LABELS[tool.access]}
-        {tool.plannedPhase ? ` · 计划 Phase ${tool.plannedPhase}` : " · 暂无排期"}
+        {tool.integration === "live"
+          ? " · 已接入，可在上方实测"
+          : tool.plannedPhase
+            ? ` · 计划 Phase ${tool.plannedPhase}`
+            : " · 暂无排期"}
       </p>
 
       {tool.chains.length > 0 ? (

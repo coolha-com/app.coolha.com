@@ -69,7 +69,7 @@
 
 ## /ai 模块（算力市场）
 - 子导航 `ComputeSubNav`（2026-10-17 重排，已删 Chat）：**`/ai/tools`(Web3 工具) → `/ai/research`(投前侦察) → `/ai/models`(模型广场) → `/ai/api-keys` → `/ai/usage` → `/ai/billing`**。`ModulePage` 提供壳层。**`/ai` 是重定向壳页 → 默认落 `/ai/tools`**（侧边栏「智能市场」点进去先看工具）。Chat 入口只在侧边栏第一项。
-- **/ai/tools（Web3 工具选型，2026-10-16）**：不自研，只接以太坊官方 agent-tooling 目录的现成 MCP/Skill/CLI；31 条目全部 `integration:"none"`（页面常驻「未接入」声明）。P0=先接读数据/查链（Alchemy/DefiLlama/Slither）+ 签名流（request-wallet-sign）。红线圈：`integration:"none"` 必须显「未接入」，不得暗示可用；服务端不托管第三方密钥、不代售 key；写操作先出交易草稿再签名。
+- **/ai/tools（Web3 工具选型，2026-10-16 建；2026-11-03 接入首个工具）**：不自研，只接以太坊官方 agent-tooling 目录的现成 MCP/Skill/CLI。**31 条目中 1 条已 `integration:"live"`（`alchemy-mcp-server`），其余 30 条仍 `"none"`**（页面显示「未接入」）。已接入的执行点 = `/api/ai/tools/[slug]`（服务端 Alchemy JSON-RPC 只读：区块高度/时间、原生币余额、nonce；Base+Ethereum），数据客户端 `src/lib/web3-tools/alchemy.ts`（`server-only`），前端入口 = 卡片内「实测台」`ToolLiveRunner.tsx`（客户端组件，点击才发请求 → 页面仍 `force-static`）。⚠️ 接的是 Alchemy 链上数据能力，**不是官方 mcp.alchemy.com 的 MCP 端点**。P0 下一步=DefiLlama/Slither+签名流（request-wallet-sign）。红线圈：`"none"` 必须显「未接入」不得暗示可用；`"live"` 必须在 `docs/ENTITLEMENT_ENFORCEMENT_STATUS.md` §14 找到执行点；服务端不托管第三方密钥、不代售 key；写操作先出交易草稿再签名；未配置/上游失败必须如实报「未接入」**绝不返回占位数值**。
 - **/ai/research（投前侦察，2026-10-17 起真实数据，不再有模拟）**：用户在签名/买币/RWA 前先来挖链。五维度，`src/lib/research/{types,dimensions,sources,engine}.ts` + `src/app/api/research/route.ts`（POST，runtime=nodejs）。**只出真实数据**：合约=Sourcify+Alchemy `eth_getCode`；链上=Alchemy 余额/nonce；代币=DefiLlama 价格/TVL；**Alchemy key 只在服务端读，不下发浏览器**。`team`/`sentiment` 无免费源 → `status:"unavailable"`，**不给任何数值与判断**。**已移除 0-100 风险分**（编造分数=假数据），改定性结论+`basis` 依据。UI `ResearchCockpit.tsx` fetch `/api/research`。易踩坑：DefiLlama `/protocol/{slug}` 的 `tvl` 是历史数组，须 `series.at(-1).totalLiquidityUSD`。
 
 ## 部署就绪（状态参考）

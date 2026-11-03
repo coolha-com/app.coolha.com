@@ -331,3 +331,30 @@ AI Product Terms §8.3 要求向 End User 提供单独 ToS + 隐私政策、**�
 - [ ] **P3** 全文检索（已建好 `search_tsv` + GIN，`fullTextSearch` 尚未 gate）+ 导出（按 `exportScope` 分档）+ 到期数据的定期清理
 - [ ] **P4** 服务端代理 BYOK（解锁路由策略 / 并排对比 / 成本看板 / API 出口），需先过合规确认
 - [x] ~~**P5** 团队席位与组织模型~~ —— 2026-10-16 决定不做，字段已移除
+
+---
+
+## 十四、工具层接入执行点登记（2026-11-03 起）
+
+> `src/lib/web3-tools/catalog.ts` 的规矩：**任何一条要改成 `planned`/`live`，
+> 必须在本文件里找到对应的服务端执行点，否则就是卖空气。**
+> 本节是 `/ai/tools` 的执行点台账。
+
+### 14.1 `alchemy-mcp-server` → `integration: "live"`
+
+| 项 | 内容 |
+| --- | --- |
+| 服务端执行点 | `src/app/api/ai/tools/[slug]/route.ts`（GET，`runtime = nodejs`） |
+| 数据客户端 | `src/lib/web3-tools/alchemy.ts`（`import "server-only"`） |
+| 实际调用 | Alchemy JSON-RPC：`eth_blockNumber` / `eth_getBlockByNumber` / `eth_getBalance` / `eth_getTransactionCount` |
+| 覆盖链 | Base（8453）+ Ethereum（1），只读 |
+| 前端入口 | `/ai/tools` 卡片内嵌「实测台」（`src/components/compute/ToolLiveRunner.tsx`，客户端组件，点击后才发请求） |
+| 凭证 | `ALCHEMY_KEY`（`ALCHEMY_ID` 兜底），**只在服务端读取**，永不下发浏览器 |
+| 降级行为 | 凭证缺失 → 503 `not_configured`；上游异常 → 502 `upstream_error`；未接入的工具 → 404 `not_integrated`。**任何分支都不返回占位或模拟数值** |
+| 可观测性 | `/api/health` → `services.alchemy.{configured, ok, detail}`（只报配置存在性，健康检查不消耗上游配额） |
+| 限流 | 进程内滑动窗口 20 次/分钟/IP（兜底；跨实例不共享） |
+| 边界 | ⚠️ 接入的是 **Alchemy 的链上数据能力**，**不是官方 `mcp.alchemy.com` 的 MCP 端点**。不含任何写操作、不持钥、不需要用户签名 |
+
+**未接入的 30 条**：DefiLlama Skills / Slither MCP / Tenderly MCP / request-wallet-sign 等，
+`integration` 保持 `"none"`，页面显示「未接入」。它们的接入顺序见
+`src/lib/web3-tools/catalog.ts` 的 `priority` 字段与 `docs/WEB3_TOOL_REGISTRY_PHASE1_PLAN.md`。

@@ -2,6 +2,7 @@ import { isAuthConfigured } from "@/lib/neon/auth"
 import { isAiGatewayConfigured as isNeonGatewayConfigured } from "@/lib/neon/ai-gateway"
 import { gatewayErrorCode, isAiGatewayConfigured, isRealGatewayFailure } from "@/lib/ai-gateway/client"
 import { isDatabaseConfigured, query } from "@/lib/neon/postgres"
+import { isAlchemyConfigured } from "@/lib/web3-tools/alchemy"
 
 export const dynamic = "force-dynamic"
 
@@ -117,6 +118,15 @@ export async function GET() {
           : gatewayDown
             ? `通道开启但回源失败：${gatewayErrorCode(catalog.lastError)}`
             : "免费模型通道开启",
+    },
+    // Alchemy 链上数据源：/ai/tools 首个已接入工具（读链）的执行点依赖它。
+    // 只报「配置是否存在」，不做实时探测 —— 健康检查不该消耗上游配额。
+    alchemy: {
+      configured: isAlchemyConfigured(),
+      ok: isAlchemyConfigured(),
+      detail: isAlchemyConfigured()
+        ? "ALCHEMY_KEY 已配置（/ai/tools 的 Alchemy 读链可用）"
+        : "未配置（/ai/tools 的 Alchemy 读链将返回「未接入」，不返回任何链上数值）",
     },
   }
 

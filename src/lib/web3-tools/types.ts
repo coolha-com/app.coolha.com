@@ -9,8 +9,11 @@
  * 「治理层 + 证据卡 + 用户主权」上，而不是重写数据源。
  *
  * ⚠️ 红线（与项目既有纪律一致）：
- * 1. **本目录不是已接入能力**。这些工具由第三方提供，Coolha 目前**一个都没有接入**。
- *    因此每条都必须带 `integration: "none"`，UI 必须显示「未接入」，禁止出现「已支持 / 可直接调用」。
+ * 1. **本目录不是已接入能力清单**。这些工具由第三方提供，Coolha 只接了其中
+ *    已标 `live` 的那几条，其余一律 `integration: "none"`，UI 必须显示「未接入」，
+ *    禁止出现「已支持 / 可直接调用」。
+ *    标 `live` 的条目必须**有服务端执行点**且能在页面上真实跑出数据，
+ *    否则就是卖空气（执行点登记见 `docs/ENTITLEMENT_ENFORCEMENT_STATUS.md`）。
  * 2. **不代售第三方 key**。接入时服务端永不托管用户或第三方的密钥（延续 BYOK 红线）。
  *    因此 `holdsKeys: true` 的工具只能标 `priority: "no"`。
  * 3. **写操作类工具必须走草稿 + 模拟 + 签名**，永不由服务端代持私钥广播。
@@ -37,7 +40,7 @@ export type ToolRisk = "read" | "simulate" | "write"
  */
 export type ToolCategory = "data" | "research" | "dev" | "execute" | "governance"
 
-/** Coolha 的接入状态。当前全部为 `none` —— 目录页只做调研与选型展示。 */
+/** Coolha 的接入状态。标 `live` 的必须有服务端执行点，未接入时 UI 必须显示「未接入」。 */
 export type ToolIntegration = "none" | "planned" | "live"
 
 /**

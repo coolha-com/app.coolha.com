@@ -66,7 +66,7 @@ export const TOOL_RISK_ICONS: Record<ToolRisk, IconType> = {
   write: RiSwapBoxLine,
 }
 
-/** 接入状态标签：当前目录全部为「未接入」 */
+/** 接入状态标签：`live` 表示已有服务端执行点可真实调用 */
 export const TOOL_INTEGRATION_LABELS: Record<ToolIntegration, string> = {
   none: "未接入",
   planned: "规划中",

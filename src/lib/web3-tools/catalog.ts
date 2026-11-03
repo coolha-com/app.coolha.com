@@ -10,9 +10,15 @@ import type { Web3Tool } from "./types"
  * 不是实时状态。静态数据可被review、可被 diff、可离线渲染；抓取上游目录会让
  * 「我们支持了什么」和「生态里有什么」两件事混在一起。
  *
- * ⚠️ 全部 `integration: "none"`：这些工具均由第三方提供，Coolha 一个都还没接入。
- * 见 types.ts 顶部红线 1。任何一条要改成 planned/live，必须同时在
- * docs/ENTITLEMENT_ENFORCEMENT_STATUS.md 里找到对应的执行点，否则就是卖空气。
+ * ⚠️ 接入状态（红线 1）：
+ * - `integration: "none"` 的条目一律显「未接入」，UI 不得暗示可用。
+ * - 标成 `live` 的条目**必须有服务端执行点**并能在页面上真实跑出数据，
+ *   否则就是卖空气。见 `docs/ENTITLEMENT_ENFORCEMENT_STATUS.md`。
+ *
+ * 📌 2026-11-03 首个接入：`alchemy-mcp-server` → `live`。
+ * 执行点：`/api/ai/tools/[slug]`（服务端 Alchemy JSON-RPC，只读）。
+ * 接入范围写在它的 `caveats` 里 —— **接的是 Alchemy 的链上数据能力，
+ * 不是官方 mcp.alchemy.com 的 MCP 端点**，两者不要混为一谈。
  */
 export const WEB3_TOOLS: Web3Tool[] = [
   // ───────────── MCP servers（15）─────────────
@@ -48,11 +54,16 @@ export const WEB3_TOOLS: Web3Tool[] = [
     license: null,
     url: "https://ethereum.org/developers/tools/alchemy-mcp-server/",
     toolCount: null,
-    integration: "none",
+    integration: "live",
     plannedPhase: 1,
     access: "direct",
     priority: "p0",
-    caveats: ["项目已有 Alchemy key，可直接复用，无需新增密钥"],
+    caveats: [
+      "项目已有 Alchemy key，可直接复用，无需新增密钥",
+      "✅ 已接入（2026-11-03）：服务端 Alchemy JSON-RPC 只读，执行点 /api/ai/tools/alchemy-mcp-server，页面可实测",
+      "接入范围仅限区块高度 / 区块时间 / 原生币余额 / 交易计数，Base 与 Ethereum 两条链；官方 mcp.alchemy.com 的 MCP 端点尚未接入",
+      "Alchemy key 只在服务端读取，永不下发浏览器；查不到的项如实标「未取到」，不填占位数值",
+    ],
   },
   {
     id: "slither-mcp-server",

@@ -107,7 +107,7 @@ Coolha 不是一个新开的独立产品线，而是现有 `/ai` 算力市场的
 | --- | --- |
 | `/chat` | 主对话入口 |
 | `/ai/models` 模型广场 | 目录 + 价格查询（469 模型，其中 67 个赞助模型，默认 `openai/gpt-oss-20b`） |
-| `/ai/tools` Web3 工具选型 | 以太坊官方 agent-tooling 目录 31 条目（15 MCP + 15 skills + 1 CLI），按优先级标注 |
+| `/ai/tools` Web3 工具选型 | 以太坊官方 agent-tooling 目录 31 条目（15 MCP + 15 skills + 1 CLI），按优先级标注；其中 1 条（Alchemy 读链）已接入真实执行点，可在页面实测 |
 | `/ai/research` 投前侦察 | 五维度（合约安全/项目方/代币风险/链上数据/媒体情绪） |
 | `/ai/api-keys` | BYOK 配置（浏览器直连，Key 不上行） |
 | `/ai/usage`、`/ai/billing` | 用量记录、余额与账单 |
@@ -117,7 +117,8 @@ Coolha 不是一个新开的独立产品线，而是现有 `/ai` 算力市场的
 
 ### 3.2 尚未真接入的部分 ⚠️
 
-- **`/ai/tools` 的 31 个工具全部标记 `integration: "none"`**：页面只做**选型展示**，常驻「未接入」声明，**不提供实际调用**。P0 待接的是读数据/查链类（Alchemy / DefiLlama / Slither）与签名流（request-wallet-sign）。
+- **`/ai/tools` 31 个工具中，30 个仍标记 `integration: "none"`**：页面只做**选型展示**，不提供实际调用。P0 待接的是读数据/查链类（DefiLlama / Slither）与签名流（request-wallet-sign）。
+- **`/ai/tools` 已接入 1 个（2026-11-03）**：`alchemy-mcp-server` → `integration: "live"`，执行点为服务端路由 `/api/ai/tools/[slug]`（Alchemy JSON-RPC 只读：区块高度 / 区块时间 / 原生币余额 / 交易计数，Base + Ethereum）。页面卡片内嵌「实测台」，点击即真实读链。Alchemy key 只在服务端读取；未配置时该路由返回 503 `not_configured`，**不返回任何链上数值**。⚠️ 接入的是 Alchemy 的链上数据能力，**不是官方 mcp.alchemy.com 的 MCP 端点**。
 - **`/ai/research` 已接入真实数据源（2026-10-17 起）**：
   - 已接真数据：合约安全（Sourcify + Alchemy）、链上数据（Alchemy）、代币（DefiLlama）。报告数值均为真实抓取。
   - 未接入：项目方 / 团队（需链上实体图谱）、媒体情绪（需社交聚合源）——**这两类维度标记「数据源未接入」，不给任何数值与判断**。
@@ -220,6 +221,6 @@ Coolha 不是一个新开的独立产品线，而是现有 `/ai` 算力市场的
 
 ## 9. 当前最该关注的三件事
 
-1. **`/ai/tools` 的 31 个工具仍是空壳**：全部「未接入」，不提供实际调用。要变成真产品，先接 P0 只读数据源（Alchemy / DefiLlama / Slither）与签名流。（注：`/ai/research` 已于 2026-10-17 先行接真实源，可作为接入范式。）
+1. **`/ai/tools` 的 31 个工具已接 1 个，仍有 30 个空壳**：`alchemy-mcp-server` 已接真实服务端读链（执行点 `/api/ai/tools/[slug]`，2026-11-03），其余 30 条仍是「未接入」、不提供实际调用。要变成真产品，继续接 P0 只读数据源（DefiLlama / Slither）与签名流。（注：`/ai/research` 已于 2026-10-17 先行接真实源，可作为接入范式。）
 2. **合规文案待补齐**：§8.3 要求的独立 ToS、隐私政策、AI 披露尚未完成；Gateway Credits 与 Budgets 待配置。
 3. **密钥轮换**：`AI_GATEWAY_API_KEY` 需轮换（见 `.env.local`）。
