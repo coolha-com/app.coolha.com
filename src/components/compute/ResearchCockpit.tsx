@@ -14,7 +14,7 @@ import {
 } from "react-icons/ri"
 import { cn } from "@/lib/utils"
 import { RESEARCH_DIMENSIONS } from "@/lib/research/dimensions"
-import { RISK_LABEL } from "@/lib/research/labels"
+import { REPORT_DISCLAIMER_DETAILED, RISK_LABEL } from "@/lib/research/labels"
 import type {
   DimensionFinding,
   DimensionId,
@@ -38,6 +38,17 @@ const RISK_STYLE: Record<RiskLevel, { text: string; bg: string; border: string }
 const UNAVAILABLE_STYLE = {
   text: "text-muted-foreground",
   bg: "bg-muted/40",
+  border: "border-border",
+}
+
+/**
+ * 已取到真实数据，但 overallRisk / riskLevel 为 null（无法定级）。
+ * 形状与 RISK_STYLE / UNAVAILABLE_STYLE 相同，但不复用「未接入」灰卡片，
+ * 避免有数据却显示成未接入。
+ */
+const NO_ASSESSMENT_STYLE = {
+  text: "text-foreground",
+  bg: "bg-card",
   border: "border-border",
 }
 
