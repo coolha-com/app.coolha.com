@@ -6,7 +6,7 @@ import {
   getHardBlockedCountries,
   getRequestCountry,
   getSoftGatedCountries,
-} from "./src/lib/compliance/geo"
+} from "./lib/compliance/geo"
 
 const BLOCKED_PAGE_PATH = "/blocked"
 
