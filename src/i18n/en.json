@@ -30,39 +30,12 @@
     "wallet": "Wallet",
     "profile": "Profile",
     "settings": "Settings",
-    "chatLabel": "Test & debug",
-    "nav": {
-      "discover": {
-        "title": "Discover",
-        "label": "Discover",
-        "description": "Agent services, professional tools, data, and models"
-      },
-      "agents": {
-        "title": "Agents",
-        "label": "Agent catalog",
-        "description": "RWA Research, Contract Audit, DeFi Analytics, and others"
-      },
-      "data": {
-        "title": "Data & APIs",
-        "label": "Data & APIs",
-        "description": "On-chain data, RWA data, market data, model APIs"
-      },
-      "connect": {
-        "title": "Connect",
-        "label": "Connect",
-        "description": "MCP, OpenClaw, Codex, Claude, Skills, API docs"
-      },
-      "billing": {
-        "title": "Billing",
-        "label": "Billing",
-        "description": "Wallet, API keys, USDC balance, usage, spend limits"
-      },
-      "console": {
-        "title": "Console",
-        "label": "Console",
-        "description": "Task runs, API calls, error logs, usage, approvals"
-      }
-    }
+    "discover": "Discover",
+    "agents": "Agents",
+    "data": "Data & APIs",
+    "connect": "Connect",
+    "billing": "Billing",
+    "console": "Console"
   },
   "agent": {},
   "theme": {

@@ -30,39 +30,12 @@
     "wallet": "钱包",
     "profile": "用户",
     "settings": "设置",
-    "chatLabel": "测试调试",
-    "nav": {
-      "discover": {
-        "title": "Discover",
-        "label": "服务发现",
-        "description": "Agent 市场、专业工具、数据服务、模型服务"
-      },
-      "agents": {
-        "title": "Agents",
-        "label": "Agent 服务目录",
-        "description": "RWA Research、Contract Audit、DeFi Analytics 等"
-      },
-      "data": {
-        "title": "Data & APIs",
-        "label": "数据和 API",
-        "description": "链上数据、RWA 数据、市场数据、模型 API"
-      },
-      "connect": {
-        "title": "Connect",
-        "label": "接入指南",
-        "description": "MCP、OpenClaw、Codex、Claude、Skills、API 文档"
-      },
-      "billing": {
-        "title": "Billing",
-        "label": "账户和支付",
-        "description": "钱包、API Key、USDC 余额、调用记录、消费限额"
-      },
-      "console": {
-        "title": "Console",
-        "label": "开发者控制台",
-        "description": "任务运行记录、API 调用、错误日志、使用量、审批"
-      }
-    }
+    "discover": "服务发现",
+    "agents": "Agent 服务",
+    "data": "数据和 API",
+    "connect": "接入指南",
+    "billing": "账户和支付",
+    "console": "开发者控制台"
   },
   "agent": {},
   "theme": {
