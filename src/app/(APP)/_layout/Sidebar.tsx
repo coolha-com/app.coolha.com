@@ -83,7 +83,7 @@ function Logo({ showLabels }: { showLabels: boolean }) {
         <div className={cn("flex w-full", showLabels ? "justify-start" : "justify-center")}>
             <motion.div className="w-auto" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Link
-                    href={`/chat`}
+                    href="/"
                     className={cn(
                         "flex size-11 items-center justify-center rounded-full hover:bg-accent",
                         showLabels && "h-11 w-full justify-start gap-3 px-4",

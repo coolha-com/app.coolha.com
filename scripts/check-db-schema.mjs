@@ -1,5 +1,5 @@
 /**
- * 新库结构自检：确认 db/migrations/001~009 是否已全部生效。
+ * 新库结构自检：确认 db/migrations/001~010 是否已全部生效。
  *
  * 用法：
  *   node scripts/check-db-schema.mjs                # 读 .env.local
@@ -25,6 +25,10 @@ const MIGRATION_TABLES = [
   { file: "007_subscription_orders.sql", tables: ["subscription_orders"] },
   { file: "008_chat_history.sql", tables: ["chat_threads", "chat_messages"] },
   { file: "009_catalog_sync_backoff.sql", tables: ["model_catalog_sync"] },
+  {
+    file: "010_rwa_research_agent.sql",
+    tables: ["rwa_research_profiles", "rwa_research_orders", "rwa_research_executions"],
+  },
 ]
 
 const ALL_TABLES = MIGRATION_TABLES.flatMap((m) => m.tables)
@@ -81,7 +85,7 @@ try {
 
   const missing = ALL_TABLES.filter((t) => !existing.has(t))
   if (missing.length === 0) {
-    console.log("✅ 结构完整：001~009 涉及的 15 张表全部存在。")
+    console.log(`✅ 结构完整：001~010 涉及的 ${ALL_TABLES.length} 张表全部存在。`)
   } else {
     console.log(`⚠️ 缺失 ${missing.length} 张表：${missing.join(", ")}`)
     console.log("")
