@@ -7,12 +7,15 @@ import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import {
+    RiBankCardLine,
     RiChatSmileAiLine,
-    RiExchangeDollarLine,
+    RiCompass3Line,
+    RiDatabase2Line,
+    RiLinksLine,
     RiMenuUnfoldLine,
     RiRobot2Line,
     RiSidebarFoldLine,
-    RiWallet3Line,
+    RiTerminalBoxLine,
 } from "react-icons/ri";
 
 import { Button } from "@/components/ui/button";
@@ -51,11 +54,11 @@ export default function Sidebar() {
 
             <aside
                 className={cn(
-                    "z-50 flex h-svh w-72 shrink-0 flex-col border-r bg-sidebar px-2 py-3",
+                    "z-50 flex h-svh w-[26rem] shrink-0 flex-col border-r bg-sidebar px-2 py-3",
                     "transition-[width,transform] duration-200 ease-out",
                     "fixed inset-y-0 left-0 lg:sticky lg:top-0 lg:h-svh lg:translate-x-0",
                     drawerOpen ? "translate-x-0" : "-translate-x-full",
-                    expanded ? "lg:w-64 lg:px-3" : "lg:w-[4.5rem]",
+                    expanded ? "lg:w-[26rem] lg:px-3" : "lg:w-[4.5rem]",
                 )}
             >
                 <Logo showLabels={showLabels} />
@@ -100,67 +103,119 @@ function Logo({ showLabels }: { showLabels: boolean }) {
     )
 }
 
+const PRIMARY_NAV = [
+    {
+        id: "discover",
+        href: "/",
+        icon: RiCompass3Line,
+        match: (pathname: string) => pathname === "/",
+    },
+    {
+        id: "agents",
+        href: "/agents",
+        icon: RiRobot2Line,
+        match: (pathname: string) => pathname === "/agents" || pathname.startsWith("/ai/agents"),
+    },
+    {
+        id: "data",
+        href: "/data",
+        icon: RiDatabase2Line,
+        match: (pathname: string) =>
+            pathname === "/data" ||
+            pathname.startsWith("/ai/tools") ||
+            pathname.startsWith("/ai/research") ||
+            pathname.startsWith("/rwa"),
+    },
+    {
+        id: "connect",
+        href: "/connect",
+        icon: RiLinksLine,
+        match: (pathname: string) =>
+            pathname.startsWith("/connect") ||
+            pathname.startsWith("/developers") ||
+            pathname.startsWith("/ai/api-keys"),
+    },
+    {
+        id: "billing",
+        href: "/billing",
+        icon: RiBankCardLine,
+        match: (pathname: string) =>
+            pathname.startsWith("/billing") ||
+            pathname.startsWith("/ai/billing") ||
+            pathname.startsWith("/ai/usage") ||
+            pathname.startsWith("/wallet"),
+    },
+    {
+        id: "console",
+        href: "/console",
+        icon: RiTerminalBoxLine,
+        match: (pathname: string) => pathname.startsWith("/console") || pathname.startsWith("/tasks"),
+    },
+] as const
+
 function NavbarLink({ showLabels }: { showLabels: boolean }) {
-    const pathname = usePathname();
-    const t = useTranslations('sidebar')
-    const links = [
-        {
-            title: t('chat'),
-            href: '/chat',
-            icon: RiChatSmileAiLine,
-            startsWith: ['/chat']
-        },
-        {
-            title: t('ai'),
-            href: '/ai',
-            icon: RiRobot2Line,
-            startsWith: ['/ai']
-        },
-        {
-            title: t('rwa'),
-            href: '/rwa',
-            icon: RiExchangeDollarLine,
-            startsWith: ['/rwa']
-        },
-        {
-            title: t('wallet'),
-            href: '/wallet',
-            icon: RiWallet3Line,
-            startsWith: ['/wallet']
-        },
-    ];
+    const pathname = usePathname() ?? ""
+    const t = useTranslations("sidebar")
 
     return (
-        <ul className={cn("flex w-full flex-col gap-1", showLabels ? "items-stretch" : "items-center")}>
-            {links.map(link => {
-                const isActive = link.startsWith.some(prefix => pathname?.startsWith(prefix));
-                return (
-                    <li key={link.href} className={cn("w-auto", showLabels && "w-full")}>
-                        <Button
-                            asChild
-                            variant={isActive ? "secondary" : "ghost"}
-                            className={cn(
-                                "size-11 justify-center rounded-full p-0",
-                                showLabels && "h-11 w-full justify-start px-4",
-                                isActive ? "font-medium" : "text-muted-foreground",
-                            )}
-                        >
+        <div className={cn("flex w-full flex-col", showLabels ? "items-stretch" : "items-center")}>
+            <ul className={cn("flex w-full flex-col gap-1", showLabels ? "items-stretch" : "items-center")}>
+                {PRIMARY_NAV.map((item) => {
+                    const isActive = item.match(pathname)
+                    const title = t(`nav.${item.id}.title`)
+                    const label = t(`nav.${item.id}.label`)
+                    const description = t(`nav.${item.id}.description`)
+                    const Icon = item.icon
+                    return (
+                        <li key={item.id} className={cn("w-auto", showLabels && "w-full")}>
                             <Link
-                                href={link.href}
-                                title={showLabels ? undefined : link.title}
+                                href={item.href}
+                                title={showLabels ? undefined : `${title} · ${label}`}
+                                aria-current={isActive ? "page" : undefined}
                                 className={cn(
-                                    "flex size-11 items-center justify-center",
-                                    showLabels && "size-auto w-full justify-start gap-3",
+                                    "flex items-start rounded-2xl text-left transition-colors",
+                                    showLabels ? "w-full gap-2.5 px-2.5 py-2" : "size-11 items-center justify-center",
+                                    isActive ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
                                 )}
                             >
-                                <link.icon className={cn("size-6", isActive && "text-foreground")} />
-                                {showLabels ? <span className="text-sm">{link.title}</span> : null}
+                                <Icon className={cn("size-5 shrink-0", showLabels && "mt-0.5")} aria-hidden />
+                                {showLabels ? (
+                                    <span className="min-w-0 flex-1">
+                                        <span className="flex items-baseline justify-between gap-2">
+                                            <span className="text-sm font-semibold tracking-tight text-foreground">{title}</span>
+                                            <span className="shrink-0 text-[11px] text-muted-foreground">{label}</span>
+                                        </span>
+                                        <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{description}</span>
+                                    </span>
+                                ) : null}
                             </Link>
-                        </Button>
-                    </li>
-                )
-            })}
-        </ul>
+                        </li>
+                    )
+                })}
+            </ul>
+            <div className={cn("mt-3 w-full border-t border-border/60 pt-3", showLabels ? "" : "flex justify-center")}>
+                <Link
+                    href="/chat"
+                    title={showLabels ? undefined : t("chat")}
+                    aria-current={pathname.startsWith("/chat") ? "page" : undefined}
+                    className={cn(
+                        "flex items-center rounded-2xl text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                        showLabels ? "w-full gap-2.5 px-2.5 py-2" : "size-11 justify-center",
+                        pathname.startsWith("/chat") && "bg-secondary text-foreground",
+                    )}
+                >
+                    <RiChatSmileAiLine className="size-5 shrink-0" aria-hidden />
+                    {showLabels ? (
+                        <span className="min-w-0 flex-1">
+                            <span className="flex items-baseline justify-between gap-2">
+                                <span className="text-sm text-foreground">{t("chat")}</span>
+                                <span className="shrink-0 text-[11px] text-muted-foreground">{t("chatLabel")}</span>
+                            </span>
+                        </span>
+                    ) : null}
+                </Link>
+            </div>
+        </div>
     )
 }
 
