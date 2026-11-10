@@ -683,8 +683,8 @@ export function PlaygroundChat({
           </button>
           <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden />
           <nav aria-label="数据" className="flex shrink-0 items-center gap-0.5">
-            <ModuleLink href="/ai/usage" icon={RiBarChartBoxLine} label="用量记录" />
-            <ModuleLink href="/ai/billing" icon={RiBankCardLine} label="余额与账单" />
+            <ModuleLink href="/billing/usage" icon={RiBarChartBoxLine} label="用量记录" />
+            <ModuleLink href="/billing/subscription" icon={RiBankCardLine} label="余额与账单" />
           </nav>
           <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden />
           <ModelSelector

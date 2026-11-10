@@ -5,7 +5,7 @@ import type { ChainKey } from "@/lib/subscription/config"
  *
  * 契约来源：`docs/WEB3_TOOL_REGISTRY_PHASE1_PLAN.md` §4。
  *
- * ⛔ 本项目的历史事故：`/ai/research` 曾经编造 0-100 风险分，`/ai/tools` 曾经
+ * ⛔ 本项目的历史事故：`/agents/research` 曾经编造 0-100 风险分，`/data/tools` 曾经
  * 整页都是「未接入」却看不出哪些能用。工具层的每一条对外结论都必须装进这个信封里，
  * 否则就是卖空气 + 编数据。
  *

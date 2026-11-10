@@ -21,7 +21,7 @@ export interface DimensionMeta {
   /** 一句话说明这个维度在挖什么 */
   blurb: string
   Icon: ComponentType<{ className?: string }>
-  /** 真实数据源工具 id（对应 /ai/tools 目录） */
+  /** 真实数据源工具 id（对应 /data/tools 目录） */
   dataSourceId: string
   /** 真实数据源展示名 */
   dataSourceLabel: string

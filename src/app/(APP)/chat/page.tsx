@@ -18,8 +18,9 @@ export default async function PlaygroundPage() {
 
   return (
     <section className="flex min-h-0 flex-1 flex-col">
+      {/* 全高对话工作台不套标准页壳，仅把提示条圆角对齐组件的 rounded-4xl */}
       {configured ? null : (
-        <MockNotice className="m-3 mb-0">
+        <MockNotice className="m-3 mb-0 rounded-4xl shadow-sm">
           未检测到 AI_GATEWAY_API_KEY：免费模型通道不可用，你仍可在「API 连接」中添加自己的模型服务。
         </MockNotice>
       )}

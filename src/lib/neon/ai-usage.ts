@@ -1,7 +1,7 @@
 import { query, isDatabaseConfigured } from "./postgres"
 
 /**
- * AI Gateway 真实调用用量记录（审计 + /ai/usage 展示）。
+ * AI Gateway 真实调用用量记录（审计 + /billing/usage 展示）。
  * 表见 db/migrations/003_ai_gateway_usage.sql。
  *
  * 落库失败绝不影响推理响应——调用方需自行 catch。
@@ -74,7 +74,7 @@ export async function recordUsage(input: UsageRecordInput): Promise<void> {
 }
 
 /**
- * 某个用户的最近 N 条调用记录（/ai/usage 页面用）。
+ * 某个用户的最近 N 条调用记录（/billing/usage 页面用）。
  *
  * **必须传 subject**：这张表是多用户共用的运营数据，未过滤就等于把所有人的
  * 钱包地址、模型选择、调用时间与失败原因公开给任意访客。

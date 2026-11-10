@@ -205,7 +205,7 @@ async function readUpstreamHint(response: Response): Promise<string> {
   }
 }
 
-/** 上游原始列表 → 归一化模型（slug 去重，保证 /ai/models/[id] 可寻址） */
+/** 上游原始列表 → 归一化模型（slug 去重，保证 /console/models/[id] 可寻址） */
 function normalizeCatalog(raw: GatewayRawModel[]): ComputeModel[] {
   const slugCount = new Map<string, number>()
   return raw
@@ -275,7 +275,7 @@ export async function getModelCatalog(options?: { force?: boolean }): Promise<Mo
     await writeCatalogSnapshot(models)
     await releaseCatalogSync(true, { count: models.length })
     // 同步成功后让 Data Cache 失效，下一次读直接拿新快照（profile: max = 标记过期后按需后台重算）
-    // 注意：本函数可能在页面 render 阶段被调用（/chat、/ai/models），此时 Next 禁止 revalidateTag，
+    // 注意：本函数可能在页面 render 阶段被调用（/chat、/console/models），此时 Next 禁止 revalidateTag，
     // 只能捕获后依赖页面自身的 revalidate 自愈——不能让它把一次成功的同步记成失败。
     try {
       revalidateTag(CATALOG_CACHE_TAG, "max")

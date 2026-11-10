@@ -445,7 +445,7 @@ function DimensionCard({ d }: { d: DimensionFinding }) {
 
         <p className="mt-3 flex items-center gap-1 border-t pt-2 text-[11px] text-muted-foreground">
           数据源：{d.dataSourceLabel}
-          <a href="/ai/tools" className="inline-flex items-center gap-0.5 text-primary hover:underline">
+          <a href="/data/tools" className="inline-flex items-center gap-0.5 text-primary hover:underline">
             查看选型 <RiExternalLinkLine className="size-3" />
           </a>
         </p>

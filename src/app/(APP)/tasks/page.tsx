@@ -26,7 +26,7 @@ export default async function TasksPage() {
         这里是 RWA Research 的订单和执行结果。标价未公布，付款状态保持未付款。
       </p>
       <p className="mt-2 text-sm">
-        <Link href="/ai/agents/rwa-research" className="underline-offset-4 hover:underline">
+        <Link href="/agents/rwa-research" className="underline-offset-4 hover:underline">
           去配置 Profile 并提交任务
         </Link>
       </p>

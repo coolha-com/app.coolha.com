@@ -172,7 +172,7 @@ export function ModelSelector({
                   <FreeChip />
                   {/* 悬浮才出现的详情入口：点它只跳转，不切换模型 */}
                   <Link
-                    href={`/ai/models/${model.id}`}
+                    href={`/console/models/${model.id}`}
                     onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => event.stopPropagation()}
                     aria-label={`查看 ${model.name} 详情`}
@@ -229,7 +229,7 @@ export function ModelSelector({
         <div className="sticky bottom-0 border-t bg-popover p-1">
           <DropdownMenuItem
             render={
-              <Link href="/ai/api-keys">
+              <Link href="/console/api-keys">
                 <RiKey2Line className="size-4" />
                 配置自定义模型
               </Link>
@@ -237,7 +237,7 @@ export function ModelSelector({
           />
           <DropdownMenuItem
             render={
-              <Link href="/ai/models">
+              <Link href="/console/models">
                 <RiCpuLine className="size-4" />
                 从模型广场添加
               </Link>

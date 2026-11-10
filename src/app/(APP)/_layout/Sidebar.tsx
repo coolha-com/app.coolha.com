@@ -9,9 +9,7 @@ import { useTranslations } from "next-intl";
 import {
     RiBankCardLine,
     RiChatSmileAiLine,
-    RiCompass3Line,
     RiDatabase2Line,
-    RiLinksLine,
     RiMenuUnfoldLine,
     RiRobot2Line,
     RiSidebarFoldLine,
@@ -86,7 +84,7 @@ function Logo({ showLabels }: { showLabels: boolean }) {
         <div className={cn("flex w-full", showLabels ? "justify-start" : "justify-center")}>
             <motion.div className="w-auto" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Link
-                    href="/"
+                    href="/chat"
                     className={cn(
                         "flex size-11 items-center justify-center rounded-full hover:bg-accent",
                         showLabels && "h-11 w-full justify-start gap-3 px-4",
@@ -103,50 +101,37 @@ function Logo({ showLabels }: { showLabels: boolean }) {
     )
 }
 
+/**
+ * 主导航：智能对话排第一，其余按「服务 / 数据 / 账户 / 开发者」分组。
+ * 服务发现与接入指南已下线，/ai 聚合模块已拆分到各主导航子路由。
+ */
 function NavbarLink({ showLabels }: { showLabels: boolean }) {
     const pathname = usePathname() ?? ""
     const t = useTranslations('sidebar')
     const links = [
         {
-            title: t('discover'),
-            href: '/',
-            icon: RiCompass3Line,
-            active: pathname === '/',
+            title: t('chat'),
+            href: '/chat',
+            icon: RiChatSmileAiLine,
+            active: pathname.startsWith('/chat') || pathname === '/',
         },
         {
             title: t('agents'),
             href: '/agents',
             icon: RiRobot2Line,
-            active: pathname === '/agents' || pathname.startsWith('/ai/agents'),
+            active: pathname.startsWith('/agents'),
         },
         {
             title: t('data'),
             href: '/data',
             icon: RiDatabase2Line,
-            active:
-                pathname === '/data' ||
-                pathname.startsWith('/ai/tools') ||
-                pathname.startsWith('/ai/research') ||
-                pathname.startsWith('/rwa'),
-        },
-        {
-            title: t('connect'),
-            href: '/connect',
-            icon: RiLinksLine,
-            active:
-                pathname.startsWith('/connect') ||
-                pathname.startsWith('/developers') ||
-                pathname.startsWith('/ai/api-keys'),
+            active: pathname.startsWith('/data') || pathname.startsWith('/rwa'),
         },
         {
             title: t('billing'),
             href: '/billing',
             icon: RiBankCardLine,
-            active:
-                pathname.startsWith('/billing') ||
-                pathname.startsWith('/ai/billing') ||
-                pathname.startsWith('/ai/usage') ||
-                pathname.startsWith('/wallet'),
+            active: pathname.startsWith('/billing') || pathname.startsWith('/wallet'),
         },
         {
             title: t('console'),
@@ -155,21 +140,8 @@ function NavbarLink({ showLabels }: { showLabels: boolean }) {
             active: pathname.startsWith('/console') || pathname.startsWith('/tasks'),
         },
     ]
-    const chat = {
-        title: t('chat'),
-        href: '/chat',
-        icon: RiChatSmileAiLine,
-        active: pathname.startsWith('/chat'),
-    }
 
-    return (
-        <div className={cn("flex w-full flex-col gap-1", showLabels ? "items-stretch" : "items-center")}>
-            <NavList links={links} showLabels={showLabels} />
-            <div className={cn("mt-2 w-full border-t border-border/60 pt-2", showLabels ? "" : "flex justify-center")}>
-                <NavList links={[chat]} showLabels={showLabels} />
-            </div>
-        </div>
-    )
+    return <NavList links={links} showLabels={showLabels} />
 }
 
 function NavList({
@@ -179,7 +151,7 @@ function NavList({
     links: Array<{
         title: string
         href: string
-        icon: typeof RiCompass3Line
+        icon: typeof RiChatSmileAiLine
         active: boolean
     }>
     showLabels: boolean

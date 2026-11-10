@@ -45,7 +45,7 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
   return (
     <section className="m-6 space-y-4">
       <Link
-        href="/ai/models"
+        href="/console/models"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <RiArrowLeftLine className="size-4" />
@@ -161,7 +161,7 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
                   在 Chat 中对话
                 </Link>
                 <Link
-                  href="/ai/usage"
+                  href="/billing/usage"
                   className="inline-flex h-10 items-center rounded-xl border px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
                   查看我的用量
@@ -181,7 +181,7 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link
-                  href="/ai/api-keys"
+                  href="/console/api-keys"
                   className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-90"
                 >
                   <RiKey2Line className="size-4" />
