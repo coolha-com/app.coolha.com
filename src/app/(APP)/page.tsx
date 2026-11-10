@@ -41,6 +41,15 @@ export default function ServiceEntryPage() {
         Chat 仍保留，用于测试和调试，不是这项服务的下单入口。
         <Link href="/chat" className="ml-1 underline-offset-4 hover:underline">打开 Chat</Link>
       </p>
+      <section className="mt-8">
+        <h2 className="text-sm font-medium">接入与账户</h2>
+        <ul className="mt-2 space-y-1 text-sm">
+          <li><Link href="/connect" className="underline-offset-4 hover:underline">接入说明</Link></li>
+          <li><Link href="/developers" className="underline-offset-4 hover:underline">API 与 MCP</Link></li>
+          <li><Link href="/console" className="underline-offset-4 hover:underline">调用控制台</Link></li>
+          <li><Link href="/billing" className="underline-offset-4 hover:underline">用量与订单</Link></li>
+        </ul>
+      </section>
     </div>
   )
 }
