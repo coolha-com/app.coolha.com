@@ -29,7 +29,13 @@
     "rwa": "RWA Market",
     "wallet": "Wallet",
     "profile": "Profile",
-    "settings": "Settings"
+    "settings": "Settings",
+    "discover": "Discover",
+    "agents": "Agents",
+    "data": "Data & APIs",
+    "connect": "Connect",
+    "billing": "Billing",
+    "console": "Console"
   },
   "agent": {},
   "theme": {

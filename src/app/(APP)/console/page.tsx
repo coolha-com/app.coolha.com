@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { ConsoleDesk } from "@/components/agents/ConsoleDesk"
 import { getWalletSessionFromCookies } from "@/lib/neon/wallet-auth"
 import { resolveSubject } from "@/lib/neon/identity"
@@ -24,6 +25,7 @@ export default async function ConsolePage() {
       <h1 className="text-2xl font-semibold tracking-normal">控制台</h1>
       <p className="mt-2 mb-6 text-sm leading-6 text-muted-foreground">
         管理 API Key，并查看这项研究服务的任务状态。外部请求的权限只来自 Key，不来自这个页面的登录。
+        订单与执行结果在 <Link href="/tasks" className="underline-offset-4 hover:underline">任务</Link>。
       </p>
       <ConsoleDesk signedIn={signedIn && Boolean(subject)} initialKeys={keys} initialRuns={runs} />
     </div>

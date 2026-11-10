@@ -7,12 +7,15 @@ import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import {
+    RiBankCardLine,
     RiChatSmileAiLine,
-    RiExchangeDollarLine,
+    RiCompass3Line,
+    RiDatabase2Line,
+    RiLinksLine,
     RiMenuUnfoldLine,
     RiRobot2Line,
     RiSidebarFoldLine,
-    RiWallet3Line,
+    RiTerminalBoxLine,
 } from "react-icons/ri";
 
 import { Button } from "@/components/ui/button";
@@ -101,39 +104,90 @@ function Logo({ showLabels }: { showLabels: boolean }) {
 }
 
 function NavbarLink({ showLabels }: { showLabels: boolean }) {
-    const pathname = usePathname();
+    const pathname = usePathname() ?? ""
     const t = useTranslations('sidebar')
     const links = [
         {
-            title: t('chat'),
-            href: '/chat',
-            icon: RiChatSmileAiLine,
-            startsWith: ['/chat']
+            title: t('discover'),
+            href: '/',
+            icon: RiCompass3Line,
+            active: pathname === '/',
         },
         {
-            title: t('ai'),
-            href: '/ai',
+            title: t('agents'),
+            href: '/agents',
             icon: RiRobot2Line,
-            startsWith: ['/ai']
+            active: pathname === '/agents' || pathname.startsWith('/ai/agents'),
         },
         {
-            title: t('rwa'),
-            href: '/rwa',
-            icon: RiExchangeDollarLine,
-            startsWith: ['/rwa']
+            title: t('data'),
+            href: '/data',
+            icon: RiDatabase2Line,
+            active:
+                pathname === '/data' ||
+                pathname.startsWith('/ai/tools') ||
+                pathname.startsWith('/ai/research') ||
+                pathname.startsWith('/rwa'),
         },
         {
-            title: t('wallet'),
-            href: '/wallet',
-            icon: RiWallet3Line,
-            startsWith: ['/wallet']
+            title: t('connect'),
+            href: '/connect',
+            icon: RiLinksLine,
+            active:
+                pathname.startsWith('/connect') ||
+                pathname.startsWith('/developers') ||
+                pathname.startsWith('/ai/api-keys'),
         },
-    ];
+        {
+            title: t('billing'),
+            href: '/billing',
+            icon: RiBankCardLine,
+            active:
+                pathname.startsWith('/billing') ||
+                pathname.startsWith('/ai/billing') ||
+                pathname.startsWith('/ai/usage') ||
+                pathname.startsWith('/wallet'),
+        },
+        {
+            title: t('console'),
+            href: '/console',
+            icon: RiTerminalBoxLine,
+            active: pathname.startsWith('/console') || pathname.startsWith('/tasks'),
+        },
+    ]
+    const chat = {
+        title: t('chat'),
+        href: '/chat',
+        icon: RiChatSmileAiLine,
+        active: pathname.startsWith('/chat'),
+    }
 
+    return (
+        <div className={cn("flex w-full flex-col gap-1", showLabels ? "items-stretch" : "items-center")}>
+            <NavList links={links} showLabels={showLabels} />
+            <div className={cn("mt-2 w-full border-t border-border/60 pt-2", showLabels ? "" : "flex justify-center")}>
+                <NavList links={[chat]} showLabels={showLabels} />
+            </div>
+        </div>
+    )
+}
+
+function NavList({
+    links,
+    showLabels,
+}: {
+    links: Array<{
+        title: string
+        href: string
+        icon: typeof RiCompass3Line
+        active: boolean
+    }>
+    showLabels: boolean
+}) {
     return (
         <ul className={cn("flex w-full flex-col gap-1", showLabels ? "items-stretch" : "items-center")}>
             {links.map(link => {
-                const isActive = link.startsWith.some(prefix => pathname?.startsWith(prefix));
+                const isActive = link.active
                 return (
                     <li key={link.href} className={cn("w-auto", showLabels && "w-full")}>
                         <Button

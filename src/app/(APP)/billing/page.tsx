@@ -36,6 +36,8 @@ export default async function BillingPage() {
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
         只显示当前账户。研究 API 的记录写在现有用量表里，token 数为 0，不代表已付款，也不增加赞助额度。
         订阅收款仍在 <Link href="/ai/billing" className="underline-offset-4 hover:underline">余额与账单</Link>。
+        钱包在 <Link href="/wallet" className="underline-offset-4 hover:underline">钱包页</Link>，
+        调用明细也可看 <Link href="/ai/usage" className="underline-offset-4 hover:underline">用量记录</Link>。
       </p>
       {!subject ? (
         <p className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">

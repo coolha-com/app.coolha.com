@@ -23,8 +23,8 @@ export default function ServiceEntryPage() {
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             保存 Agent Profile，提交只读研究任务，查看带来源和时间的报告。订单付款状态为未付款。
           </p>
-          <Link href="/ai/agents/rwa-research" className="mt-3 inline-flex text-sm font-medium underline-offset-4 hover:underline">
-            打开这项服务
+          <Link href="/agents" className="mt-3 inline-flex text-sm font-medium underline-offset-4 hover:underline">
+            在 Agents 目录中打开
           </Link>
         </li>
         <li className="rounded-2xl border bg-card p-4">
