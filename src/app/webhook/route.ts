@@ -15,7 +15,6 @@ import { grantForPaidOrder, revokeGrantForOrder } from "@/lib/neon/agent-billing
 import {
   getWaffoConfig,
   getWaffoWebhookVerifyOptions,
-  WaffoConfigError,
 } from "@/lib/waffo/client"
 
 export const dynamic = "force-dynamic"
@@ -23,8 +22,8 @@ export const dynamic = "force-dynamic"
 /**
  * Waffo Pancake 回调入口（根路由 `/webhook`）。
  *
- * 对应 Dashboard → 设置 → Webhooks → Test Webhook URL 填
- * `https://<你的域名>/webhook`，Format 选 **Raw**（只有 Raw 带 RSA-SHA256 签名）。
+ * 对应 Dashboard → 设置 → Webhooks：把 URL 填成 `https://<你的域名>/webhook`，
+ * 格式选 **Raw**（只有 Raw 带 RSA-SHA256 签名）。
  *
  * 三条铁律（照抄官方 guide）：
  *  1. **必须读原始文本**。`await req.json()` 会重排空白，签名立刻对不上。
@@ -33,6 +32,11 @@ export const dynamic = "force-dynamic"
  *
  * 归属靠 `orderMerchantExternalId`——那是我们自己生成的单号（建单时塞进去的），
  * 所以不需要用邮箱去猜「谁付的」。
+ *
+ * 验签用哪把公钥：SDK 的 `verifyWebhook` 在**不传 environment** 时会先试 prod 公钥、
+ * 失败再试 test 公钥。因此**同一个 URL 可以同时接收沙箱与正式投递**，
+ * 不用为两个环境来回改 webhook 地址。但**发放授权**必须按事件自身的 `mode` 判定，
+ * 否则沙箱支付会换来正式服务的授权（见下方 environment_mismatch 分支）。
  *
  * ⚠️ 诚实边界：本端点负责**订单核销**（把 pending 变成 paid），并在核销成功时
  * **发放一份按次服务授权**（19 U/次 / 30 天 / token 价值上限 10 美元）。
@@ -48,16 +52,9 @@ export async function POST(req: Request) {
   const raw = await req.text()
   const signature = req.headers.get("x-waffo-signature")
 
-  let verifyOptions: { environment: "test" | "prod" }
-  try {
-    verifyOptions = getWaffoWebhookVerifyOptions()
-  } catch (error) {
-    // 配置缺失属于「我这边的错」，回 503 让 Waffo 重投，而不是当成伪造请求丢掉
-    const detail =
-      error instanceof WaffoConfigError ? `${error.code}: ${error.message}` : String(error)
-    console.error("[waffo/webhook] 验签配置缺失:", detail)
-    return Response.json({ error: { code: "WEBHOOK_NOT_CONFIGURED" } }, { status: 503 })
-  }
+  // 验签参数：不指定 environment，让 SDK 自动回退（prod → test），
+  // 这样同一个 URL 能同时接沙箱与正式投递。详见 lib/waffo/client.ts 的注释。
+  const verifyOptions = getWaffoWebhookVerifyOptions()
 
   // ⚠️ 铁律 2：验签
   let event: WebhookEvent<WebhookEventData>
@@ -71,15 +68,24 @@ export async function POST(req: Request) {
   const eventType = event.eventType
   const data = event.data ?? ({} as WebhookEventData)
 
+  // 事件环境与部署环境必须一致。
+  // 验签用的是「prod 优先、test 兜底」的自动回退，所以同一个 URL 能同时收两种签名；
+  // 但**发放授权**必须按事件自身的 mode 判定：
+  //   - 生产部署收到沙箱事件 → 沙箱支付不能换来正式服务的授权，记档并跳过；
+  //   - 测试部署收到正式事件 → 正式订单不该写进测试库，同样跳过。
+  // 不一致时回 200（不重投）：这不是我们的故障，重投也不会变一致。
+  let deployEnvironment: "test" | "prod" | null = null
   try {
-    const config = getWaffoConfig()
-    if (event.mode && event.mode !== config.environment) {
-      console.warn(
-        `[waffo/webhook] 事件 mode=${event.mode} 与本地环境 ${config.environment} 不一致`,
-      )
-    }
+    deployEnvironment = getWaffoConfig().environment
   } catch {
-    // 环境读不到不影响处理，继续
+    // 读不到部署环境：本地没配 Waffo 时不该拦掉整个回调，继续按事件处理
+  }
+  if (deployEnvironment && event.mode && event.mode !== deployEnvironment) {
+    console.warn(
+      `[waffo/webhook] 事件 mode=${event.mode} 与部署环境 ${deployEnvironment} 不一致，跳过处理`,
+    )
+    await recordWaffoEvent(event.id, eventType, data.orderId ?? null)
+    return Response.json({ ok: true, outcome: "environment_mismatch" })
   }
 
   // ⚠️ 铁律 3：幂等。前置查一次只是为了省掉重复处理；

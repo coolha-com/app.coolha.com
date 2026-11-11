@@ -97,8 +97,9 @@ function render(o) {
   lines.push("WAFFO_ENVIRONMENT=" + o.environment)
   lines.push("WAFFO_PRODUCT_ID=" + v(o.productId))
   lines.push("WAFFO_CURRENCY=USD")
-  lines.push("# Webhook 验签公钥：必须单行（多行会被 .env 解析器截断，验签 100% 失败）")
-  lines.push("# DASHBOARD → 设置 → Webhooks → RSA Public Key")
+  lines.push("# Webhook 验签公钥：两把都要配（SDK 不传 environment 时 prod 优先、test 兜底）")
+  lines.push("# 必须单行（多行会被 .env 解析器截断，验签 100% 失败）")
+  lines.push("# DASHBOARD → 设置 → Webhooks → RSA Public Key（平台级，两环境各一把）")
   lines.push("WAFFO_WEBHOOK_TEST_PUBLIC_KEY=" + v(o.testPublicKey))
   lines.push("WAFFO_WEBHOOK_PROD_PUBLIC_KEY=" + v(o.prodPublicKey))
   lines.push("")
@@ -130,7 +131,6 @@ function render(o) {
   lines.push("")
   lines.push("# 定时任务鉴权")
   lines.push("CRON_SECRET=" + v(base.CRON_SECRET))
-  lines.append
   lines.push("")
   lines.push("# 订阅收款地址")
   lines.push("SUBSCRIPTION_TREASURY_ADDRESS=" + v(base.SUBSCRIPTION_TREASURY_ADDRESS))
@@ -157,6 +157,38 @@ const TEST_KEY = base.WAFFO_PRIVATE_KEY
 const TEST_PRODUCT = base.WAFFO_PRODUCT_ID
 const TEST_PUB = base.WAFFO_WEBHOOK_TEST_PUBLIC_KEY
 
+/**
+ * 生产 webhook 公钥：直接从 SDK 内置常量取。
+ *
+ * 依据（scripts/check-waffo-keys.mjs 实测）：
+ *   - env 里的 WAFFO_WEBHOOK_TEST_PUBLIC_KEY 与 SDK 内置 TEST_PUBLIC_KEY
+ *     经密码学比对（SPKI DER）**完全相同** → 说明 Dashboard 当前的 TEST 公钥
+ *     就是 SDK 内置那把，**平台没有轮换过 webhook key**。
+ *   - 因此 SDK 内置的 PROD_PUBLIC_KEY 就是当前的生产公钥，可以直接用。
+ *
+ * 若哪天平台轮换了 key（SDK 内置 TEST 不再等于 env 里的 TEST），
+ * 这个自动取法就会失效 → 改成从 Dashboard 生产模式复制，两把公钥都要更新。
+ */
+const PROD_PUB = (() => {
+  const src = fs.readFileSync(resolve(ROOT, "node_modules/@waffo/pancake-ts/dist/index.js"), "utf8")
+  const marker = "PROD_PUBLIC_KEY = `"
+  const i = src.indexOf(marker)
+  if (i < 0) return ""
+  const start = i + marker.length
+  const end = src.indexOf("`", start)
+  const pem = src.slice(start, end)
+  // ⚠️ 必须压成**单行**：多行 PEM 会被 .env 解析器截断成第一行，
+  //    SDK 归一化后拿到残缺密钥 → 验签 100% 失败。
+  //    换行写成字面 \n（SDK 的 normalizePublicKey 会还原成真换行）。
+  return pem.replace(/\s*\n\s*/g, "\\n").trim()
+})()
+
+if (!PROD_PUB) {
+  console.warn(
+    "⚠️ 没能从 SDK 取到内置 PROD 公钥，生产环境将缺少 WAFFO_WEBHOOK_PROD_PUBLIC_KEY。",
+  )
+}
+
 // 本地：dev 分支库 + Waffo test
 fs.writeFileSync(
   resolve(ROOT, ".env.local"),
@@ -170,7 +202,7 @@ fs.writeFileSync(
     privateKey: TEST_KEY,
     productId: TEST_PRODUCT,
     testPublicKey: TEST_PUB,
-    prodPublicKey: "",
+    prodPublicKey: PROD_PUB,
     eveLocal: "1",
     eveOrigin: "",
     eveSecret: "",
@@ -190,7 +222,7 @@ fs.writeFileSync(
     privateKey: TEST_KEY,
     productId: TEST_PRODUCT,
     testPublicKey: TEST_PUB,
-    prodPublicKey: "",
+    prodPublicKey: PROD_PUB,
     eveLocal: "1",
     eveOrigin: "",
     eveSecret: "",
@@ -210,14 +242,16 @@ fs.writeFileSync(
     privateKey: TEST_KEY,
     productId: TEST_PRODUCT,
     testPublicKey: TEST_PUB,
-    prodPublicKey: "",
+    prodPublicKey: PROD_PUB,
     eveLocal: null,
     eveOrigin: "",
     eveSecret: "",
   }),
 )
 
-// 生产：main 分支库 + Waffo prod（凭据待补，不塞测试私钥）
+// 生产：main 分支库 + Waffo prod
+// ⚠️ 生产私钥与生产商品 ID 拿不到（账号下只有一把 test key），
+//    需要在 Dashboard「生产」模式新建 API Key 并 publish 商品后填入。
 fs.writeFileSync(
   resolve(ROOT, ".env.production.local"),
   render({
@@ -229,8 +263,8 @@ fs.writeFileSync(
     environment: "prod",
     privateKey: "",
     productId: "",
-    testPublicKey: "",
-    prodPublicKey: "",
+    testPublicKey: TEST_PUB,
+    prodPublicKey: PROD_PUB,
     eveLocal: null,
     eveOrigin: "",
     eveSecret: "",
@@ -257,5 +291,4 @@ fs.writeFileSync(
     blank: true,
   }),
 )
-
 console.log("已生成 5 个 env 文件")

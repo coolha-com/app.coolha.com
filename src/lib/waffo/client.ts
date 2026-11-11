@@ -124,13 +124,17 @@ export function getWaffoClient(): WaffoPancake {
 /**
  * Webhook 验签参数。
  *
- * 传 environment 后，SDK 只用该环境的公钥验签：
- * 解析顺序 = options.publicKey → config.webhookPublicKey →
- * WAFFO_WEBHOOK_{TEST|PROD}_PUBLIC_KEY → WAFFO_WEBHOOK_PUBLIC_KEY → SDK 内置公钥。
- * 不传 environment 则会先试 prod 再试 test，测试环境容易出现「用错 key」的假象，显式指定更干净。
+ * ⚠️ 这里**故意不返回 environment**，让 SDK 自动回退：
+ * 不传 environment 时 SDK 先试 prod 公钥、失败再试 test 公钥（实测 SDK 源码）。
+ * 这样**同一个 URL 可以同时接收沙箱与正式投递**，不必为两个环境来回改 webhook 地址。
+ *
+ * 取钥顺序（SDK 内置）：options.publicKey → config.webhookPublicKey →
+ * `WAFFO_WEBHOOK_{TEST|PROD}_PUBLIC_KEY` → `WAFFO_WEBHOOK_PUBLIC_KEY` → SDK 内置公钥。
+ * 所以两个环境的公钥**都要配齐**（env 里是单行 PEM，换行写成字面 `\n`），
+ * 否则回退的那把会落到 SDK 内置公钥上；平台轮换过 key 时内置公钥已失效 → 验签必挂。
  */
-export function getWaffoWebhookVerifyOptions(): { environment: WaffoEnvironment } {
-  return { environment: getWaffoConfig().environment }
+export function getWaffoWebhookVerifyOptions(): { environment?: WaffoEnvironment } {
+  return {}
 }
 
 /**
