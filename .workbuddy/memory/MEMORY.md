@@ -27,12 +27,15 @@
 - 营销黑名单：「升级获得更多 tokens」「解锁更多模型」「更快响应」「用 Coolha 调用 GPT-5」。
 
 ## Waffo 收款（2026-11-11 接入，test 模式）
-- SDK `@waffo/pancake-ts@0.28.0`。链路：POST /api/waffo/checkout（需登录）→ 建 pending 单（`WO_<uuid>` 当 orderMerchantExternalId）→ `client.checkout.authenticated.create` → 前端跳 checkoutUrl → Waffo POST 根路由 `/webhook` → verifyWebhook → 核销 paid。
+- SDK `@waffo/pancake-ts@0.28.0`。链路：POST /api/waffo/checkout（需登录）→ 建 pending 单（`WO_<uuid>` 当 orderMerchantExternalId）→ `client.checkout.authenticated.create` → 前端跳 checkoutUrl → Waffo POST 根路由 `/webhook` → verifyWebhook → 核销 paid → 发放授权。
 - 代码：`src/lib/waffo/client.ts`（单例/校验）、`src/lib/neon/waffo.ts`（账本）、`src/app/api/waffo/checkout/route.ts`、`src/app/webhook/route.ts`、迁移 014（waffo_orders + waffo_webhook_events）。详见 `docs/WAFFO_INTEGRATION.md`。
 - 幂等靠**状态机**（paid 仅从 pending 迁入、refunded 仅从 pending/paid 迁入 → 退款后不被重投复活）；event id **处理成功后才记**（先记会挡掉 Waffo 重投→丢单）。必须 `await req.text()` 读原始体。
-- 三个必踩的坑：env 里 **PEM 必须单行**（多行被解析器截断→SDK 抛错→验签全败）；变量名只用 `WAFFO_WEBHOOK_{TEST,PROD}_PUBLIC_KEY`；签名头 `t` 是**毫秒**不是秒。
-- env：WAFFO_MERCHANT_ID/PRIVATE_KEY/STORE_ID/ENVIRONMENT/PRODUCT_ID/CURRENCY/WEBHOOK_TEST_PUBLIC_KEY，`.env.development.local`+`.env.local`+`.env.local.example` 已对齐。
-- ⚠️ **扣减闸门未建**：$19 买几次、怎么扣、是否过期待用户拍板；当前只记账不发放。上生产还需 KYB、换生产 key+公钥、publish 商品。
+- **验签（2026-11-12 定案）**：webhook 是**独立条目**，每条带自己的 `testMode` 标志，可并存多条（实测 `webhooks.add` 允许同 store 多条 http+testMode=true）。真正的坑是**验签用哪把公钥**，不是「一个环境只能一个 URL」。做法：**两把公钥都配 + 不传 `environment`**（SDK 自动 prod→test 回退）；但**发放授权按事件 `mode` 判定**，沙箱事件不得换来正式服务授权（environment_mismatch → 记档返 200）。
+- **公钥**：SDK 内置 `TEST_PUBLIC_KEY` == Dashboard 当前 TEST 公钥（SPKI DER 比对一致）→ 平台**未轮换** key → 内置 `PROD_PUBLIC_KEY` 即当前生产公钥，`gen-env-files.mjs` 自动填（**必须压成单行**，多行被 .env 截断）。
+- **本地填路由（用户常问）**：沙箱 webhook 指向**预览部署** `https://appcoolhacom-git-agent-coolha.vercel.app/webhook`（同一 dev 库，本地刷新即可见结果）；要调本地回调逻辑就用隧道 + `add-test` **另加一条**（不必改原来的）。命令：`node scripts/waffo-webhook.mjs list|set-test|add-test|add-prod|remove`。
+- ⚠️ **生产域名 `app.coolha.com` 跑 main 分支，没有 `/webhook` 路由** → 沙箱事件指过去会拿到 200 但响应体是 HTML 首页，订单永不核销（已实测踩到）。
+- 端到端已验证（2026-11-12）：测试卡 `4576 7500 0000 0110` → 支付成功 → webhook 200 → `{"ok":true,"outcome":"paid+granted"}` → 订单 pending→paid → 授权发放（$10/30天）→ 幂等落库。脚本 `scripts/waffo-e2e.mjs`（建单/verify）。
+- ⚠️ 上生产仍需：KYB、**新建生产 API Key**（账号下只有 1 把 test key）、`publish-product` 到生产、注册 `testMode=false` 的 PROD webhook 条目。
 
 ## eve / AaaS 运行时
 - eve@1.0.0-rc.9（engines.node>=24）。agent/ 零自建工具。不接 withEve()（Windows 绝对路径 bug）；链路 eve build → eve start --port 4274 → next.config rewrites /eve/v1/* → /api/eve/v1/*。本地 npm run dev:all 并行起 Next+eve，注入 COOLHA_EVE_LOCAL=1 + EVE_INTERNAL_SECRET。
