@@ -51,14 +51,36 @@
 - **续接前必须自查**：eve 事件需 `meta.position` 为 number 且 type 形如 `family.action`（`agent/agent.ts` 侧 eve ≥27 才可读），否则 `useEveAgent` 在**渲染期**抛错把整页带崩到 error boundary。`canResumeEvents()` 拦截 → 不续接、给提示条、照常显示 transcript。
 - 回归脚本：`node scripts/sessions-smoke.mjs`（钱包 SIWE 登录 → 建/写/列/读/404/清理，断言 transcript）。
 
+## 按次付费（19 U/次 · 30 天 · token 价值上限 10 USD）
+- 口径：一次购买 = 一份**服务授权**（不是次数），额度按**实际推理消耗的 token 价值**扣减；用满/到期即停用。
+- 表 `agent_service_grants` + `agent_usage_ledger`（迁移 015）+ `chat_sessions.grant_id`。代码在 `src/lib/neon/agent-billing.ts`。
+- **计费点在 eve 受控代理**：从事件流解析 eve 的 `usage.recorded` 事实（inputTokens/outputTokens/cacheReadTokens，注意**没有 costUsd**）→ 按 OpenRouter 单价换算（`src/lib/agents/pricing.ts`，先原样查目录、查不到再剥网关前缀）→ 写账本并累加授权。拿不到单价 → 成本记 NULL（不编造）但也不扣额度。
+- **两层闸门**：建会话无授权 → 402 PAYMENT_REQUIRED；代理层发现额度用满/过期 → 402，请求不到上游。
+- Waffo webhook 核销 paid → 按订单幂等发放授权（`source_order_id` 唯一）；退款作废授权。
+- 测试模式可直接发授权：`POST /api/agents/credits/test-grant`（仅 `WAFFO_ENVIRONMENT=test`，生产调用一律 403）。
+- 回归脚本：`scripts/billing-smoke.mjs`（付费闸门）、`scripts/metering-smoke.mjs`（真实推理计量）。
+- ⚠️ 合规：对外只说「按次买服务」，token 上限是**内部成本护栏**，不作为档位、不宣传。
+
+## 投前侦察已下线（2026-11-12 连根拔）
+- 删干净了：`/agents/research` 页、ResearchCockpit、`/api/research`、5 维度引擎（`src/lib/research/*`）、旧一次性 RWA 研究管线（`lib/agents/execute.ts`、`lib/agents/rwa-research.ts`、`lib/neon/rwa-research.ts`、RwaResearchDesk、ResearchRunArticle、`/api/agents/rwa-research/*`、`/api/v1/agents/rwa-research/*`、MCP 的 `rwa_research` 工具）。
+- 仍被需要的约束/密钥校验/只读工具清单抽到 `src/lib/agents/agent-contracts.ts`。MCP 现在只剩 `alchemy_read_chain`。
+- 遗留待清：`rwa_research_*` 三张表与 `/api/v1/rwa/{assets,markets}` 仍在（见 docs/HANDOVER.md P2）。
+
 ## 已知缺陷
-- `src/lib/neon/waffo.ts:281` `readWaffoPurchaseSummary` 报 **42883 function sum(text) does not exist**（金额列是 text，sum() 要 numeric）。已被 catch，不影响页面但每次访问 /billing/subscription 都刷错误日志。
+- ~~`src/lib/neon/waffo.ts:281` sum(text) 42883~~ → **已修**（`SUM(amount::numeric)`）。
 
 ## 存储 / 隔离
 - 本地 IndexedDB 唯一读源，云端可选镜像。用户第三方 Key 永不上行。终端查询必带 subject 过滤。
 
 ## 部署
-- 生产 env 三环境一致。待办：解 AI Gateway 封禁、Budgets、§8.3 ToS/隐私/AI 披露；Waffo 上生产（KYB + 换生产 key/公钥 + publish 商品）与按次扣减闸门。
+- **三档环境**（2026-11-12 重排，5 个 env 文件结构对齐、去掉代码不读的变量）：
+  本地 `.env.local`/`.env.development.local` = **dev 库 + Waffo test**；`.env.preview.local` = dev 库 + test（Vercel Development/Preview）；`.env.production.local` = **main 库 + Waffo prod**（生产私钥/商品/公钥**尚未填**，收款会如实 503）。
+- 云端同步用 `node scripts/sync-vercel-env.mjs`（空值不推；清掉死变量 `AI_GATEWAY_API_KEY` 与纯本地 `COOLHA_EVE_LOCAL`）。改完 env 必须 Redeploy。
+- ⚠️ `COOLHA_EVE_LOCAL=1` **绝不上云**（会让云端把 /eve/v1/* rewrite 到 127.0.0.1:4274）。
+- Vercel 预览默认带 SSO 保护（`ssoProtection`）；已置 null 放开，让外部 AI 工具能访问预览。生产自定义域名不受影响。
+- **P0 阻塞**：Agent 执行只有本机 eve Runtime（:4274），预览/生产需要公网可达的 Runtime + `EVE_RUNTIME_ORIGIN`/`EVE_INTERNAL_SECRET`，否则 /api/eve/v1/* 一律 503。
+- Waffo 生产侧待办：KYB、生产私钥/商品/公钥、publish 商品；且 Dashboard 一个环境只能填一个 webhook URL（TEST 现在指向 app.coolha.com，与「生产跑 prod 验签」冲突）。
+- 交接与待办清单见 `docs/HANDOVER.md`；支付细节见 `docs/WAFFO_INTEGRATION.md`。
 
 ## 本地 dev 进程（踩坑）
 - `npm run dev:all`（`scripts/dev-all.mjs`）起 Next + eve。**必须用 run_in_background 起**；用 `nohup ... &` 会随 shell 退出被连带杀掉，且留下一堆占端口的孤儿进程（表现为「dev:all 报 3000 已在运行，跳过启动」，实际跑的是上一个孤儿）。
