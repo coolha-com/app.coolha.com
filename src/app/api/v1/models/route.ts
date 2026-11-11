@@ -6,8 +6,9 @@ import type { ComputeCapability, ComputeModelType, ModelSort } from "@/lib/compu
 /**
  * GET /api/v1/models —— 公开只读模型目录接口。
  *
- * 数据源：Vercel AI Gateway（GET {AI_GATEWAY_BASE_URL}/models），服务端持有密钥，
- * 默认缓存 1 小时。上游不可用时返回演示目录并在 source/stale 字段中标注，绝不伪造。
+ * 数据源：推理网关未接入前固定返回 Phase 1 示例布局目录，并在 source/stale/error
+ * 字段中明确标注 INFERENCE_NOT_CONFIGURED，绝不把示例数据伪装成真实目录。
+ * 接入带 /v1/models 目录接口的网关后替换 src/lib/ai-gateway/client.ts 即可。
  *
  * 查询参数：
  *   q           关键词（名称 / 模型 ID / 供应商 / 简介）
@@ -19,7 +20,7 @@ import type { ComputeCapability, ComputeModelType, ModelSort } from "@/lib/compu
  *               latency-asc / context-desc / context-asc
  *   limit       返回条数上限（默认 100，最大 500）
  *   offset      偏移量（默认 0）
- *   refresh     设为 1 可跳过缓存回源；须同时传入与 CATALOG_REFRESH_TOKEN 一致的 token
+ *   refresh     保留以兼容旧客户端；当前无上游可刷新，不产生回源
  *   token       回源鉴权令牌
  */
 
@@ -53,13 +54,8 @@ function parseOffset(value: string | null): number {
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams
 
-  // 回源（跳过缓存）需要令牌，避免匿名流量打穿上游
-  const refreshToken = process.env.CATALOG_REFRESH_TOKEN
-  const wantsRefresh = params.get("refresh") === "1"
-  const force =
-    wantsRefresh && Boolean(refreshToken) && params.get("token") === refreshToken
-
-  const catalog = await getModelCatalog({ force })
+  // 当前无上游可刷新：refresh 参数仅保留兼容，不产生回源
+  const catalog = await getModelCatalog()
 
   const sortRaw = params.get("sort") as ModelSort | null
   const sort: ModelSort = sortRaw && VALID_SORTS.includes(sortRaw) ? sortRaw : "name-asc"
@@ -85,6 +81,7 @@ export async function GET(request: Request) {
       source: catalog.source,
       stale: catalog.stale,
       fetchedAt: catalog.fetchedAt,
+      error: catalog.error ?? null,
       total: filtered.length,
       count: data.length,
       offset,

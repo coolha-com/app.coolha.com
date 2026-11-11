@@ -2,8 +2,7 @@ import "server-only"
 
 import { query, transaction } from "./postgres"
 import { readPlan } from "./quota"
-import { resolveSubject } from "./identity"
-import { getWalletSessionFromCookies } from "./wallet-auth"
+import { getCurrentUser } from "./session"
 import type { PlanDefinition } from "@/lib/compute/plans"
 
 /**
@@ -83,12 +82,11 @@ export type HistoryAuth =
  * 注意「未登录」与「档位不足」必须分开报——前者引导签名，后者引导升级。
  */
 export async function authorizeHistory(): Promise<HistoryAuth> {
-  const session = await getWalletSessionFromCookies()
-  if (!session) {
-    return { ok: false, status: 401, code: "AUTH_REQUIRED", message: "请先连接钱包并签名登录" }
+  const user = await getCurrentUser()
+  if (!user) {
+    return { ok: false, status: 401, code: "AUTH_REQUIRED", message: "请先登入后再使用云历史" }
   }
-  const subject = await resolveSubject(session.address)
-  const plan = await readHistoryPlan(subject)
+  const plan = await readHistoryPlan(user.subject)
   if (!plan) {
     return {
       ok: false,
@@ -97,7 +95,7 @@ export async function authorizeHistory(): Promise<HistoryAuth> {
       message: "当前档位不含云端历史，会话仅保存在本机浏览器；升级后可跨设备同步",
     }
   }
-  return { ok: true, subject, plan }
+  return { ok: true, subject: user.subject, plan }
 }
 
 function iso(value: Date | string): string {

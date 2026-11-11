@@ -2,6 +2,7 @@
   "version_notice": "Coolha目前处于v0.1.1-alpha版本，我们正在努力开发中，敬请期待。",
   "web3": {
     "connect_wallet": "连接钱包",
+    "sign_in": "登入",
     "account": "账户"
   },
   "navigation": {

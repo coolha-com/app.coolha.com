@@ -16,8 +16,9 @@ export const metadata = {
     description: 'Coolha Web Dapp',
     url: 'https://app.coolha.com',
     icons: ['https://app.coolha.com/favicon.ico'],
-    termsConditionsUrl: "https://docs.coolha.com/docs/apps/terms",
-    privacyPolicyUrl: "https://docs.coolha.com/docs/apps/privacy",
+    // 法务页面统一在官网，不放在 docs 子站（docs.coolha.com/docs/apps/* 是 404）
+    termsConditionsUrl: "https://coolha.com/terms",
+    privacyPolicyUrl: "https://coolha.com/privacy",
 }
 type WagmiProviderProps = {
     children: ReactNode
@@ -57,6 +58,12 @@ export default function Wagmi_Provider({ children, cookies, walletProjectId }: W
             },
             features: {
                 analytics: true,
+                // 钱包登录**只接受 EOA**（用户自己持私钥的钱包）。
+                // 关掉邮箱/社交登录，就不会再创建 Reown 托管的嵌入式钱包，
+                // 也就不会出现智能合约账户签名（ERC-1271/6492）那一套。
+                // Web2 登录走 Neon Auth（邮箱验证码 / Google），与钱包完全分开。
+                email: false,
+                socials: [],
                 emailShowWallets: false,
                 legalCheckbox: true,//启用或禁用服务条款和/或隐私政策复选框。
             },

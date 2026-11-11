@@ -1,5 +1,4 @@
-import { getWalletSessionFromCookies } from "@/lib/neon/wallet-auth"
-import { resolveSubject } from "@/lib/neon/identity"
+import { getCurrentUser } from "@/lib/neon/session"
 import {
   SubscriptionError,
   createSubscriptionOrder,
@@ -16,15 +15,23 @@ import { readPlan } from "@/lib/neon/quota"
 
 export const dynamic = "force-dynamic"
 
-/** 创建链上订阅订单（需登录） */
+/** 创建链上订阅订单（需登录；链上支付必须有钱包地址） */
 export async function POST(req: Request) {
-  const session = await getWalletSessionFromCookies()
-  if (!session) {
+  const user = await getCurrentUser()
+  if (!user) {
     return Response.json(
-      { error: { code: "AUTH_REQUIRED", message: "请先连接钱包并签名登录" } },
+      { error: { code: "AUTH_REQUIRED", message: "请先登入" } },
       { status: 401 },
     )
   }
+  // 链上付款要用钱包签名发起交易；纯 Web2 账号没有地址，必须先用钱包登录
+  if (!user.address) {
+    return Response.json(
+      { error: { code: "WALLET_REQUIRED", message: "链上支付需要先用钱包登录" } },
+      { status: 400 },
+    )
+  }
+  const walletAddress = user.address
 
   let body: { plan?: unknown; chain?: unknown; token?: unknown }
   try {
@@ -53,10 +60,10 @@ export async function POST(req: Request) {
   const tokenConfig = chainConfig.tokens[body.token]
 
   try {
-    const subject = await resolveSubject(session.address)
+    const subject = user.subject
     const order = await createSubscriptionOrder({
       subject,
-      walletAddress: session.address,
+      walletAddress,
       plan: body.plan,
       chain: body.chain,
       token: body.token,
@@ -80,11 +87,11 @@ export async function POST(req: Request) {
 
 /** 我的订阅状态：当前档位 + 订单 + 账本流水 */
 export async function GET() {
-  const session = await getWalletSessionFromCookies()
-  if (!session) {
+  const user = await getCurrentUser()
+  if (!user) {
     return Response.json({ signedIn: false, plan: "free", orders: [], ledger: [] })
   }
-  const subject = await resolveSubject(session.address)
+  const subject = user.subject
   const [plan, orders, ledger] = await Promise.all([
     readPlan(subject),
     listSubscriptionOrders(subject),

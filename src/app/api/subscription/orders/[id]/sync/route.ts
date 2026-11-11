@@ -1,5 +1,4 @@
-import { getWalletSessionFromCookies } from "@/lib/neon/wallet-auth"
-import { resolveSubject } from "@/lib/neon/identity"
+import { getCurrentUser } from "@/lib/neon/session"
 import { getSubscriptionOrder } from "@/lib/neon/subscription"
 import { isChainKey, isTokenSymbol } from "@/lib/subscription/config"
 import { syncChainToken } from "@/lib/subscription/scan"
@@ -12,15 +11,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
-  const session = await getWalletSessionFromCookies()
-  if (!session) {
+  const user = await getCurrentUser()
+  if (!user) {
     return Response.json(
-      { error: { code: "AUTH_REQUIRED", message: "请先签名登录" } },
+      { error: { code: "AUTH_REQUIRED", message: "请先登入" } },
       { status: 401 },
     )
   }
 
-  const subject = await resolveSubject(session.address)
+  const subject = user.subject
   const order = await getSubscriptionOrder(id, subject)
   if (!order) {
     return Response.json(

@@ -1,7 +1,6 @@
 import "server-only"
 
-import { getWalletSessionFromCookies } from "@/lib/neon/wallet-auth"
-import { resolveSubject } from "@/lib/neon/identity"
+import { getCurrentUser } from "@/lib/neon/session"
 import { isDatabaseConfigured } from "@/lib/neon/postgres"
 
 export function jsonError(status: number, code: string, message: string) {
@@ -29,16 +28,12 @@ export async function requireRwaSubject(): Promise<
   if (!isDatabaseConfigured()) {
     return { ok: false, response: jsonError(503, "DB_NOT_CONFIGURED", "数据库未配置") }
   }
-  const session = await getWalletSessionFromCookies()
-  if (!session?.address) {
+  const user = await getCurrentUser()
+  if (!user) {
     return {
       ok: false,
-      response: jsonError(401, "AUTH_REQUIRED", "请先连接钱包并签名登录"),
+      response: jsonError(401, "AUTH_REQUIRED", "请先登入后再使用该服务"),
     }
   }
-  const subject = await resolveSubject(session.address)
-  if (!subject) {
-    return { ok: false, response: jsonError(401, "AUTH_REQUIRED", "无法确认当前用户") }
-  }
-  return { ok: true, subject }
+  return { ok: true, subject: user.subject }
 }

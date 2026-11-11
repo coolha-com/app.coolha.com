@@ -2,6 +2,7 @@
   "version_notice": "Coolha is currently in v0.1.1-alpha version. We are working hard on development, please stay tuned.",
   "web3": {
     "connect_wallet": "Connect Wallet",
+    "sign_in": "Sign in",
     "account": "Account"
   },
   "navigation": {

@@ -1,9 +1,16 @@
 import "server-only"
 
 import { randomUUID } from "node:crypto"
-import { createGateway, generateText } from "ai"
-import { getCatalogModelBySlug } from "@/lib/ai-gateway/client"
-import { isSponsorableModel, SPONSORED_MAX_INPUT_PRICE_PER_MILLION } from "@/lib/ai-gateway/shared"
+import { generateText } from "ai"
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
+import {
+  INFERENCE_API_KEY,
+  INFERENCE_BASE_URL,
+  INFERENCE_GATEWAY_NAME,
+  INFERENCE_NOT_CONFIGURED,
+  isInferenceReady,
+  resolveInferenceModel,
+} from "@/lib/inference/config"
 import { recordUsage } from "@/lib/neon/ai-usage"
 import { checkQuota, consumeQuota } from "@/lib/neon/quota"
 import { REPORT_DISCLAIMER } from "@/lib/research/labels"
@@ -21,34 +28,32 @@ function publicError(error: unknown): string {
 }
 
 /**
- * 用平台赞助模型把已取到的事实再讲一遍。
+ * 用平台推理网关把已取到的事实再讲一遍。
  * 失败不影响报告本身。不接收、不记录任何用户密钥。
+ *
+ * Vercel AI Gateway 已永久停用，这里改走统一 OpenAI 兼容网关
+ * （src/lib/inference/config.ts），与 eve Agent 是同一个端点。
  */
 export async function narrateSponsoredReport(input: {
   subject: string
   slug: string
   report: StoredResearchReport
 }): Promise<NarrativeOutcome> {
-  const apiKey = process.env.AI_GATEWAY_API_KEY
-  if (!apiKey || process.env.FREE_MODELS_ENABLED === "0") {
+  if (!isInferenceReady() || process.env.FREE_MODELS_ENABLED === "0") {
     return {
       text: null,
       source: "none",
-      note: "赞助模型通道不可用，已保存结构化事实报告。",
+      note: `${INFERENCE_NOT_CONFIGURED.message}，已保存结构化事实报告。`,
     }
   }
 
-  const model = await getCatalogModelBySlug(input.slug)
-  if (
-    !model ||
-    model.gatewayType !== "language" ||
-    !isSponsorableModel(model) ||
-    model.inputPricePerMillionUsd > SPONSORED_MAX_INPUT_PRICE_PER_MILLION
-  ) {
+  // 旧目录 slug 不再有效：统一按 INFERENCE_MODELS 白名单收敛，只放行平台模型
+  const modelId = resolveInferenceModel(input.slug)
+  if (!modelId) {
     return {
       text: null,
       source: "none",
-      note: "所选模型不在赞助范围内，已保存结构化事实报告。",
+      note: `${INFERENCE_NOT_CONFIGURED.message}，已保存结构化事实报告。`,
     }
   }
 
@@ -57,19 +62,21 @@ export async function narrateSponsoredReport(input: {
     return {
       text: null,
       source: "none",
-      note: "今日赞助额度已用完，已保存结构化事实报告。额度与订阅档位无关。",
+      note: "今日平台额度已用完，已保存结构化事实报告。额度与订单档位无关。",
     }
   }
 
   const startedAt = Date.now()
+  const provider = createOpenAICompatible({
+    name: INFERENCE_GATEWAY_NAME,
+    baseURL: INFERENCE_BASE_URL,
+    apiKey: INFERENCE_API_KEY,
+    includeUsage: true,
+  })
+
   try {
-    const gateway = createGateway({
-      apiKey,
-      ...(process.env.AI_GATEWAY_BASE_URL ? { baseURL: process.env.AI_GATEWAY_BASE_URL } : {}),
-    })
-    const disallowTraining = process.env.AI_GATEWAY_DISALLOW_TRAINING !== "0"
     const result = await generateText({
-      model: gateway(model.modelId),
+      model: provider(modelId),
       system: [
         "你只转述用户给出的 JSON 里已经出现的事实。",
         "每条事实写明 dataSourceLabel，时间使用 createdAt。",
@@ -81,9 +88,6 @@ export async function narrateSponsoredReport(input: {
       prompt: JSON.stringify(input.report),
       maxOutputTokens: 700,
       abortSignal: AbortSignal.timeout(20_000),
-      ...(disallowTraining
-        ? { providerOptions: { gateway: { disallowPromptTraining: true } } }
-        : {}),
     })
     const text = result.text.trim()
     const usage = result.usage as { inputTokens?: number; outputTokens?: number }
@@ -92,10 +96,11 @@ export async function narrateSponsoredReport(input: {
     await consumeQuota(input.subject, inputTokens, outputTokens).catch(() => undefined)
     await recordUsage({
       requestId: `rwa_${randomUUID()}`,
-      modelId: model.modelId,
-      providerId: model.providerId,
+      modelId,
+      providerId: "inference",
       source: "rwa-research",
-      walletAddress: input.subject,
+      subject: input.subject,
+      walletAddress: null,
       inputTokens,
       outputTokens,
       costUsd: 0,
@@ -106,16 +111,17 @@ export async function narrateSponsoredReport(input: {
       text: text || null,
       source: text ? "sponsored" : "none",
       note: text
-        ? `由赞助模型 ${model.name} 根据本次事实整理。${REPORT_DISCLAIMER}`
-        : "赞助模型没有返回文字，已保存结构化事实报告。",
+        ? `由平台模型 ${modelId} 根据本次事实整理。${REPORT_DISCLAIMER}`
+        : "平台模型没有返回文字，已保存结构化事实报告。",
     }
   } catch (error) {
     await recordUsage({
       requestId: `rwa_err_${randomUUID()}`,
-      modelId: model.modelId,
-      providerId: model.providerId,
+      modelId,
+      providerId: "inference",
       source: "rwa-research",
-      walletAddress: input.subject,
+      subject: input.subject,
+      walletAddress: null,
       inputTokens: 0,
       outputTokens: 0,
       costUsd: 0,
@@ -126,7 +132,7 @@ export async function narrateSponsoredReport(input: {
     return {
       text: null,
       source: "none",
-      note: `赞助模型整理失败（${publicError(error)}）。结构化事实报告已保存。`,
+      note: `平台模型整理失败（${publicError(error)}）。结构化事实报告已保存。`,
     }
   }
 }

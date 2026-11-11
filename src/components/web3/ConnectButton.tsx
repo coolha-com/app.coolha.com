@@ -1,13 +1,15 @@
 'use client'
 
-import { useMemo, useSyncExternalStore } from 'react'
-import { useAppKit, useAppKitAccount } from '@reown/appkit/react'
+import { useSyncExternalStore } from 'react'
+import Link from 'next/link'
+import { useAppKitAccount } from '@reown/appkit/react'
 import { useTranslations } from 'next-intl'
 import { mainnet } from 'viem/chains'
 import { useEnsAvatar, useEnsName } from 'wagmi'
-import { RiWallet3Line } from 'react-icons/ri'
+import { RiLoginBoxLine } from 'react-icons/ri'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 
 type ConnectButtonProps = {
@@ -17,107 +19,108 @@ type ConnectButtonProps = {
   className?: string
 }
 
-function getPixelAvatar(address?: string) {
-  if (!address) {
-    return null
-  }
-
-  const seed = encodeURIComponent(address.toLowerCase())
-  return `https://api.dicebear.com/9.x/pixel-art-neutral/svg?seed=${seed}&radius=24`
-}
+/** 未登入去登录页；已登入进账户主页（不是再回登录页）。 */
+const SIGN_IN_HREF = '/signin'
+const ACCOUNT_HREF = '/account'
 
 export default function ConnectButton({ sidebar = false, showLabels = false, className }: ConnectButtonProps) {
   const t = useTranslations('web3')
-  const { address, isConnected } = useAppKitAccount()
+  const { address } = useAppKitAccount()
+  const auth = useAuth()
   const mounted = useSyncExternalStore(
     () => () => { },
     () => true,
     () => false,
   )
 
-  const { open } = useAppKit()
+  const formatAddress = (addr: string) => `${addr.slice(0, 4)}...${addr.slice(-4)}`
 
-  // 格式化地址显示
-  const formatAddress = (addr: string) => {
-    return `${addr.slice(0, 4)}...${addr.slice(-4)}`
-  }
+  // ENS 只有「钱包登录且没有 Web2 身份」时才查——邮箱用户没有地址可解析
+  const ensEnabled = mounted && auth.source === 'wallet' && !!address
 
   const { data: ensName } = useEnsName({
     address: address as `0x${string}` | undefined,
     chainId: mainnet.id,
-    query: {
-      enabled: mounted && isConnected && !!address,
-    },
+    query: { enabled: ensEnabled },
   })
 
   const { data: ensAvatar } = useEnsAvatar({
     name: ensName as string | undefined,
     chainId: mainnet.id,
-    query: {
-      enabled: mounted && isConnected && !!ensName,
-    },
+    query: { enabled: ensEnabled && !!ensName },
   })
 
-  const avatarLabel = address ? address.slice(2, 3).toUpperCase() : 'W'
-  const pixelAvatar = useMemo(() => getPixelAvatar(address), [address])
-  const avatarSrc = ensAvatar ?? pixelAvatar ?? undefined
-  const displayName = ensName ?? (address ? formatAddress(address) : t('connect_wallet'))
+  const loggedIn = mounted && auth.ready && auth.signedIn
+  const displayName =
+    auth.label || ensName || (address ? formatAddress(address) : t('sign_in'))
+
+  // 头像优先级：用户设过的头像 → ENS 头像 → 首字母占位（不再生成随机像素头像）
+  const avatarSrc = auth.image ?? ensAvatar ?? undefined
+  const avatarLabel = (
+    auth.name?.trim() ||
+    auth.email?.trim() ||
+    (address ? address.slice(2, 3) : 'C')
+  )
+    .slice(0, 1)
+    .toUpperCase()
+
+  const href = loggedIn ? ACCOUNT_HREF : SIGN_IN_HREF
 
   if (sidebar) {
+    /**
+     * 与「更多」按钮（ButtonMenu）逐类对齐：同样的 size-11 / px-4 / gap-2 / rounded-full，
+     * 图标位是 24px 的头部或登入图标，所以头像与图标同 x，名称与「更多」文字同 x。
+     * 底色用背景色 + 外框线（不用主题色），悬浮时与「更多」一致的 bg-accent 加一层轻阴影。
+     */
     return (
-      <div className={cn('relative flex w-full', showLabels ? 'justify-start' : 'justify-center', className)}>
-        <Button
-          onClick={() => open({ view: isConnected ? 'Account' : 'Connect', namespace: 'eip155' })}
-          className={cn(
-            'size-11 rounded-full p-0',
-            showLabels && 'h-11 w-full',
-            showLabels && (mounted && isConnected ? 'justify-start gap-3 px-4' : 'justify-center px-4')
-          )}
-          type="button"
-        >
-          {mounted && isConnected ? (
-            <Avatar size="md" className="size-6 shrink-0">
-              {avatarSrc ? <AvatarImage alt={displayName} src={avatarSrc} /> : null}
-              <AvatarFallback className="bg-primary/15 font-semibold text-foreground">
-                {avatarLabel}
-              </AvatarFallback>
-            </Avatar>
-          ) : (
-            <RiWallet3Line className={cn('size-6', showLabels && 'hidden')} />
-          )}
-          <span className={cn('text-sm font-bold', !showLabels && 'hidden', mounted && isConnected && 'truncate')}>
-            {mounted && isConnected ? displayName : t('connect_wallet')}
-          </span>
-        </Button>
-      </div>
-    )
-  }
-
-  if (!mounted || !isConnected) {
-    return (
-      <div className={cn('relative', className)}>
-        <Button onClick={() => open({ view: 'Connect', namespace: 'eip155' })} className="rounded-full font-bold">
-          {t('connect_wallet')}
-        </Button>
-      </div>
+      <Link
+        href={href}
+        title={showLabels ? undefined : loggedIn ? displayName : t('sign_in')}
+        aria-label={loggedIn ? `账户：${displayName}` : t('sign_in')}
+        className={cn(
+          'inline-flex size-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full border bg-background p-0 text-sm font-medium transition-all outline-none',
+          'hover:bg-accent hover:text-accent-foreground hover:shadow-sm',
+          'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
+          '[&_svg]:pointer-events-none [&_svg]:shrink-0',
+          showLabels && 'h-11 w-full justify-start px-4',
+          className,
+        )}
+      >
+        {loggedIn ? (
+          <Avatar className="size-6 shrink-0">
+            {avatarSrc ? <AvatarImage alt={displayName} src={avatarSrc} /> : null}
+            <AvatarFallback className="bg-primary/15 text-xs font-semibold text-foreground">
+              {avatarLabel}
+            </AvatarFallback>
+          </Avatar>
+        ) : (
+          <RiLoginBoxLine className="size-6" />
+        )}
+        <span className={cn('min-w-0 truncate text-lg', !showLabels && 'hidden')}>
+          {loggedIn ? displayName : t('sign_in')}
+        </span>
+      </Link>
     )
   }
 
   return (
     <div className={cn('relative', className)}>
-      <Button
-        onClick={() => open({ view: "Account" })}
-        className="h-10 gap-2 rounded-full px-3 font-bold"
-      >
-        <Avatar size="sm" className="shrink-0">
-          {avatarSrc ? <AvatarImage alt={displayName} src={avatarSrc} /> : null}
-          <AvatarFallback className="bg-primary/15 font-semibold text-foreground">
-            {avatarLabel}
-          </AvatarFallback>
-        </Avatar>
-        <span className="max-w-32 truncate">
-          {displayName}
-        </span>
+      <Button asChild className={cn('font-bold', loggedIn ? 'h-10 gap-2 rounded-full px-3' : 'rounded-full')}>
+        <Link href={href} aria-label={loggedIn ? `账户：${displayName}` : t('sign_in')}>
+          {loggedIn ? (
+            <>
+              <Avatar size="sm" className="shrink-0">
+                {avatarSrc ? <AvatarImage alt={displayName} src={avatarSrc} /> : null}
+                <AvatarFallback className="bg-primary/15 font-semibold text-foreground">
+                  {avatarLabel}
+                </AvatarFallback>
+              </Avatar>
+              <span className="max-w-32 truncate">{displayName}</span>
+            </>
+          ) : (
+            t('sign_in')
+          )}
+        </Link>
       </Button>
     </div>
   )

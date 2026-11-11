@@ -48,3 +48,10 @@ next-env.d.ts
 .workbuddy/c-AAAAAA-Code-coolha-com-app.coolha.com/
 # 由 scripts/extract-conversation.mjs 生成的对话导出（按需保留/提交）
 conversation-export.md
+
+# eve Agent Runtime 本地运行产物（日志、traces、构建输出）
+/.eve/
+/.output/
+
+# Playwright CLI 的本地调试产物（快照、截图、控制台日志）
+/.playwright-cli/

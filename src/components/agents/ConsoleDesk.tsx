@@ -71,7 +71,7 @@ export function ConsoleDesk({
   }
 
   if (!signedIn) {
-    return <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">请先在侧边栏签名登录。</p>
+    return <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">请先在侧边栏登入。</p>
   }
 
   return (

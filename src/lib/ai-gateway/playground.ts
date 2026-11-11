@@ -1,70 +1,60 @@
 import "server-only"
 
-import { getModelCatalog } from "./client"
 import {
-  isSponsorableModel,
-  SPONSORED_MAX_INPUT_PRICE_PER_MILLION,
-  type PlaygroundModel,
-  type PlaygroundModels,
-} from "./shared"
+  INFERENCE_DEFAULT_MODEL,
+  INFERENCE_GATEWAY_NAME,
+  inferenceModelIds,
+} from "@/lib/inference/config"
+import type { PlaygroundModel, PlaygroundModels } from "./shared"
 
 export { isFreeModel, isSponsorableModel } from "./shared"
 export type { PlaygroundModel, PlaygroundModels } from "./shared"
 
 /**
- * Chat 可选模型 = Coolha 愿意赞助推理费的那个集合。
+ * Chat 可选模型 = 统一推理网关 INFERENCE_MODELS 里登记的模型。
  *
- * 准入判据（缺一不可）：
- *   1. gatewayType === "language" 且未下线；
- *   2. **零数据保留 + 不用于训练**（isSponsorableModel）—— 这是隐私底线，
- *      不是价格底线。实测「价格 0」的免费语言模型全部 zdr=none/noTrain=none，
- *      即免费额度靠让供应商拿数据训练换来，Coolha 不做这个交易；
- *   3. 非 Stealth Model（AI Product Terms §8.2 无数据保护）；
- *   4. 输入单价不超过 SPONSORED_MAX_INPUT_PRICE_PER_MILLION，防误配烧穿获客预算。
- *
- * 服务端路由（/api/compute/playground）有同源硬门禁兜底，客户端过滤只为体验。
+ * Vercel AI Gateway 已于 2026-11-11 永久停用，全站不再依赖其目录。
+ * 新网关只提供模型 ID，不提供价格 / ZDR / 训练政策等元数据：
+ * 这些字段一律留空或标记为 mock，**绝不编造占位数值**（项目铁律）。
+ * 模型广场保留布局，等接入带目录接口的网关后再替换本文件的数据源。
  */
 
-/** 默认赞助模型：开放权重、便宜、ZDR + 不训练。不在列表时回退到最便宜的安全模型 */
-export const DEFAULT_PLAYGROUND_MODEL_ID = "openai/gpt-oss-20b"
+/** 兼容旧引用；真实默认模型由 INFERENCE_DEFAULT_MODEL 决定 */
+export const DEFAULT_PLAYGROUND_MODEL_ID = INFERENCE_DEFAULT_MODEL
+
+/** 站内 slug：把厂商原生模型 ID 收敛成可用于 URL 的标识 */
+function toSlug(modelId: string): string {
+  return modelId.replace(/[^a-zA-Z0-9._-]+/g, "-").toLowerCase()
+}
 
 export async function getPlaygroundModels(): Promise<PlaygroundModels> {
-  const catalog = await getModelCatalog()
+  const ids = inferenceModelIds()
 
-  const models = catalog.models
-    .filter(
-      (model) =>
-        model.gatewayType === "language" &&
-        model.status !== "maintenance" &&
-        isSponsorableModel(model) &&
-        model.inputPricePerMillionUsd <= SPONSORED_MAX_INPUT_PRICE_PER_MILLION,
-    )
-    // 便宜优先，让默认档落在低成本模型上
-    .sort((a, b) => a.inputPricePerMillionUsd - b.inputPricePerMillionUsd)
-    .map<PlaygroundModel>((model) => ({
-      id: model.id,
-      name: model.name,
-      modelId: model.modelId,
-      providerId: model.providerId,
-      providerName: model.providerName,
-      type: model.type,
-      tags: model.tags,
-      contextLength: model.contextLength,
-      maxOutputTokens: model.maxOutputTokens,
-      inputPricePerMillionUsd: model.inputPricePerMillionUsd,
-      outputPricePerMillionUsd: model.outputPricePerMillionUsd,
-      gatewayType: model.gatewayType,
-      dataSource: model.dataSource,
-      zeroDataRetention: model.zeroDataRetention,
-      noTraining: model.noTraining,
-    }))
+  const models = ids.map<PlaygroundModel>((modelId) => ({
+    id: toSlug(modelId),
+    name: modelId,
+    modelId,
+    providerId: "inference",
+    providerName: INFERENCE_GATEWAY_NAME,
+    type: "chat",
+    tags: [],
+    // 新网关未提供规格：一律 0 / null / mock 标记，UI 必须显示「未提供」
+    contextLength: 0,
+    maxOutputTokens: 0,
+    inputPricePerMillionUsd: 0,
+    outputPricePerMillionUsd: 0,
+    gatewayType: "language",
+    dataSource: "mock",
+    zeroDataRetention: null,
+    noTraining: null,
+  }))
 
-  const preferred = models.find((model) => model.modelId === DEFAULT_PLAYGROUND_MODEL_ID)
+  const preferred = models.find((model) => model.modelId === INFERENCE_DEFAULT_MODEL)
   const chosen = preferred ?? models[0] ?? null
 
   return {
     models,
     defaultSlug: chosen?.id ?? null,
-    defaultIsFree: Boolean(chosen),
+    defaultIsFree: false,
   }
 }

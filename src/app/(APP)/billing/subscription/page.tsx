@@ -1,26 +1,24 @@
 import type { Metadata } from "next"
-import { ModulePage } from "@/components/compute/ModulePage"
-import { SubscriptionPanel } from "@/components/compute/SubscriptionPanel"
+import { OneTimePurchase } from "@/components/agents/OneTimePurchase"
+import { PageHeader, PageShell } from "@/components/PageShell"
 
 export const metadata: Metadata = {
-  title: "订阅与账单",
-  description: "链上订阅（USDC / USDT）与账本流水",
+  title: "购买 Agent 服务",
+  description: "一次性购买付费的 Agent 即服务，法币结账（测试模式）。",
 }
 
-export const dynamic = "force-dynamic"
-
 /**
- * 订阅与账单。
- * 链上收款采用「订单匹配法」：下单 → 转精确金额 → 自动匹配入账 → 授予权益。
- * 详见 docs/PRICING_AND_ENTITLEMENTS.md 第五节。
+ * 商业模式已改为一次性购买 Agent 服务。
+ * 旧的链上订阅代码保留给历史订单与账本查询，但不再渲染订阅档位与下单 CTA。
  */
-export default function BillingPage() {
+export default function PurchasePage() {
   return (
-    <ModulePage
-      title="订阅与账单"
-      description="四档订阅：Free $0 / Plus $6 / Pro $10 / Ultra $30（USD/月），仅支持链上稳定币结算（USDC / USDT，Base 与 Ethereum）。订阅解锁的是软件能力，模型推理费用由你自己的 API Key 承担。"
-    >
-      <SubscriptionPanel />
-    </ModulePage>
+    <PageShell>
+      <PageHeader
+        title="购买 Agent 服务"
+        description="一次性购买专业 Agent 服务，按次结算；购买记录与账本在这里查看。"
+      />
+      <OneTimePurchase />
+    </PageShell>
   )
 }

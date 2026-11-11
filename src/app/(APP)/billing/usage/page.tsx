@@ -3,8 +3,7 @@ import Link from "next/link"
 import { ModulePage } from "@/components/compute/ModulePage"
 import { ProviderLogo } from "@/components/compute/ProviderLogo"
 import { listRecentUsage, summarizeUsage } from "@/lib/neon/ai-usage"
-import { getWalletSessionFromCookies } from "@/lib/neon/wallet-auth"
-import { resolveSubject } from "@/lib/neon/identity"
+import { getCurrentUser } from "@/lib/neon/session"
 import { isDatabaseConfigured } from "@/lib/neon/postgres"
 import { formatUsd } from "@/lib/compute/service"
 
@@ -61,13 +60,12 @@ function formatTime(value: string): string {
 
 export default async function UsagePage() {
   const dbReady = isDatabaseConfigured()
-  const session = await getWalletSessionFromCookies()
-  const signedIn = Boolean(session?.address)
+  const user = await getCurrentUser()
+  const signedIn = Boolean(user)
 
-  // 用量是**私有数据**：只查当前主体自己的记录。
-  // 未登录时 subject 为 null，只命中匿名记录（wallet_address IS NULL），
-  // 绝不会把其他用户的钱包地址与调用明细带出来。
-  const subject = signedIn ? await resolveSubject(session!.address).catch(() => null) : null
+  // 用量是**私有数据**：只查当前主体自己的记录（subject = users.id）。
+  // 未登录时 subject 为 null，一条都不查，绝不会把其他用户的调用明细带出来。
+  const subject = user?.subject ?? null
 
   const rows = dbReady && subject ? await listRecentUsage(subject, 50).catch(() => []) : []
   const summary =
@@ -83,13 +81,13 @@ export default async function UsagePage() {
       {!signedIn ? (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
           <span className="min-w-0 flex-1 text-foreground">
-            用量记录按账号隔离，签名登录后才能查看你自己的调用明细。
+            用量记录按账号隔离，登入后才能查看你自己的调用明细。
           </span>
           <Link
-            href="/chat"
+            href="/signin"
             className="shrink-0 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
           >
-            去登录
+            去登入
           </Link>
         </div>
       ) : null}

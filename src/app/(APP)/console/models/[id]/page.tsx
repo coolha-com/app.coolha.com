@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { RiArrowLeftLine, RiChatSmileAiLine, RiKey2Line, RiLockLine } from "react-icons/ri"
+import { RiArrowLeftLine, RiChatSmileAiLine, RiLockLine } from "react-icons/ri"
 import { CapabilityBadges } from "@/components/compute/CapabilityBadges"
 import { ProviderLogo } from "@/components/compute/ProviderLogo"
 import { modelCapabilityTags } from "@/components/compute/capability-meta"
@@ -140,25 +140,24 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* 使用方式：赞助模型直接进 Chat；其余走自己的 Key */}
+        {/* 使用方式：平台模型在智能对话里选择 */}
         <section className="rounded-2xl border bg-card p-5 shadow-sm">
-          <h2 className="font-semibold">怎么在 Chat 里用</h2>
+          <h2 className="font-semibold">在智能对话里使用</h2>
 
           {sponsored ? (
             <>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                该模型由 Coolha 赞助推理费用，且供应商承诺
+                该模型在平台模型目录里，供应商承诺
                 <strong className="font-medium text-foreground">零数据保留、不用于训练</strong>
-                ，可直接在 Chat 中对话。需要签名登录，用量计入每日统一额度
-                （所有登录用户相同，与是否订阅无关）。
+                。可在智能对话的模型切换器里选中，由 Agent 执行任务时调用。
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link
-                  href={`/chat?model=${encodeURIComponent(model.id)}`}
+                  href="/chat"
                   className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-90"
                 >
                   <RiChatSmileAiLine className="size-4" />
-                  在 Chat 中对话
+                  去智能对话
                 </Link>
                 <Link
                   href="/billing/usage"
@@ -168,40 +167,29 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
                 </Link>
               </div>
               <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                超出每日额度后，接入你自己的模型服务即可继续使用——升级订阅不会增加免费额度，
-                订阅解锁的是云端历史、同步、检索与导出等软件能力。
+                平台模型由 Coolha 统一提供；按 Agent 服务计费，不单独收取推理额度。
               </p>
             </>
           ) : (
             <>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                该模型不满足 Coolha 的赞助标准（需同时满足零数据保留、不用于训练、非预发布测试模型）。
-                要使用它，请在「API 连接」中添加你自己的模型服务——密钥只保存在你的浏览器，Chat
-                会直连调用，推理费用由你自己承担。
+                该模型不在平台模型目录里（需同时满足零数据保留、不用于训练、非预发布测试模型），
+                因此当前不可选。平台模型由 Coolha 统一提供，不接入外部密钥。
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link
-                  href="/console/api-keys"
+                  href="/chat"
                   className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:opacity-90"
                 >
-                  <RiKey2Line className="size-4" />
-                  配置自定义模型
-                </Link>
-                <Link
-                  href="/chat"
-                  className="inline-flex h-10 items-center rounded-xl border px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  去 Chat
+                  <RiChatSmileAiLine className="size-4" />
+                  去智能对话
                 </Link>
               </div>
-              <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                订阅解锁的是 Coolha 的软件能力（云端历史、跨设备同步、检索、导出），不包含第三方模型的推理额度。
-              </p>
             </>
           )}
         </section>
 
-        {/* 费用估算：从「API 成本」改述为「用你自己 Key 时的成本参考」 */}
+        {/* 费用估算：平台模型推理成本参考 */}
         <CostEstimator model={model} />
       </div>
 
@@ -211,12 +199,11 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
           <p>* 该模型价格随下游供应商浮动，展示值为目录基准价。</p>
         ) : null}
         <p>
-          模型广场是目录与价格查询。免费模型的推理由 Coolha
-          赞助并计入你的每日配额；其他模型请接入你自己的服务使用。Coolha
-          不提供 token 中转或转售服务。
+          模型广场是平台模型目录与上游价格参考。模型由 Coolha 统一提供，按 Agent 服务计费；
+          费用估算只是上游目录单价的成本参考。
         </p>
         <p>
-          上方的费用估算用于评估「用你自己的 Key 调用该模型」的成本，不代表 Coolha 的收费。
+          上方的费用估算只是上游目录单价的成本参考，不代表 Coolha 的收费。
         </p>
       </CollapsibleNote>
     </section>

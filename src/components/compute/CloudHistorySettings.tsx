@@ -68,7 +68,7 @@ export function CloudHistorySettings() {
 
   const onModeChange = async (next: StorageMode) => {
     if (next === "backup" && !backupAllowed) {
-      setMessage(signedIn ? "当前档位不含云端备份，升级 Plus 起可开启。" : "请先连接钱包并签名登录。")
+      setMessage(signedIn ? "当前档位不含云端备份，升级 Plus 起可开启。" : "请先登入。")
       return
     }
     setBusy("backup")
@@ -247,7 +247,7 @@ export function CloudHistorySettings() {
                 ? "本机仍为读源，云端做镜像，可跨设备恢复"
                 : signedIn
                   ? "需 Plus 及以上档位"
-                  : "需先签名登录"
+                  : "需先登入"
             }
             disabled={busy !== "none" || !backupAllowed}
             onClick={() => void onModeChange("backup")}

@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
-import { RiRobot2Line, RiSearchLine } from "react-icons/ri"
+import { RiCpuLine, RiRobot2Line, RiSearchLine } from "react-icons/ri"
 
-import { EntryCard, PageHeader, PageShell } from "@/components/PageShell"
+import { EntryCard, PageHeader, PageShell, SectionHeading } from "@/components/PageShell"
 
 export const metadata: Metadata = {
   title: "智能服务",
@@ -44,6 +44,18 @@ export default function AgentsPage() {
             muted
           />
         ))}
+      </div>
+
+      <SectionHeading>页面入口</SectionHeading>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <EntryCard
+          title="模型广场"
+          description="平台模型目录与上游价格参考；模型由 Coolha 统一提供，在智能对话里选用。"
+          href="/console/models"
+          hrefLabel="打开模型广场"
+          icon={RiCpuLine}
+          status="可进入"
+        />
       </div>
     </PageShell>
   )

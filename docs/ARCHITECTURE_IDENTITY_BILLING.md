@@ -49,13 +49,39 @@
 - Phase 3 schema：`billing_addresses(user_id, address, label)` + 充值订单携带 `user_id` 引用；`compute_ledger` 全部挂 `user_id`。
 - 风控意义：签名私钥（热、高频使用）与资金私钥（冷、低频）分离， compromise 爆炸半径最小化；团队场景下「登录人」与「付款人」可不同。
 
-## 决策四：不开启智能账户（2026-10-15）
+## 决策四：不开启智能账户（2026-10-15）— ⚠️ 已被现实推翻，见决策六
 
 **结论：项目不使用 ERC-4337 智能账户 / 账号抽象钱包。** 所有账户均为 EOA：普通 Web3 钱包（MetaMask 等）+ 社交登录创建的 MPC 嵌入式钱包（Reown 默认形态，产出标准 ECDSA 签名）。
+
+> **2026-11-11 更正**：Reown AppKit 的 Smart Account 对嵌入式钱包（邮箱/社交登录）**默认开启**，签出的是 ERC-1271 / ERC-6492 签名，不是 ECDSA。因此「不需要 1271/6492 验签」这个前提是错的，已按决策六补上。下文其余判断（不作为唯一 ID、counterfactual 地址不稳定）仍然成立。
 
 - 影响：服务端验签保持 **ecrecover 恢复地址比对**（现有 `/api/wallet-auth/verify` 已覆盖全部账户类型），**不需要 EIP-1271/6492 链上验证**。
 - 若未来开启智能账户：需按账户类型分流验签（EOA 走 recover，合约地址走 `isValidSignature` eth_call），且 counterfactual 地址不稳定，作为唯一 ID 需更谨慎。
 - 附带决定：侧边栏不放「签名登录」入口（UI 过于靠前且暂无功能消费）。`WalletSignIn` 组件、`useWalletAuth` hook、`/api/wallet-auth/*` 路由全部保留待用；**UI 入口随 Phase 2 API Key 功能一起在 `/ai/api-keys` 页提供**（签名在有消费场景时才对用户有意义）。
+
+## 决策五：Web2 为主登录方式，钱包为第二凭证（2026-11-11）
+
+**结论：用户默认用邮箱验证码（Web2）登录，钱包签名降级为可选入口；两者收敛到同一个 `users.id`。**
+
+理由：目标用户绝大多数没有钱包，「为了用 AI 服务先装 MetaMask」是硬门槛。而 `users` / `user_identities` 两层表结构本来就支持多凭证，不需要改模型，只需要把「会话绑地址」改成「会话绑人」。
+
+落地：
+
+| 层 | 实现 |
+|---|---|
+| Web2 身份提供方 | Neon Auth（Managed Better Auth），`neon_auth` schema，与业务库同库不同 schema |
+| 邮箱验证码 | `POST /api/auth/email-otp/send-verification-otp` + `POST /api/auth/sign-in/email-otp`，经 `/api/auth/[...path]` 代理，Cookie 第一方 |
+| Google 登录 | `POST /api/auth/sign-in/social` → Neon Auth 托管授权 → 回调带 `neon_auth_session_verifier` 回到本域换会话 |
+| 统一会话 | `src/lib/neon/session.ts` 的 `getCurrentUser()`：先读 Neon Auth 会话，再读钱包会话 |
+| 身份表 | `user_identities.kind ∈ evm_signing \| email \| neon_auth` |
+| 合并规则 | 已验证邮箱是合流点：先邮箱后 Google / 先 Google 后邮箱，都是同一个 `users.id`；**未验证邮箱不参与合并** |
+| 钱包绑定 | SIWE 验签成功且当前有 Web2 会话时，`bindWalletToUser()` 把地址挂到当前账号；地址已属他人则**不抢占**（`conflict=true`） |
+
+关键约束：
+
+- `getCurrentUser()` 优先 Web2：浏览器里同时有钱包会话时不能被钱包顶掉身份（钱包会话可能是同一台机器上别人的）。
+- 会话 Cookie 与用户映射分离：会话仍按凭证（地址 / Neon Auth session）签发，`users.id` 在读取时解析，避免会话指向过期用户。
+- 业务主键永远是 `users.id::text`；`ai_gateway_usage` 已拆出 `subject` 列，不再把 `users.id` 塞进 `wallet_address`。
 
 ## 实施状态
 
@@ -63,11 +89,14 @@
 |---|---|
 | One-Click Auth 统一流程 | ✅ 已落地（`src/config/siwe.ts` + `siweConfig`），tsc/lint/build 通过 |
 | SIWE 后端 + 会话 | ✅ `db/migrations/001_wallet_auth.sql` + `/api/wallet-auth/*`，端到端 8/8 通过 |
-| users / user_identities / billing_addresses 表 | 🔜 Phase 3 随 compute_* schema 一起迁移 |
-| 多地址链接流程 | 🔜 Phase 3 |
+| ERC-1271 / 6492 验签 | ✅ `src/lib/web3/siwe-signature.ts`（`publicClient.verifyMessage`），社交登录才真正可用 |
+| users / user_identities / billing_addresses 表 | ✅ `db/migrations/006`，业务 subject 已全部切到 `users.id::text` |
+| Web2 登录（邮箱验证码 + Google） | ✅ `db/migrations/012` + `src/lib/neon/session.ts` + `/signin` |
+| 多凭证绑定（钱包 ↔ 账号） | ✅ `bindWalletToUser()`；暂不支持两个已有账号的权益合并（不可逆操作，需显式确认流程） |
 
 ## 复核条件
 
 - 若接入 SIWX 多链（非 EVM 身份）：重新评估 `@reown/appkit-siwx` 的 SIWXConfig 自实现路径。
-- 若出现「一个 user 多地址」的真实需求：提前 Phase 3 的 users/identities 迁移。
+- 若出现「两个账号要合并」的真实需求：需要单独设计「证明同时持有两边凭证 → 迁移权益 → 保留审计」的流程，不能在一次登录里顺手做。
+- 若 Neon Auth 改用自定义 SMTP 或新增社交提供方：只需改 Neon 控制台，本项目代码不用动（身份种类仍是 `neon_auth`）。
 - 若计费地址需要找零/退款原路返回：账本需记录 source address 与 tx 映射。

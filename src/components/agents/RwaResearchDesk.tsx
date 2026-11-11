@@ -1,8 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { streamCustomModel } from "@/lib/compute/byok-client"
-import { useConnections } from "@/lib/compute/connections"
 import Link from "next/link"
 import { REPORT_DISCLAIMER_DETAILED } from "@/lib/research/labels"
 import {
@@ -46,15 +44,10 @@ export function RwaResearchDesk({
   initialProfile: SavedProfile | null
   initialRuns: ResearchRunView[]
 }) {
-  const connections = useConnections()
-  const [modelMode, setModelMode] = useState<"sponsored" | "byok">(
-    initialProfile?.modelMode ?? "sponsored",
-  )
+  // 自带模型通道已下线：只保留平台模型，历史 Profile 里的 byok 字段不再读取。
   const [slug, setSlug] = useState(
     initialProfile?.sponsoredModelSlug ?? models[0]?.slug ?? "",
   )
-  const [connectionId, setConnectionId] = useState(initialProfile?.byokConnectionId ?? "")
-  const [modelLabel, setModelLabel] = useState(initialProfile?.byokModelLabel ?? "")
   const [allowed, setAllowed] = useState<string[]>(
     initialProfile?.allowedToolIds ?? TOOLS.map((tool) => tool.id),
   )
@@ -72,12 +65,10 @@ export function RwaResearchDesk({
   const [targetType, setTargetType] = useState<"contract" | "token" | "project">("contract")
   const [runs, setRuns] = useState<ResearchRunView[]>(initialRuns)
   const [selectedId, setSelectedId] = useState<string | null>(initialRuns[0]?.orderId ?? null)
-  const [busy, setBusy] = useState<"profile" | "run" | "narrative" | null>(null)
+  const [busy, setBusy] = useState<"profile" | "run" | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [narrativeDraft, setNarrativeDraft] = useState("")
 
   const selected = runs.find((run) => run.orderId === selectedId) ?? null
-  const selectedConnection = connections.find((item) => item.id === connectionId) ?? null
   const constraintsOk =
     constraints.readOnly && constraints.citeSources && constraints.unverifiedNotFact
 
@@ -95,10 +86,10 @@ export function RwaResearchDesk({
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          modelMode,
-          sponsoredModelSlug: modelMode === "sponsored" ? slug : null,
-          byokConnectionId: modelMode === "byok" ? connectionId : null,
-          byokModelLabel: modelMode === "byok" ? modelLabel : null,
+          modelMode: "sponsored",
+          sponsoredModelSlug: slug,
+          byokConnectionId: null,
+          byokModelLabel: null,
           allowedToolIds: allowed,
           constraints,
         }),
@@ -132,63 +123,8 @@ export function RwaResearchDesk({
       const body = (await response.json()) as { run: ResearchRunView }
       setRuns((current) => [body.run, ...current.filter((item) => item.orderId !== body.run.orderId)])
       setSelectedId(body.run.orderId)
-      setNarrativeDraft("")
     } catch {
       setError("提交任务失败")
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  async function narrateInBrowser() {
-    if (!selected || !selected.report) return
-    const connection = connections.find(
-      (item) => item.id === selected.profileSnapshot.byokConnectionId,
-    )
-    const model = selected.profileSnapshot.byokModelLabel
-    if (!connection || !model) {
-      setError("这台浏览器里没有 Profile 保存的那个 BYOK 连接")
-      return
-    }
-    setBusy("narrative")
-    setError(null)
-    setNarrativeDraft("")
-    let text = ""
-    try {
-      await streamCustomModel({
-        baseURL: connection.baseURL,
-        apiKey: connection.apiKey,
-        model,
-        messages: [
-          {
-            role: "system",
-            content:
-              "只转述 JSON 里已经出现的事实，并写明数据来源和 createdAt。不要补充数值，不要打分，不要建议签名、转账或兑换。",
-          },
-          { role: "user", content: JSON.stringify(selected.report) },
-        ],
-        onDelta: (delta) => {
-          text += delta
-          setNarrativeDraft(text)
-        },
-      })
-      if (!text.trim()) {
-        setError("浏览器内模型没有返回文字")
-        return
-      }
-      const response = await fetch(`/api/agents/rwa-research/runs/${selected.orderId}/narrative`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      })
-      if (!response.ok) {
-        setError(await readError(response))
-        return
-      }
-      const body = (await response.json()) as { run: ResearchRunView }
-      setRuns((current) => current.map((item) => (item.orderId === body.run.orderId ? body.run : item)))
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "浏览器内模型调用失败")
     } finally {
       setBusy(null)
     }
@@ -225,7 +161,7 @@ export function RwaResearchDesk({
 
       {!signedIn ? (
         <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
-          保存 Profile 和提交任务需要先在侧边栏连接钱包并签名登录。
+          保存 Profile 和提交任务需要先登入。
         </p>
       ) : null}
 
@@ -237,70 +173,19 @@ export function RwaResearchDesk({
 
         <fieldset className="mt-4 space-y-2">
           <legend className="text-sm">模型</legend>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="model-mode"
-              checked={modelMode === "sponsored"}
-              onChange={() => setModelMode("sponsored")}
-            />
-            平台赞助模型
-          </label>
-          {modelMode === "sponsored" ? (
-            <select
-              className="w-full rounded-xl border bg-background px-3 py-2 text-sm"
-              value={slug}
-              onChange={(event) => setSlug(event.target.value)}
-            >
-              {models.length === 0 ? <option value="">目录暂不可用</option> : null}
-              {models.map((model) => (
-                <option key={model.slug} value={model.slug}>
-                  {model.providerName} / {model.name}
-                </option>
-              ))}
-            </select>
-          ) : null}
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="model-mode"
-              checked={modelMode === "byok"}
-              onChange={() => setModelMode("byok")}
-            />
-            浏览器内 BYOK（密钥留在这台浏览器）
-          </label>
-          {modelMode === "byok" ? (
-            <div className="grid gap-2 sm:grid-cols-2">
-              <select
-                className="rounded-xl border bg-background px-3 py-2 text-sm"
-                value={connectionId}
-                onChange={(event) => {
-                  setConnectionId(event.target.value)
-                  const next = connections.find((item) => item.id === event.target.value)
-                  setModelLabel(next?.models[0] ?? "")
-                }}
-              >
-                <option value="">选择本地连接</option>
-                {connections.filter((item) => item.enabled).map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="rounded-xl border bg-background px-3 py-2 text-sm"
-                value={modelLabel}
-                onChange={(event) => setModelLabel(event.target.value)}
-              >
-                <option value="">选择模型名称</option>
-                {(selectedConnection?.models ?? []).map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null}
+          <p className="text-xs leading-5 text-muted-foreground">平台模型（自带模型通道已下线）</p>
+          <select
+            className="w-full rounded-xl border bg-background px-3 py-2 text-sm"
+            value={slug}
+            onChange={(event) => setSlug(event.target.value)}
+          >
+            {models.length === 0 ? <option value="">目录暂不可用</option> : null}
+            {models.map((model) => (
+              <option key={model.slug} value={model.slug}>
+                {model.providerName} / {model.name}
+              </option>
+            ))}
+          </select>
         </fieldset>
 
         <fieldset className="mt-4 space-y-2">
@@ -413,10 +298,7 @@ export function RwaResearchDesk({
                       "w-full rounded-xl px-2 py-2 text-left text-xs",
                       selectedId === run.orderId ? "bg-primary/10" : "hover:bg-accent",
                     )}
-                    onClick={() => {
-                      setSelectedId(run.orderId)
-                      setNarrativeDraft("")
-                    }}
+                    onClick={() => setSelectedId(run.orderId)}
                   >
                     <span className="block truncate">{run.target}</span>
                     <span className="text-muted-foreground">
@@ -430,27 +312,6 @@ export function RwaResearchDesk({
         </div>
         <div>{selected ? <ResearchRunArticle run={selected} /> : null}</div>
       </section>
-
-      {selected?.profileSnapshot.modelMode === "byok" && selected.status === "succeeded" ? (
-        <section className="rounded-2xl border bg-card p-4">
-          <h2 className="text-sm font-medium">浏览器内整理</h2>
-          <p className="mt-1 text-xs leading-6 text-muted-foreground">
-            调用发往你自己的模型端点。密钥不会发给 Coolha。整理文字不是新的链上事实。
-          </p>
-          {narrativeDraft ? (
-            <pre className="mt-3 whitespace-pre-wrap text-sm">{narrativeDraft}</pre>
-          ) : null}
-          <Button
-            type="button"
-            className="mt-3"
-            variant="outline"
-            onClick={narrateInBrowser}
-            disabled={busy !== null}
-          >
-            {busy === "narrative" ? "整理中" : "用浏览器里的模型整理"}
-          </Button>
-        </section>
-      ) : null}
 
       <section className="space-y-2 text-xs leading-5 text-muted-foreground">
         {REPORT_DISCLAIMER_DETAILED.map((line) => (

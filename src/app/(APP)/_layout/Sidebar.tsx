@@ -113,7 +113,7 @@ function NavbarLink({ showLabels }: { showLabels: boolean }) {
             title: t('chat'),
             href: '/chat',
             icon: RiChatSmileAiLine,
-            active: pathname.startsWith('/chat') || pathname === '/',
+            active: pathname.startsWith('/chat') || pathname.startsWith('/tasks') || pathname === '/',
         },
         {
             title: t('agents'),
@@ -137,7 +137,7 @@ function NavbarLink({ showLabels }: { showLabels: boolean }) {
             title: t('console'),
             href: '/console',
             icon: RiTerminalBoxLine,
-            active: pathname.startsWith('/console') || pathname.startsWith('/tasks'),
+            active: pathname.startsWith('/console'),
         },
     ]
 

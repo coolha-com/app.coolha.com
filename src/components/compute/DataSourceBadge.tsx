@@ -21,7 +21,7 @@ const DATA_SOURCE_STYLES: Record<ComputeDataSource, { wrap: string; dot: string;
 
 /**
  * 数据来源徽章：随每条数据展示其来源，禁止把演示数据伪装成真实数据。
- * provider-reported = 来自 Vercel AI Gateway 公开目录（供应商报告口径，非平台实测）
+ * provider-reported = 供应商报告口径（非平台实测）；当前网关未接入，目录为示例布局
  */
 export function DataSourceBadge({
   source,
@@ -35,7 +35,7 @@ export function DataSourceBadge({
     <span
       title={
         source === "provider-reported"
-          ? "价格与规格来自 Vercel AI Gateway 公开模型目录（供应商报告口径），延迟为实时探测缺失"
+          ? "价格与规格为供应商报告口径（非平台实测），延迟为实时探测缺失"
           : undefined
       }
       className={cn(

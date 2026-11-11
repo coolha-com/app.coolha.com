@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto"
 import { cookies } from "next/headers"
-import { SiweMessage, SiweError } from "siwe"
+import { SiweMessage } from "siwe"
+import { verifySiweSignature } from "@/lib/web3/siwe-signature"
 import { query } from "./postgres"
 
 /**
@@ -78,18 +79,41 @@ export async function verifySiweAndCreateSession(
     throw new WalletAuthError("INVALID_MESSAGE", "SIWE 消息格式不正确")
   }
 
-  // 1. 密码学验签 + domain/nonce 绑定（siwe 内部恢复签名者地址并比对）
-  try {
-    await siwe.verify({ signature, domain: siwe.domain, nonce: siwe.nonce })
-  } catch (error) {
-    // 验签失败（含畸形签名）一律视为无效签名，不泄露内部错误细节
-    const reason = error instanceof SiweError ? error.type : "malformed signature"
-    throw new WalletAuthError("INVALID_SIGNATURE", `签名验证失败：${reason}`)
+  // 1. 时间窗校验（siwe 原本在 verify() 里做，现在自己做，错误码才能区分）
+  const now = Date.now()
+  if (siwe.expirationTime) {
+    const expiresAt = new Date(siwe.expirationTime).getTime()
+    if (Number.isFinite(expiresAt) && expiresAt < now) {
+      throw new WalletAuthError("MESSAGE_EXPIRED", "登录消息已过期，请重新发起")
+    }
+  }
+  if (siwe.notBefore) {
+    const validFrom = new Date(siwe.notBefore).getTime()
+    if (Number.isFinite(validFrom) && validFrom > now) {
+      throw new WalletAuthError("MESSAGE_NOT_YET_VALID", "登录消息尚未生效")
+    }
+  }
+
+  // 2. 密码学校验：EOA(ecrecover) / ERC-1271(合约账户) / ERC-6492(未部署的智能账户)
+  //    AppKit 的 Smart Account 对邮箱与社交登录默认开启，签出来的是 1271/6492 签名，
+  //    旧的 siwe.verify() 只做 ecrecover，会让所有社交登录 100% 失败。
+  const verified = await verifySiweSignature({
+    address: siwe.address,
+    message,
+    signature,
+    chainId: siwe.chainId,
+  })
+  if (verified.status === "unavailable") {
+    // 环境问题 ≠ 用户签名错误。用独立错误码，避免把用户引向「重试签名」的死路。
+    throw new WalletAuthError("SIGNATURE_VERIFY_UNAVAILABLE", verified.reason)
+  }
+  if (verified.status === "invalid") {
+    throw new WalletAuthError("INVALID_SIGNATURE", `签名验证失败：${verified.reason}`)
   }
 
   const address = normalizeAddress(siwe.address)
 
-  // 2. nonce 必须由本服务端签发、未消费、未过期、地址与域名一致
+  // 3. nonce 必须由本服务端签发、未消费、未过期、地址与域名一致
   const { rows } = await query<{
     address: string
     domain: string
@@ -116,7 +140,7 @@ export async function verifySiweAndCreateSession(
     throw new WalletAuthError("DOMAIN_MISMATCH", "登录域名与签发时不一致")
   }
 
-  // 3. 落库用户 + 消费 nonce
+  // 4. 落库用户 + 消费 nonce
   await query(
     `INSERT INTO wallet_users (address, last_login_at)
      VALUES ($1, now())
@@ -125,7 +149,7 @@ export async function verifySiweAndCreateSession(
   )
   await query(`UPDATE wallet_nonces SET consumed_at = now() WHERE nonce = $1`, [siwe.nonce])
 
-  // 4. 创建会话（不透明令牌，入库仅存哈希；chainId 供统一鉴权流程校验会话有效性）
+  // 5. 创建会话（不透明令牌，入库仅存哈希；chainId 供统一鉴权流程校验会话有效性）
   const token = randomBytes(32).toString("base64url")
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS)
   await query(

@@ -19,6 +19,9 @@ const eslintConfig = defineConfig([
     ".workbuddy/**",
     ".agents/**",
     ".claude/**",
+    // eve Agent Runtime 的编译产物与构建输出（非应用源码）
+    ".eve/**",
+    ".output/**",
   ]),
 ]);
 

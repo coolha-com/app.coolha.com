@@ -2,7 +2,7 @@
  * 档位配置（同构模块：客户端与服务端共用）。
  * 禁止在此引入 server-only 依赖或环境变量。
  *
- * 定价、权益矩阵与链上收款方案见 docs/PRICING_AND_ENTITLEMENTS.md。
+ * 定价、权益矩阵与链上收款方案见 docs/archive/PRICING_AND_ENTITLEMENTS.md（四档已取消，档位仅留历史账本）。
  *
  * ⚠️ 两条不可碰的红线（已核实，见 docs/ENTITLEMENT_ENFORCEMENT_STATUS.md 第十节）：
  *

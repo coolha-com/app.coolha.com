@@ -28,7 +28,7 @@ export default function DataPage() {
     <PageShell>
       <PageHeader
         title="数据和接口"
-        description="这里只链到已经存在的数据页。模型 API 不在这里售卖；赞助模型与浏览器 BYOK 在 RWA Research 的 Profile 里选择。"
+        description="这里只链到已经存在的数据页。模型 API 不在这里售卖；平台模型在智能对话里选择。"
       />
 
       <div className="grid gap-3">

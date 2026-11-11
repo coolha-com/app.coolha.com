@@ -22,8 +22,8 @@ export async function POST(req: Request) {
   if (!isAiGatewayConfigured()) {
     return jsonError(
       503,
-      "AI_GATEWAY_NOT_CONFIGURED",
-      "Neon AI Gateway 未配置（缺少 NEON_AI_GATEWAY_TOKEN / NEON_AI_GATEWAY_BASE_URL）",
+      "NEON_AI_NOT_CONFIGURED",
+      "Neon AI 未配置（缺少 NEON_AI_GATEWAY_TOKEN / NEON_AI_GATEWAY_BASE_URL）；这是独立备用通道，不是统一推理网关",
     )
   }
 
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
 
   const model = getGatewayModel(modelId)
   if (!model) {
-    return jsonError(503, "AI_GATEWAY_NOT_CONFIGURED", "AI Gateway 客户端创建失败")
+    return jsonError(503, "NEON_AI_NOT_CONFIGURED", "Neon AI 客户端创建失败")
   }
 
   const startedAt = Date.now()
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
   } catch (error) {
     return jsonError(
       502,
-      "AI_GATEWAY_CALL_FAILED",
+      "NEON_AI_CALL_FAILED",
       error instanceof Error ? error.message : "unknown error",
     )
   }

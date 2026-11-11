@@ -72,10 +72,7 @@ export async function executeRwaResearch(input: {
     )
     let narrative: string | null = null
     let narrativeSource: "none" | "sponsored" = "none"
-    let narrativeNote =
-      profile.modelMode === "byok"
-        ? "研究管线已按 Profile 执行。若要模型整理，请在浏览器里用已保存的 BYOK 连接生成，密钥不会上传。"
-        : "研究管线已执行。本次没有调用赞助模型。"
+    let narrativeNote = "研究管线已执行。本次没有调用赞助模型。"
 
     if (
       input.allowSponsoredNarrative &&

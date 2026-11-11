@@ -1,9 +1,16 @@
 # Coolha 项目总览
 
-> **文档日期**：2026-10-17
+> **文档日期**：2026-10-17（正文主体保持当日快照）
 > **用途**：一份看清全貌的入口文档——产品定位、目标、当前阶段实况、边界与路线。
 > **性质**：现状快照 + 方向说明。凡未建成的能力均明确标注，不把规划写成已交付。
-> **关联**：详细论证见 `.workbuddy/docs/` 下各专题文档（索引见 §8）。
+
+> ⚠️ **时效声明（2026-11-11 补记）**：正文写于 10-17，此后有三处根本性调整，**以下为准**：
+> 1. **商业模型改为 AaaS**：四档订阅全部取消，改为一次性购买 Agent 服务（$19/次），法币走 Waffo Pancake；BYOK 与免费聊天下线，模型只由平台赞助。→ 见 §5 的更正说明与 `.workbuddy/memory/MEMORY.md`
+> 2. **登录改为 Web2 为主**：Neon Auth（邮箱验证码 / 密码 / Google）是主路径，钱包 SIWE 降为第二凭证，两者收敛到同一个 `users.id`。→ `ARCHITECTURE_IDENTITY_BILLING.md` 决策五
+> 3. **数据库分环境**：本地开发用 Neon `dev` 分支，生产才是 `main`。→ `LOCAL_DEV.md`
+>
+> 与上述三条冲突的段落（尤其 §1 的「连你自己的钱包，用任意模型」、§5 的档位矩阵）按此更正理解。
+> 已失效的专题文档见 `archive/README.md`。
 
 ---
 
@@ -13,12 +20,12 @@
 | --- | --- |
 | 品牌 | Coolha / 酷哈（Coolha Limited，中国香港） |
 | 应用 | `app.coolha.com`（本文档描述对象） |
-| 一句话定位 | **浏览器打开即用的 Web3 通用 AI 工作台**：连你自己的钱包，用任意模型，做链上研究/开发/执行；给 AI 的每一分授权都在链上有边界、可撤销 |
+| 一句话定位 | **Agent as a Service**：不卖算力、不卖 token 档位，只卖 Agent 执行与平台服务；用户在浏览器里派任务，Agent 带着思考过程与执行记录把结果交回来 |
 | 当前阶段 | **Phase 1 起步**——工作台壳层与目录已建成，**工具层已接入第 1 个**（Alchemy 读链），其余 30 个尚未接入（详见 §3） |
 | 版本 | `0.1.2-alpha`（`package.json` 为版本唯一真相源；无 CI，手动维护） |
-| 技术栈 | Next 16 / React 19 / TS 5.9 / Tailwind 4 / shadcn+base-ui / Reown AppKit + wagmi / next-intl |
-| 数据 | Neon Postgres（本地与生产同一实例）；对话内容本地 IndexedDB 优先 |
-| 收款 | 仅链上 USDC/USDT（Base + Ethereum），不接 Stripe |
+| 技术栈 | Next 16 / React 19 / TS 5.9 / Tailwind 4 / shadcn / Reown AppKit + wagmi / next-intl / Neon Auth |
+| 数据 | Neon Postgres（本地 `dev` 分支 / 生产 `main` 分支）；对话内容本地 IndexedDB 优先 |
+| 收款 | 法币走 Waffo Pancake（MoR）；链上直收与 x402 暂不启用 |
 
 ---
 
@@ -162,16 +169,20 @@ Coolha 不是一个新开的独立产品线，而是现有 `/ai` 算力市场的
 
 ## 5. 商业模型（A 路线）
 
+> **2026-11-11 更正**：本节描述的四档订阅与 BYOK 已全部取消。现行模型是**一次性购买 Agent 服务 $19/次**，
+> 法币收款走 Waffo Pancake（MoR），BYOK 与免费聊天下线。
+> 身份仍是「登录后才有赞助额度」，但「L3 订阅解锁 14 项权益」这张表不存在了——见 `archive/PRICING_AND_ENTITLEMENTS.md`（已归档）。
+
 **身份四态 → 权益**
 
 | 态 | 条件 | 权益 |
 | --- | --- | --- |
-| L0 匿名 | — | 可 BYOK（浏览器直连，不计量）；免费赞助模型返回 401 |
+| L0 匿名 | — | 无（赞助模型返回 401） |
 | L1 连钱包 | 连接钱包（≠登录） | 无额外权益 |
-| L2 签名登录 | SIWE 签名 | 获得赞助额度（日 300k tokens / 30 次，所有档位相同） |
-| L3 订阅 | 链上付费 | 云端历史、检索、导出、连接数、编排、API 出口 |
+| L2 已登入 | 邮箱验证码 / 密码 / Google / 钱包签名 | 获得赞助额度（日 300k tokens / 30 次，所有用户相同） |
+| L3 已购服务 | 一次性购买 | 云端历史、检索、导出等能力（**注意：支付 webhook 与权益授予尚未接入**） |
 
-**额度与档位解耦**：赞助额度对所有档位相同，订阅不买 token。
+**额度与档位解耦**：赞助额度对所有用户相同，不按 token 分档（Vercel §8.3 红线）。
 
 ---
 
@@ -201,22 +212,26 @@ Coolha 不是一个新开的独立产品线，而是现有 `/ai` 算力市场的
 
 ## 8. 专题文档索引
 
+### 现行文档（结论仍然有效）
+
 | 文档 | 用途 |
 | --- | --- |
-| `WEB3_AI_WORKBENCH_PRD.md` | **核心 PRD**：竞品实测、定位、四层架构、四期路线、风险清单 |
-| `ROUTE_A_BUSINESS_MODEL.md` | 商业模型 A 路线：三条钱流、盈亏平衡、文案黑名单 |
-| `PRICING_AND_ENTITLEMENTS.md` | 档位与权益矩阵（含「规划中」标记约定） |
-| `ENTITLEMENT_ENFORCEMENT_STATUS.md` | 哪些权益**真有执行点**（诚实性审计） |
-| `ACCOUNT_TIER_DESIGN.md` | 四档设计细节 |
-| `ARCHITECTURE_IDENTITY_BILLING.md` | 身份与计费架构 |
+| `ARCHITECTURE_IDENTITY_BILLING.md` | 身份与计费架构（决策五 = Web2 为主登录，ERC-1271/6492 验签） |
+| `ENTITLEMENT_ENFORCEMENT_STATUS.md` | 哪些能力**真有执行点**（§14 清单仍有效；档位部分已过时） |
 | `AI_GATEWAY_MODELS.md` | Gateway 模型目录与赞助模型判定 |
-| `COMPUTE_MARKET_PHASE0_AUDIT.md` | Phase 0 审计（30KB，现状问题清单） |
+| `LOCAL_DEV.md` | 本地开发说明（含 dev / main 分支约定与迁移脚本用法） |
+| `WEB3_TOOL_REGISTRY_PHASE1_PLAN.md` | 工具注册计划（「不自研、接现成」；证据信封契约见 §4） |
 | `COMPUTE_MARKET_UPSTREAM_PROVIDERS.md` | 上游供应商选型 |
-| `PLAYGROUND_ACCESS_AND_BILLING_PLAN.md` | Playground 访问与计费 |
-| `WEB3_TOOL_REGISTRY_PHASE1_PLAN.md` | 工具注册计划（**注：原「自研 9 个工具」方案已被「不自研、接现成」决策取代**，以 `/ai/tools` 选型页为准） |
-| `COOLHA_PROJECT_MEMORY.md` | 项目历史上下文基线（含 Web4 市场、RWA 发现等早期构想，多为「待确认」） |
+| `COOLHA_PROJECT_MEMORY.md` | 项目历史上下文基线（含早期构想，多为「待确认」） |
 | `DeFAI.md` | DeFAI 领域研究资料 |
-| `LOCAL_DEV.md` | 本地开发说明（**重要**：本地 `DATABASE_URL` 指向生产库） |
+| `VERCEL_MIGRATION.md` | Vercel 侧迁移记录 |
+| `archive/README.md` | 已失效文档清单与归档原因 |
+
+### 已归档（结论已作废，仅供追溯）
+
+`archive/` 下：`ACCOUNT_TIER_DESIGN.md`（四档设计）、`PRICING_AND_ENTITLEMENTS.md`（定价矩阵）、
+`PLAYGROUND_ACCESS_AND_BILLING_PLAN.md`（BYOK 订阅定案）、`ROUTE_A_BUSINESS_MODEL.md`（卖 Credits）、
+`WEB3_AI_WORKBENCH_PRD.md`（工作台 PRD）、`COMPUTE_MARKET_PHASE0_AUDIT.md`（10-14 审计快照）。
 
 ---
 

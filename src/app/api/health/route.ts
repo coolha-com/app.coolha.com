@@ -1,8 +1,12 @@
 import { isAuthConfigured } from "@/lib/neon/auth"
-import { isAiGatewayConfigured as isNeonGatewayConfigured } from "@/lib/neon/ai-gateway"
-import { gatewayErrorCode, isAiGatewayConfigured, isRealGatewayFailure } from "@/lib/ai-gateway/client"
 import { isDatabaseConfigured, query } from "@/lib/neon/postgres"
 import { isAlchemyConfigured } from "@/lib/web3-tools/alchemy"
+import {
+  INFERENCE_GATEWAY_NAME,
+  inferenceModelIds,
+  isInferenceConfigured,
+  isInferenceReady,
+} from "@/lib/inference/config"
 
 export const dynamic = "force-dynamic"
 
@@ -13,42 +17,12 @@ interface ServiceStatus {
 }
 
 /**
- * 目录同步元信息（只读单行，不拉全量模型）。
- * 未接线数据库时返回空状态，调用方据此把 key 视为「仅已配置、未验证」。
+ * 服务健康检查：Postgres 实际 ping，其余服务报告配置状态。
+ *
+ * 2026-11-11：Vercel AI Gateway 永久停用，aiGateway / neonAiGateway / 目录同步
+ * 检查项已移除。推理通道只看统一网关 INFERENCE_*（唯一真相源）。
+ * 未配置时如实报「未接入」，不因变量存在就误报可用。
  */
-async function readCatalogHealth(): Promise<{
-  syncedAt: string | null
-  failedAt: string | null
-  modelCount: number
-  lastError: string | null
-}> {
-  const empty = { syncedAt: null, failedAt: null, modelCount: 0, lastError: null }
-  if (!isDatabaseConfigured()) return empty
-
-  try {
-    const { rows } = await query<{
-      synced_at: Date
-      failed_at: Date | null
-      model_count: number
-      last_error: string | null
-    }>(
-      `SELECT synced_at, failed_at, model_count, last_error
-       FROM model_catalog_sync WHERE id = 1`,
-    )
-    const row = rows[0]
-    if (!row) return empty
-    return {
-      syncedAt: row.synced_at?.toISOString() ?? null,
-      failedAt: row.failed_at ? row.failed_at.toISOString() : null,
-      modelCount: row.model_count ?? 0,
-      lastError: row.last_error,
-    }
-  } catch {
-    return empty
-  }
-}
-
-/** 服务健康检查：Postgres 实际 ping，Auth / AI Gateway 报告配置状态 */
 export async function GET() {
   const postgres: ServiceStatus = {
     configured: isDatabaseConfigured(),
@@ -70,11 +44,9 @@ export async function GET() {
     postgres.detail = "DATABASE_URL 未配置"
   }
 
-  // 目录同步状态：key「已配置」不等于「可用」。401/429 都要在这里显形，
-  // 否则运维只能靠翻服务端日志才发现 key 已失效（目录会静默退化为陈旧快照）。
-  const catalog = await readCatalogHealth()
-  // RENDER_ABORTED 只是静态预渲染被框架中断（正常路径），不算网关故障
-  const gatewayDown = isRealGatewayFailure(catalog.lastError)
+  const configured = isInferenceConfigured()
+  const ready = isInferenceReady()
+  const modelCount = inferenceModelIds().length
 
   const services = {
     postgres,
@@ -83,44 +55,27 @@ export async function GET() {
       ok: isAuthConfigured(),
       detail: isAuthConfigured() ? "NEON_AUTH_BASE_URL 已配置" : "未配置",
     },
-    // 实际推理通道：Vercel AI Gateway（AI_GATEWAY_API_KEY）
-    aiGateway: {
-      configured: isAiGatewayConfigured(),
-      ok: isAiGatewayConfigured() && !gatewayDown,
-      detail: gatewayDown
-        ? `已配置但回源失败：${gatewayErrorCode(catalog.lastError)}（${catalog.modelCount} 个模型仍由陈旧快照兜底）`
-        : isAiGatewayConfigured()
-          ? "AI_GATEWAY_API_KEY 已配置"
-          : "AI_GATEWAY_API_KEY 未配置（免费模型通道不可用）",
-      lastSyncedAt: catalog.syncedAt,
-      modelCount: catalog.modelCount,
-      lastError: catalog.lastError ? gatewayErrorCode(catalog.lastError) : null,
-      failedAt: catalog.failedAt,
+    inference: {
+      configured: ready,
+      ok: ready,
+      detail: ready
+        ? `${INFERENCE_GATEWAY_NAME} 已接入（${modelCount} 个模型）`
+        : configured
+          ? "INFERENCE_BASE_URL / INFERENCE_API_KEY 已配置，但 INFERENCE_MODELS 为空"
+          : "推理网关未接入（INFERENCE_NOT_CONFIGURED）：eve Agent 派单会如实返回 503",
+      gateway: INFERENCE_GATEWAY_NAME,
+      modelCount,
     },
-    // 备用通道：Neon AI Gateway（NEON_AI_GATEWAY_TOKEN），仅 /api/neon/ai 使用
-    neonAiGateway: {
-      configured: isNeonGatewayConfigured(),
-      ok: isNeonGatewayConfigured(),
-      detail: isNeonGatewayConfigured()
-        ? "NEON_AI_GATEWAY_TOKEN 已配置"
-        : "未配置（仅 /api/neon/ai 依赖，不影响免费模型）",
-    },
-    freeModels: {
+    platformModels: {
       configured: process.env.FREE_MODELS_ENABLED !== "0",
-      // key 已配置但回源 401 时，推理实际不可用 —— 不能只凭变量存在就报 ok
-      ok:
-        process.env.FREE_MODELS_ENABLED !== "0" &&
-        isAiGatewayConfigured() &&
-        !gatewayDown,
+      ok: process.env.FREE_MODELS_ENABLED !== "0" && ready,
       detail:
         process.env.FREE_MODELS_ENABLED === "0"
           ? "FREE_MODELS_ENABLED=0，已熔断"
-          : gatewayDown
-            ? `通道开启但回源失败：${gatewayErrorCode(catalog.lastError)}`
-            : "免费模型通道开启",
+          : ready
+            ? "平台模型通道开启"
+            : "通道开启但推理网关未接入",
     },
-    // Alchemy 链上数据源：/data/tools 首个已接入工具（读链）的执行点依赖它。
-    // 只报「配置是否存在」，不做实时探测 —— 健康检查不该消耗上游配额。
     alchemy: {
       configured: isAlchemyConfigured(),
       ok: isAlchemyConfigured(),
@@ -133,10 +88,10 @@ export async function GET() {
   return Response.json(
     {
       ok: postgres.ok,
-      // 网关回源失败时整体不算健康，便于外部探针/监控直接报警
-      degraded: gatewayDown,
+      // 推理网关未接入不算数据库不健康，单独由 services.inference 表达
+      degraded: false,
       services,
     },
-    { status: postgres.ok && !gatewayDown ? 200 : 503 },
+    { status: postgres.ok ? 200 : 503 },
   )
 }

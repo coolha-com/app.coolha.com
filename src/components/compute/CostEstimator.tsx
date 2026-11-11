@@ -6,8 +6,8 @@ import { estimateCost, formatPricePerMillion, formatTokens, formatUsd } from "@/
 import { DataSourceBadge } from "./DataSourceBadge"
 
 /**
- * 费用估算器：评估「用你自己的 Key 调用该模型」时的成本。
- * 这不是 Coolha 的收费——订阅只卖软件能力，不卖推理额度。
+ * 费用估算器：按上游目录单价估算该平台模型的推理成本。
+ * 这不是 Coolha 的收费——按次出售的是 Agent 执行服务，不是推理额度。
  */
 export function CostEstimator({ model }: { model: ComputeModel }) {
   // 上游未公布上下文窗口时回退到 1M 上限，避免滑块区间为 0
@@ -33,8 +33,8 @@ export function CostEstimator({ model }: { model: ComputeModel }) {
           : "按上游目录单价线性估算，未计入缓存折扣、批处理折扣、图片/工具调用等附加计费项。价格单位为 USD / 百万 Token。"}
       </p>
       <p className="mt-1 text-xs leading-5 text-muted-foreground">
-        这是你用<strong className="font-medium text-foreground">自己的模型服务</strong>调用时的成本参考，不是
-        Coolha 的收费；订阅只解锁软件能力，不包含推理额度。
+        这是该平台模型按上游目录单价估算的推理成本参考，不是 Coolha 的收费；
+        按次结算的是 Agent 执行服务，不包含推理额度。
       </p>
 
       <div className="mt-5 space-y-5">

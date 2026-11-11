@@ -102,10 +102,10 @@ export const TOOL_PRIORITY_ORDER: Record<ToolPriority, number> = {
 /** 工具分类 → 是否需要登录 / 签名（用于详情页说明调用前置条件） */
 export const TOOL_CATEGORY_PREREQS: Record<ToolCategory, string[]> = {
   data: ["匿名可用（有速率限制）", "登录后解除限速"],
-  research: ["需签名登录", "产出附来源引用"],
-  dev: ["需签名登录", "产出物不落链上"],
-  execute: ["需签名登录", "先模拟再签名", "服务端不持钥"],
-  governance: ["需签名登录", "授权链上可撤"],
+  research: ["需登入", "产出附来源引用"],
+  dev: ["需登入", "产出物不落链上"],
+  execute: ["需登入", "先模拟再签名", "服务端不持钥"],
+  governance: ["需登入", "授权链上可撤"],
 }
 
 export interface ToolFilterState {

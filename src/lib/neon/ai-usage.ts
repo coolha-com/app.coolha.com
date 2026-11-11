@@ -14,6 +14,9 @@ export interface UsageRecordInput {
   providerId?: string | null
   resolvedProvider?: string | null
   source?: string
+  /** 业务主键 users.id::text —— 统计与展示一律按它过滤 */
+  subject: string
+  /** 真实钱包地址（Web2 登录时为 null，不再把 subject 冒充成地址） */
   walletAddress?: string | null
   clientKey?: string | null
   inputTokens: number
@@ -49,9 +52,9 @@ export async function recordUsage(input: UsageRecordInput): Promise<void> {
   await query(
     `INSERT INTO ai_gateway_usage (
        request_id, generation_id, model_id, provider_id, resolved_provider,
-       source, wallet_address, client_key,
+       source, subject, wallet_address, client_key,
        input_tokens, output_tokens, total_tokens, cost_usd, latency_ms, status, error_code
-     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
      ON CONFLICT (request_id) DO NOTHING`,
     [
       input.requestId,
@@ -60,6 +63,7 @@ export async function recordUsage(input: UsageRecordInput): Promise<void> {
       input.providerId ?? null,
       input.resolvedProvider ?? null,
       input.source ?? "playground",
+      input.subject,
       input.walletAddress ?? null,
       input.clientKey ?? null,
       input.inputTokens,
@@ -90,7 +94,7 @@ export async function listRecentUsage(
             source, wallet_address, input_tokens, output_tokens, total_tokens,
             cost_usd, latency_ms, status, error_code, created_at
      FROM ai_gateway_usage
-     WHERE wallet_address IS NOT DISTINCT FROM $1
+     WHERE subject = $1
      ORDER BY created_at DESC
      LIMIT $2`,
     [subject, limit],
@@ -113,7 +117,7 @@ export async function summarizeUsage(subject: string): Promise<{
             COALESCE(SUM(total_tokens), 0)::text AS tokens,
             COALESCE(SUM(cost_usd), 0)::text AS cost
      FROM ai_gateway_usage
-     WHERE wallet_address IS NOT DISTINCT FROM $1`,
+     WHERE subject = $1`,
     [subject],
   )
   const row = rows[0]

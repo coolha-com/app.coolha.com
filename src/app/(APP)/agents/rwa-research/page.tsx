@@ -2,8 +2,7 @@ import type { Metadata } from "next"
 import { ModulePage } from "@/components/compute/ModulePage"
 import { RwaResearchDesk } from "@/components/agents/RwaResearchDesk"
 import { getPlaygroundModels } from "@/lib/ai-gateway/playground"
-import { getWalletSessionFromCookies } from "@/lib/neon/wallet-auth"
-import { resolveSubject } from "@/lib/neon/identity"
+import { getCurrentUser } from "@/lib/neon/session"
 import { getRwaProfile, listRwaRuns } from "@/lib/neon/rwa-research"
 import type { ResearchRunView, SavedProfile } from "@/lib/agents/rwa-research"
 
@@ -15,8 +14,8 @@ export const metadata: Metadata = {
 }
 
 export default async function RwaResearchPage() {
-  const session = await getWalletSessionFromCookies()
-  const signedIn = Boolean(session?.address)
+  const user = await getCurrentUser()
+  const signedIn = Boolean(user)
 
   let models: { slug: string; name: string; providerName: string }[] = []
   try {
@@ -32,11 +31,10 @@ export default async function RwaResearchPage() {
 
   let profile: SavedProfile | null = null
   let runs: ResearchRunView[] = []
-  if (signedIn && session?.address) {
+  if (user) {
     try {
-      const subject = await resolveSubject(session.address)
-      profile = await getRwaProfile(subject)
-      runs = await listRwaRuns(subject)
+      profile = await getRwaProfile(user.subject)
+      runs = await listRwaRuns(user.subject)
     } catch {
       profile = null
       runs = []

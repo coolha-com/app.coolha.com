@@ -65,11 +65,20 @@ node scripts/apply-migration.mjs db/migrations/008_chat_history.sql
 
 1. **没有迁移历史表**，脚本也不记录 —— 全靠 DDL 自己的 `IF NOT EXISTS` 幂等性保护，
    所以重复执行安全，但仍建议先查再跑。
-2. **本地 `.env.local` 的 `DATABASE_URL` 指向的就是生产库**（同一个 Neon 实例
-   `ep-broad-math-…`，ap-southeast-1）。**没有独立的「生产环境」**——本地跑迁移 = 改生产库。
-   这正是「先查再跑」格外重要的原因。
-3. 脚本读 `.env.local` / `.env.development.local`，用的是**朴素解析器**：值不能带引号，
-   不能有行内注释（`KEY=value # 注释` 会把注释当成值的一部分）。
+2. **分支约定（2026-11-11 起）**：本地开发写 `dev` 分支，生产才是 `main`。
+   - `main` = `br-steep-water-a18dx3e7` = endpoint `ep-tiny-wildflower-a1kcciel`（Vercel 生产分支）
+   - `dev` = `br-divine-art-a14skndw` = endpoint `ep-gentle-rain-a1zc8ojh`
+   - 本地把 dev 的连接串写在 **`.env.development.local`**（`DATABASE_URL` + `DATABASE_URL_UNPOOLED` + `NEON_AUTH_BASE_URL`），`.env.local` / `.env.production.local` 保持 main。
+   - **Neon Auth 是分支级的**：`neon neon-auth status --project-id <id> --branch dev|main` 查各自的 Base URL。只换 `DATABASE_URL` 不换 `NEON_AUTH_BASE_URL`，会出现「auth 写在 main、业务数据写在 dev」的身份错位。
+   - 迁移脚本默认打 **dev**，并会打印目标 endpoint；要打生产必须显式 `--prod`，此时会输出 ⚠️ 告警。
+   - **Vercel 侧（2026-11-11 已对齐）**：`DATABASE_URL` / `DATABASE_URL_UNPOOLED` / `NEON_AUTH_BASE_URL` 三个变量已按环境拆成两条——
+     `production` 指向 `main`，`preview` + `development` 指向 `dev`。
+     项目 ID `prj_m9E5DH8S20DrzD0evJheec3P4EJl`（team `team_hIqp1q3klTFP96UWJsAtEjac`）。
+     其余密钥（`REOWN_ID` / `ALCHEMY_*` / `AI_GATEWAY_API_KEY` / `NEON_AUTH_COOKIE_SECRET`）三环境共用一条，无需拆分。
+     改完环境变量需 **Redeploy** 才生效。
+3. 脚本读 `.env.local` → `.env.development.local`（后者覆盖前者，与 Next.js 一致），用的是**朴素解析器**：
+   值不能带引号，不能有行内注释（`KEY=value # 注释` 会把注释当成值的一部分）。迁移优先用
+   `DATABASE_URL_UNPOOLED`（直连），没有才退回 `DATABASE_URL`。
 
 ## 数据库迁移状态（2026-10-16 实测）
 

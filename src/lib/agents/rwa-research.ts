@@ -111,8 +111,12 @@ export function parseProfileInput(body: unknown): ProfileInput | { error: string
 
   const record = body as Record<string, unknown>
   const modelMode = record.modelMode
-  if (modelMode !== "sponsored" && modelMode !== "byok") {
-    return { error: "模型只能选择平台赞助模型或浏览器内 BYOK" }
+  // 自带模型通道已下线：历史 Profile 仍可读，但新配置一律只接受平台模型。
+  if (modelMode === "byok") {
+    return { error: "自带模型通道已下线，请只使用平台模型" }
+  }
+  if (modelMode !== "sponsored") {
+    return { error: "请选择一个平台模型" }
   }
 
   const constraintsRaw = record.constraints
