@@ -5,7 +5,7 @@
 > **性质**：现状快照 + 方向说明。凡未建成的能力均明确标注，不把规划写成已交付。
 
 > ⚠️ **时效声明（2026-11-11 补记）**：正文写于 10-17，此后有三处根本性调整，**以下为准**：
-> 1. **商业模型改为 AaaS**：四档订阅全部取消，改为一次性购买 Agent 服务（$19/次），法币走 Waffo Pancake；BYOK 与免费聊天下线，模型只由平台赞助。→ 见 §5 的更正说明与 `.workbuddy/memory/MEMORY.md`
+> 1. **商业模型是 AaaS，当前不收款**：四档订阅已取消。法币收款（Waffo）已于 2026-11-12 退出，本阶段不收费、不模拟付款。推理走 OpenRouter，经 EVE 与 Vercel AI SDK。BYOK 只预留抽象。
 > 2. **登录改为 Web2 为主**：Neon Auth（邮箱验证码 / 密码 / Google）是主路径，钱包 SIWE 降为第二凭证，两者收敛到同一个 `users.id`。→ `ARCHITECTURE_IDENTITY_BILLING.md` 决策五
 > 3. **数据库分环境**：本地开发用 Neon `dev` 分支，生产才是 `main`。→ `LOCAL_DEV.md`
 >
@@ -25,7 +25,7 @@
 | 版本 | `0.1.2-alpha`（`package.json` 为版本唯一真相源；无 CI，手动维护） |
 | 技术栈 | Next 16 / React 19 / TS 5.9 / Tailwind 4 / shadcn / Reown AppKit + wagmi / next-intl / Neon Auth |
 | 数据 | Neon Postgres（本地 `dev` 分支 / 生产 `main` 分支）；对话内容本地 IndexedDB 优先 |
-| 收款 | 法币走 Waffo Pancake（MoR）；链上直收与 x402 暂不启用 |
+| 收款 | 当前不收款。历史链上订阅匹配仍保留；Waffo 已退出 |
 
 ---
 
@@ -169,9 +169,9 @@ Coolha 不是一个新开的独立产品线，而是现有 `/ai` 算力市场的
 
 ## 5. 商业模型（A 路线）
 
-> **2026-11-11 更正**：本节描述的四档订阅与 BYOK 已全部取消。现行模型是**一次性购买 Agent 服务 $19/次**，
-> 法币收款走 Waffo Pancake（MoR），BYOK 与免费聊天下线。
-> 身份仍是「登录后才有赞助额度」，但「L3 订阅解锁 14 项权益」这张表不存在了——见 `archive/PRICING_AND_ENTITLEMENTS.md`（已归档）。
+> **2026-11-12 更正**：本节描述的四档订阅、BYOK 和后来的 Waffo 一次性收款都已退出。
+> 当前阶段不收款、不模拟付款。开发与预览可以在服务端开放模式下测试 Agent；生产默认关闭。
+> 下面的 L3「已购服务」是历史描述，不是现行入口。
 
 **身份四态 → 权益**
 
@@ -217,7 +217,7 @@ Coolha 不是一个新开的独立产品线，而是现有 `/ai` 算力市场的
 | 文档 | 用途 |
 | --- | --- |
 | `ARCHITECTURE_IDENTITY_BILLING.md` | 身份与计费架构（决策五 = Web2 为主登录，ERC-1271/6492 验签） |
-| `WAFFO_INTEGRATION.md` | Waffo Pancake 法币收款接入（收银台会话、`/webhook` 验签核销、环境变量、联调与踩坑） |
+| `HANDOVER.md` | 当前交接：OpenRouter + EVE，不收款 |
 | `ENTITLEMENT_ENFORCEMENT_STATUS.md` | 哪些能力**真有执行点**（§14 清单仍有效；档位部分已过时） |
 | `AI_GATEWAY_MODELS.md` | Gateway 模型目录与赞助模型判定 |
 | `LOCAL_DEV.md` | 本地开发说明（含 dev / main 分支约定与迁移脚本用法） |

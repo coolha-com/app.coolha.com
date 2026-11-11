@@ -18,14 +18,18 @@ export default async function ModelsPage() {
   return (
     <ModulePage
       title="模型广场"
-      description="按类型、供应商、价格与能力筛选。布局保留，接入推理网关后替换数据源。"
+      description="只列出服务端白名单里的模型。价格来自 OpenRouter 目录，没有就显示未提供。"
     >
-      <MockNotice className="mb-4">
-        推理网关未接入（INFERENCE_NOT_CONFIGURED）：以下模型、价格、状态均为
-        Phase 1 示例布局数据，不代表任何真实供应商报价，也不可用于推理。
-        在 <code className="font-mono">.env.local</code> 配置 INFERENCE_* 并接入带目录接口的网关后，
-        这里才会展示真实目录。
-      </MockNotice>
+      {catalog.models.length === 0 ? (
+        <MockNotice className="mb-4">
+          还没有配置 INFERENCE_MODELS。这里不会展示演示模型和演示价格。
+        </MockNotice>
+      ) : catalog.stale ? (
+        <MockNotice className="mb-4">
+          白名单里的模型 ID 可以调用，但 OpenRouter 目录暂时没有返回规格。
+          价格、延迟和评分显示为未提供，不是示例报价。
+        </MockNotice>
+      ) : null}
 
       <ModelsBrowser
         models={catalog.models.map(toListModel)}

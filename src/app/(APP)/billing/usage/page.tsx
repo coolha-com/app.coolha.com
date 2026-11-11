@@ -15,43 +15,6 @@ export const metadata: Metadata = {
 /** 用量是实时写入的，不做缓存 */
 export const dynamic = "force-dynamic"
 
-/**
- * 示例行：仅在当前用户还没有任何真实调用时展示，用于说明表格设计。
- * 明确标注为示例，避免与真实记录混淆。
- */
-const DEMO_ROWS = [
-  {
-    requestId: "req_example01",
-    model: "example/chat-flash",
-    status: "200",
-    inputTokens: 1240,
-    outputTokens: 386,
-    costUsd: "0.000404",
-    latencyMs: 1240,
-    at: "2026-10-14 18:02",
-  },
-  {
-    requestId: "req_example02",
-    model: "example/reason-r1",
-    status: "200",
-    inputTokens: 5320,
-    outputTokens: 1875,
-    costUsd: "0.0156",
-    latencyMs: 4820,
-    at: "2026-10-14 17:48",
-  },
-  {
-    requestId: "req_example03",
-    model: "example/chat-mini",
-    status: "429",
-    inputTokens: 0,
-    outputTokens: 0,
-    costUsd: "0",
-    latencyMs: 86,
-    at: "2026-10-14 17:31",
-  },
-]
-
 function formatTime(value: string): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
@@ -75,7 +38,7 @@ export default async function UsagePage() {
   return (
     <ModulePage
       title="用量记录"
-      description="你在 Chat 中使用免费模型的调用明细：模型、Token 用量与成本。"
+      description="你自己的调用明细：模型、Token 用量与成本。没有记录时不展示示例数字。"
     >
       <div className="space-y-4">
       {!signedIn ? (
@@ -123,8 +86,7 @@ export default async function UsagePage() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {hasRealData
-                ? rows.map((row) => (
+              {rows.map((row) => (
                     <tr key={row.id} className="hover:bg-accent/40">
                       <td className="px-4 py-3 font-mono text-xs">{row.request_id}</td>
                       <td className="px-4 py-3">
@@ -166,36 +128,12 @@ export default async function UsagePage() {
                         {formatTime(row.created_at)}
                       </td>
                     </tr>
-                  ))
-                : DEMO_ROWS.map((row) => (
-                    <tr key={row.requestId} className="text-muted-foreground">
-                      <td className="px-4 py-3 font-mono text-xs">{row.requestId}</td>
-                      <td className="px-4 py-3 font-mono text-xs">{row.model}</td>
-                      <td className="px-4 py-3">
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-                          {row.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        {row.inputTokens.toLocaleString("en-US")}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        {row.outputTokens.toLocaleString("en-US")}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        {formatUsd(Number(row.costUsd))}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        {(row.latencyMs / 1000).toFixed(2)}s
-                      </td>
-                      <td className="px-4 py-3 text-xs">{row.at}</td>
-                    </tr>
                   ))}
             </tbody>
           </table>
           {!hasRealData ? (
-            <p className="border-t px-4 py-2 text-center text-xs text-muted-foreground">
-              以上为示例数据，用于说明表格字段
+            <p className="border-t px-4 py-3 text-center text-xs text-muted-foreground">
+              还没有调用记录。
             </p>
           ) : null}
         </div>

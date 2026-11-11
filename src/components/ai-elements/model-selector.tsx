@@ -24,8 +24,9 @@ import { formatPricePerMillion, formatTokens } from "@/lib/compute/service"
  * 缺失项一律显示「未提供」，不把 0 或 null 说成「免费 / 否」。
  */
 function modelTooltip(model: PlaygroundModel): string {
-  const hasPricing = model.dataSource !== "mock" && (
-    model.inputPricePerMillionUsd > 0 || model.outputPricePerMillionUsd > 0
+  const priced = model.tags?.includes("priced")
+  const hasPricing = Boolean(
+    priced && (model.inputPricePerMillionUsd > 0 || model.outputPricePerMillionUsd > 0),
   )
   return [
     `${model.name} · ${model.providerName}`,

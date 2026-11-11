@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { constraintsAccepted, type TaskConstraints } from "@/lib/agents/agent-contracts"
 import type { AgentOption } from "@/components/agents/AgentSelector"
-import { OneTimePurchase } from "@/components/agents/OneTimePurchase"
 
 const CONSTRAINTS: { key: keyof TaskConstraints; label: string; detail: string }[] = [
   { key: "readOnly", label: "只读", detail: "不签名、不转账、不兑换" },
@@ -24,15 +23,20 @@ export interface AgentConfigValue {
   constraints: TaskConstraints
 }
 
-/** 付费状态（来自 GET /api/agents/credits） */
+/** 服务状态（来自 GET /api/agents/credits）。不含价格，也不含购买入口。 */
 export interface CreditsState {
+  accessMode: "local_open" | "preview_open" | "closed"
+  openAccess: boolean
   hasGrant: boolean
   remainingUsd: number
   validDaysLeft: number | null
   budgetUsd: number
-  priceUsd: number
-  validityDays: number
-  testMode: boolean
+  openRequests: number
+  openRequestCap: number
+  openSpendUsd: number | null
+  serviceAvailable: boolean
+  gatewayName: string
+  defaultModel: string
 }
 
 /**
@@ -40,7 +44,7 @@ export interface CreditsState {
  * 用户勾选约束、点「开始任务」后才真正进入对话。模型在顶部工具栏选择，这里只负责
  * 智能体专属的约束配置——目前仅 RWA 有强制约束。
  *
- * 付费闸门：没有可用授权时，这里就是收银台（先买后用）；有授权则显示剩余额度。
+ * 开发/预览开放模式下可以直接开始；生产未授权时说明服务未开放，不提供付款。
  */
 export function AgentConfigPanel({
   agent,
@@ -50,7 +54,6 @@ export function AgentConfigPanel({
   requiresConstraints = true,
   credits,
   onRefreshCredits,
-  onTestGrant,
   paywallError,
   onStart,
 }: {
@@ -60,12 +63,10 @@ export function AgentConfigPanel({
   busy?: boolean
   /** 只有像 RWA 这类强制约束的智能体才展示约束勾选项 */
   requiresConstraints?: boolean
-  /** 付费状态；null = 还没读到 */
+  /** 服务状态；null = 还没读到 */
   credits?: CreditsState | null
   onRefreshCredits?: () => void
-  /** 测试模式下直接发放一份授权（本地联调用） */
-  onTestGrant?: () => void
-  /** 付费闸门拦下时的说明 */
+  /** 闸门拦下时的说明 */
   paywallError?: string | null
   onStart: (value: AgentConfigValue) => void
 }) {
@@ -76,7 +77,14 @@ export function AgentConfigPanel({
   })
 
   const accepted = requiresConstraints ? constraintsAccepted(constraints) : true
-  const canStart = signedIn && accepted && !busy
+  const allowed = !credits || credits.openAccess || credits.hasGrant
+  const canStart = signedIn && accepted && !busy && allowed
+  const modeLabel =
+    credits?.accessMode === "local_open"
+      ? "本地开发测试"
+      : credits?.accessMode === "preview_open"
+        ? "预览开发测试"
+        : "未开放"
 
   return (
     <div className="flex flex-1 items-start justify-center overflow-y-auto px-4 py-8">
@@ -96,10 +104,27 @@ export function AgentConfigPanel({
         </p>
 
         <section className="rounded-3xl border bg-card p-4">
-          <h3 className="text-sm font-medium">使用模型</h3>
-          <p className="mt-1 text-sm">{modelLabel || "平台默认模型"}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            在上方工具栏的「模型」里切换；切换后这里会同步。
+          <h3 className="text-sm font-medium">服务状态</h3>
+          <dl className="mt-3 space-y-2 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-muted-foreground">访问模式</dt>
+              <dd>{credits ? modeLabel : signedIn ? "读取中" : "请先登入"}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-muted-foreground">当前模型</dt>
+              <dd className="truncate">{modelLabel || credits?.defaultModel || "平台默认模型"}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-muted-foreground">网关</dt>
+              <dd>{credits?.gatewayName || (signedIn ? "读取中" : "登入后显示")}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-muted-foreground">服务可用</dt>
+              <dd>{credits ? (credits.serviceAvailable ? "可用" : "不可用") : signedIn ? "读取中" : "请先登入"}</dd>
+            </div>
+          </dl>
+          <p className="mt-2 text-xs text-muted-foreground">
+            在上方工具栏的「模型」里切换。可选模型与服务端白名单一致。
           </p>
         </section>
 
@@ -151,57 +176,54 @@ export function AgentConfigPanel({
           </p>
         ) : null}
 
-        {/* 付费闸门：没有可用授权时，这里就是收银台（先买后用） */}
-        {signedIn && credits && !credits.hasGrant ? (
-          <section className="space-y-3">
-            <div className="rounded-3xl border border-primary/30 bg-primary/5 p-4">
-              <p className="text-sm font-medium">这项服务按次付费</p>
-              <p className="mt-1 text-xs leading-6 text-muted-foreground">
-                一次 ${credits.priceUsd.toFixed(2)} USD，含一份服务授权：有效期{" "}
-                {credits.validityDays} 天，期间可用的 token 价值上限 ${credits.budgetUsd.toFixed(0)}。
-                额度用满或到期后需要重新购买。
-              </p>
-            </div>
-            <OneTimePurchase testMode={credits.testMode} returnTo="/" />
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={onRefreshCredits}
-                disabled={busy}
-              >
-                <RiRefreshLine className="size-4" />
-                已完成支付？刷新额度
-              </Button>
-              {credits.testMode ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onTestGrant}
-                  disabled={busy}
-                >
-                  测试模式：直接发一份授权
-                </Button>
-              ) : null}
-            </div>
+        {signedIn && credits?.openAccess ? (
+          <section className="rounded-3xl border bg-card p-4">
+            <p className="text-sm font-medium">开发测试模式</p>
+            <p className="mt-1 text-xs leading-6 text-muted-foreground">
+              当前环境不需要购买即可测试 Agent。调用仍会记录模型和 token；
+              拿得到上游单价时记录成本，拿不到就不记金额。
+              24 小时内已知成本达到 ${credits.budgetUsd.toFixed(0)}，或请求达到{" "}
+              {credits.openRequestCap} 次后会暂停。
+              {credits.openSpendUsd !== null
+                ? ` 已记录成本 $${credits.openSpendUsd.toFixed(6)}。`
+                : " 已记录成本：未提供。"}
+              {` 已记录请求 ${credits.openRequests} 次。`}
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mt-2"
+              onClick={onRefreshCredits}
+              disabled={busy}
+            >
+              <RiRefreshLine className="size-4" />
+              刷新用量
+            </Button>
           </section>
         ) : null}
 
-        {/* 有授权：显示剩余额度 */}
-        {signedIn && credits?.hasGrant ? (
+        {signedIn && credits && !credits.openAccess && !credits.hasGrant ? (
+          <section className="rounded-3xl border bg-card p-4">
+            <p className="text-sm font-medium">执行未开放</p>
+            <p className="mt-1 text-xs leading-6 text-muted-foreground">
+              生产环境在正式商业化之前不开放未经授权的 Agent 执行。当前没有收款入口，也不会生成订单。
+            </p>
+          </section>
+        ) : null}
+
+        {signedIn && credits?.hasGrant && !credits.openAccess ? (
           <section className="rounded-3xl border bg-card p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-medium">
-                剩余额度 ${credits.remainingUsd.toFixed(2)} / ${credits.budgetUsd.toFixed(0)}
+                成本护栏剩余 ${credits.remainingUsd.toFixed(2)} / ${credits.budgetUsd.toFixed(0)}
               </p>
               <p className="text-xs text-muted-foreground">
                 {credits.validDaysLeft !== null ? `${credits.validDaysLeft} 天后到期` : "已到期"}
               </p>
             </div>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              额度按实际推理消耗的 token 价值扣减；用满后需要重新购买。
+              这是已有授权的成本上限，不是新的付款状态。
             </p>
           </section>
         ) : null}
@@ -220,9 +242,9 @@ export function AgentConfigPanel({
             三条约束都打开后才能开始任务。
           </p>
         ) : null}
-        {signedIn && credits && !credits.hasGrant ? (
+        {signedIn && credits && !allowed ? (
           <p className="text-center text-xs text-muted-foreground">
-            购买完成后才能开始任务。
+            当前环境不能开始未授权的任务。
           </p>
         ) : null}
       </div>

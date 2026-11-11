@@ -39,10 +39,12 @@ export type PriceLike = Pick<
   "tags" | "inputPricePerMillionUsd" | "outputPricePerMillionUsd"
 >
 
-/** 免费判定：上游 free 标签，或输入/输出价格均为 0 */
+/**
+ * 免费判定只认上游显式 free 标签。
+ * 价格为 0 现在表示「未提供」，不能当成免费。
+ */
 export function isFreeModel(model: PriceLike): boolean {
-  if (model.tags?.includes("free")) return true
-  return model.inputPricePerMillionUsd === 0 && model.outputPricePerMillionUsd === 0
+  return Boolean(model.tags?.includes("free"))
 }
 
 /**

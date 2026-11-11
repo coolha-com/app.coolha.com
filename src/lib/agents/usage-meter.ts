@@ -24,6 +24,8 @@ export interface UsageFact {
   outputTokens: number
   cacheReadTokens: number
   modelId: string | null
+  latencyMs: number | null
+  status: string | null
 }
 
 interface FactLike {
@@ -86,11 +88,15 @@ export function extractUsageFromText(text: string): UsageFact[] {
       if (fact.type !== "usage.recorded") continue
       const usage = asRecord(data.usage)
       if (!usage) continue
+      const latencyRaw = usage.latencyMs ?? usage.durationMs ?? data.latencyMs
+      const latency = Number(latencyRaw)
       out.push({
         inputTokens: num(usage.inputTokens),
         outputTokens: num(usage.outputTokens),
         cacheReadTokens: num(usage.cacheReadTokens),
         modelId,
+        latencyMs: Number.isFinite(latency) && latency >= 0 ? Math.round(latency) : null,
+        status: typeof data.status === "string" && data.status ? data.status : "recorded",
       })
     }
   }
@@ -144,6 +150,8 @@ export function teeAndMeterUsage(
         costUsd,
         source: "chat",
         requestId: ctx.requestId ?? null,
+        latencyMs: fact.latencyMs,
+        status: fact.status,
       })
     }
   }

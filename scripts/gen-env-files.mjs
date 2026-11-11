@@ -86,22 +86,10 @@ function render(o) {
   lines.push("EVE_INTERNAL_SECRET=" + (o.eveSecret ?? ""))
   lines.push("")
 
-  lines.push(...block("收款（Waffo · Merchant of Record）"))
-  lines.push("# 一次购买 = 一份服务授权：19 U/次 · 30 天有效 · token 价值上限 10 USD。")
-  lines.push("# 商户 / 店铺 / 商品：DASHBOARD → API 与开发 · 产品")
-  lines.push("WAFFO_MERCHANT_ID=" + v(base.WAFFO_MERCHANT_ID))
-  lines.push("# RSA 私钥：只在本机/服务端读取，绝不能进客户端")
-  lines.push("WAFFO_PRIVATE_KEY=" + v(o.privateKey))
-  lines.push("WAFFO_STORE_ID=" + v(base.WAFFO_STORE_ID))
-  lines.push("# test = 沙箱（不产生真实扣款）；prod = 真实收款")
-  lines.push("WAFFO_ENVIRONMENT=" + o.environment)
-  lines.push("WAFFO_PRODUCT_ID=" + v(o.productId))
-  lines.push("WAFFO_CURRENCY=USD")
-  lines.push("# Webhook 验签公钥：两把都要配（SDK 不传 environment 时 prod 优先、test 兜底）")
-  lines.push("# 必须单行（多行会被 .env 解析器截断，验签 100% 失败）")
-  lines.push("# DASHBOARD → 设置 → Webhooks → RSA Public Key（平台级，两环境各一把）")
-  lines.push("WAFFO_WEBHOOK_TEST_PUBLIC_KEY=" + v(o.testPublicKey))
-  lines.push("WAFFO_WEBHOOK_PROD_PUBLIC_KEY=" + v(o.prodPublicKey))
+  lines.push(...block("Agent 访问模式（不收款）"))
+  lines.push("# local_open 只在本机生效；preview_open 只在 Vercel Preview 的 agent / cursor 分支生效。")
+  lines.push("# 生产环境即使写了开放模式也会被服务端拒绝。不要把 COOLHA_EVE_LOCAL 同步到 Vercel。")
+  lines.push("AGENT_ACCESS_MODE=" + (o.accessMode ?? ""))
   lines.push("")
 
   lines.push(...block("数据库（Neon Postgres）"))
@@ -148,56 +136,16 @@ const devDb = {
   NEON_AUTH_BASE_URL: dev.NEON_AUTH_BASE_URL,
 }
 
-const TEST_KEY = base.WAFFO_PRIVATE_KEY
-const TEST_PRODUCT = base.WAFFO_PRODUCT_ID
-const TEST_PUB = base.WAFFO_WEBHOOK_TEST_PUBLIC_KEY
-
-/**
- * 生产 webhook 公钥：直接从 SDK 内置常量取。
- *
- * 依据（scripts/check-waffo-keys.mjs 实测）：
- *   - env 里的 WAFFO_WEBHOOK_TEST_PUBLIC_KEY 与 SDK 内置 TEST_PUBLIC_KEY
- *     经密码学比对（SPKI DER）**完全相同** → 说明 Dashboard 当前的 TEST 公钥
- *     就是 SDK 内置那把，**平台没有轮换过 webhook key**。
- *   - 因此 SDK 内置的 PROD_PUBLIC_KEY 就是当前的生产公钥，可以直接用。
- *
- * 若哪天平台轮换了 key（SDK 内置 TEST 不再等于 env 里的 TEST），
- * 这个自动取法就会失效 → 改成从 Dashboard 生产模式复制，两把公钥都要更新。
- */
-const PROD_PUB = (() => {
-  const src = fs.readFileSync(resolve(ROOT, "node_modules/@waffo/pancake-ts/dist/index.js"), "utf8")
-  const marker = "PROD_PUBLIC_KEY = `"
-  const i = src.indexOf(marker)
-  if (i < 0) return ""
-  const start = i + marker.length
-  const end = src.indexOf("`", start)
-  const pem = src.slice(start, end)
-  // ⚠️ 必须压成**单行**：多行 PEM 会被 .env 解析器截断成第一行，
-  //    SDK 归一化后拿到残缺密钥 → 验签 100% 失败。
-  //    换行写成字面 \n（SDK 的 normalizePublicKey 会还原成真换行）。
-  return pem.replace(/\s*\n\s*/g, "\\n").trim()
-})()
-
-if (!PROD_PUB) {
-  console.warn(
-    "⚠️ 没能从 SDK 取到内置 PROD 公钥，生产环境将缺少 WAFFO_WEBHOOK_PROD_PUBLIC_KEY。",
-  )
-}
-
-// 本地：dev 分支库 + Waffo test
+// 本地：dev 分支库。当前不收款。
 fs.writeFileSync(
   resolve(ROOT, ".env.local"),
   render({
     title: ".env.local — 本地开发（开发 / 测试环境）",
     dbNote: "dev 分支 ep-gentle-rain",
-    payNote: "Waffo test 沙箱",
+    payNote: "当前不收款",
     purpose: "npm run dev / npm run dev:all 用的基线。",
     db: devDb,
-    environment: "test",
-    privateKey: TEST_KEY,
-    productId: TEST_PRODUCT,
-    testPublicKey: TEST_PUB,
-    prodPublicKey: PROD_PUB,
+    accessMode: "local_open",
     eveLocal: "1",
     eveOrigin: "",
     eveSecret: "",
@@ -210,34 +158,26 @@ fs.writeFileSync(
   render({
     title: ".env.development.local — Vercel「Development」环境镜像",
     dbNote: "dev 分支 ep-gentle-rain",
-    payNote: "Waffo test 沙箱",
+    payNote: "当前不收款",
     purpose: "next dev 时优先级高于 .env.local。",
     db: devDb,
-    environment: "test",
-    privateKey: TEST_KEY,
-    productId: TEST_PRODUCT,
-    testPublicKey: TEST_PUB,
-    prodPublicKey: PROD_PUB,
+    accessMode: "local_open",
     eveLocal: "1",
     eveOrigin: "",
     eveSecret: "",
   }),
 )
 
-// 预览：dev 分支库 + Waffo test
+// 预览：dev 分支库。访问模式由 Vercel 分支变量决定，不写进这个镜像。
 fs.writeFileSync(
   resolve(ROOT, ".env.preview.local"),
   render({
     title: ".env.preview.local — Vercel「Preview」环境镜像",
     dbNote: "dev 分支 ep-gentle-rain",
-    payNote: "Waffo test 沙箱",
+    payNote: "当前不收款",
     purpose: "预览部署用的变量（Next 不加载本文件，仅作对照）。",
     db: devDb,
-    environment: "test",
-    privateKey: TEST_KEY,
-    productId: TEST_PRODUCT,
-    testPublicKey: TEST_PUB,
-    prodPublicKey: PROD_PUB,
+    accessMode: "",
     eveLocal: null,
     eveOrigin: "",
     eveSecret: "",
@@ -260,14 +200,8 @@ fs.writeFileSync(
     "# 生产环境专属变量（当前全部留空）",
     "# ────────────────────────────────────────────────────────────",
     "",
-    "# test = 沙箱（不产生真实扣款）；prod = 真实收款。真上生产时改成 prod。",
-    "WAFFO_ENVIRONMENT=prod",
-    "# 生产 RSA 私钥：Dashboard「生产」模式新建 API Key 后复制过来",
-    "WAFFO_PRIVATE_KEY=",
-    "# 生产的一次性商品 ID：先用 publish-product 把测试商品同步到生产",
-    "WAFFO_PRODUCT_ID=",
-    "# 生产 webhook 验签公钥：Dashboard「生产」模式的 RSA Public Key（必须单行）",
-    "WAFFO_WEBHOOK_PROD_PUBLIC_KEY=",
+    "# 生产不开放未经授权的 Agent 执行。不要在这里写 local_open / preview_open。",
+    "AGENT_ACCESS_MODE=",
     "",
     "# ────────────────────────────────────────────────────────────",
     "# 生产数据库（Neon Postgres · main 分支）",
@@ -286,14 +220,10 @@ fs.writeFileSync(
   render({
     title: ".env.local.example — 变量模板（照着填）",
     dbNote: "dev 分支",
-    payNote: "Waffo test 沙箱",
+    payNote: "当前不收款",
     purpose: "新环境从这里拷。密钥一律留空，不要提交真值。",
     db: { DATABASE_URL: "", DATABASE_URL_UNPOOLED: "", NEON_AUTH_BASE_URL: "" },
-    environment: "test",
-    privateKey: "",
-    productId: "",
-    testPublicKey: "",
-    prodPublicKey: "",
+    accessMode: "local_open",
     eveLocal: "1",
     eveOrigin: "",
     eveSecret: "",

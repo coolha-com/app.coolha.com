@@ -1,10 +1,10 @@
 import "server-only"
 
-import { DEMO_MODELS } from "@/lib/compute/catalog"
 import { deriveProviders } from "@/lib/compute/service"
 import type { ComputeModel, ComputeProvider } from "@/lib/compute/types"
 import { CATALOG_CACHE_TAG, CATALOG_REVALIDATE_SECONDS } from "@/lib/ai-gateway/shared"
 import { isInferenceReady } from "@/lib/inference/config"
+import { getWhitelistedModels } from "@/lib/inference/openrouter-catalog"
 
 /**
  * 模型目录读取层（仅服务端）。
@@ -13,9 +13,8 @@ import { isInferenceReady } from "@/lib/inference/config"
  * 全站已移除该上游：不再 fetch ai-gateway.vercel.sh，不再同步其目录快照，
  * 也不再依赖 AI_GATEWAY_* 环境变量。
  *
- * 模型广场**布局保留**（页面 / 浏览器 / 表格 / 卡片组件不动），数据源暂时
- * 回退到 Phase 1 演示目录，并由页面明确标注「示例数据 · 推理网关未接入」。
- * 后续接入带目录接口的网关时，只需替换本文件的 getModelCatalog() 实现。
+ * 模型广场布局保留。数据源是 OpenRouter 目录里、且落在 INFERENCE_MODELS
+ * 白名单中的模型。目录失败时只暴露白名单 ID，价格显示为未提供。
  *
  * 绝不把演示数据伪装成实时数据，也绝不返回占位价格/评分（项目铁律）。
  */
@@ -48,23 +47,25 @@ export interface ModelCatalog {
   providers: ComputeProvider[]
   source: CatalogSource
   fetchedAt: string
-  /** true = 推理网关未接入，当前为演示布局数据 */
+  /** true = 目录元数据没取到，或白名单为空。模型 ID 仍可能可调用。 */
   stale: boolean
   error?: string
 }
 
 /**
- * 获取模型目录。目前固定返回演示目录 + 明确的未接入标记。
- * 保留 options.force 参数以兼容 /api/v1/models?refresh=1，但不再有上游可刷新。
+ * 模型目录 = INFERENCE_MODELS 白名单，规格来自 OpenRouter /api/v1/models。
+ * options.force 会跳过进程内缓存再拉一次上游。
+ * 拉不到目录时仍返回白名单 ID，不回退演示模型，也不填假价格。
  */
-export async function getModelCatalog(): Promise<ModelCatalog> {
+export async function getModelCatalog(options?: { force?: boolean }): Promise<ModelCatalog> {
+  const listed = await getWhitelistedModels(options?.force === true)
   return {
-    models: DEMO_MODELS,
-    providers: deriveProviders(DEMO_MODELS),
-    source: "demo",
-    fetchedAt: new Date().toISOString(),
-    stale: true,
-    error: "INFERENCE_NOT_CONFIGURED",
+    models: listed.models,
+    providers: deriveProviders(listed.models),
+    source: "inference",
+    fetchedAt: listed.fetchedAt,
+    stale: listed.stale,
+    error: listed.error,
   }
 }
 
@@ -100,7 +101,7 @@ export function toListModel(model: ComputeModel): ComputeModel {
   }
 }
 
-/** 按站内 slug 查找模型：只在演示目录里查，不回源、不查旧快照表 */
+/** 按站内 slug 查找模型：只在白名单目录里查 */
 export async function getCatalogModelBySlug(slug: string): Promise<ComputeModel | null> {
   const catalog = await getModelCatalog()
   return catalog.models.find((model) => model.id === slug) ?? null

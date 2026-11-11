@@ -52,9 +52,13 @@ export default async function ModelDetailPage({ params }: { params: Promise<{ id
         返回模型广场
       </Link>
 
-      {isLive ? null : (
+      {model.tags?.includes("metadata-missing") ? (
         <MockNotice>
-          该条目来自 Phase 1 演示目录：价格、延迟、状态均为示例数据，不代表真实供应商报价。
+          OpenRouter 目录没有返回这条模型的规格。价格、延迟和评分均为未提供，不是示例报价。
+        </MockNotice>
+      ) : isLive ? null : (
+        <MockNotice>
+          该条目来自演示目录：价格、延迟、状态均为示例数据，不代表真实供应商报价。
         </MockNotice>
       )}
 

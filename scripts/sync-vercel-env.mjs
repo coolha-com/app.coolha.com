@@ -6,7 +6,7 @@
  *
  * 规则：
  *  - 源文件：.env.development.local（dev+preview）/ .env.production.local（production）
- *  - **空值一律跳过**：本地没填的（生产的 Waffo 私钥等）不会把云端覆盖成空，
+ *  - **空值一律跳过**：本地没填的不会把云端覆盖成空，
  *    避免把线上已经配好的东西抹掉。
  *  - 已存在的条目用 PATCH 改值（body 只带 value），没有的用 POST 新建。
  *  - 已停用的 AI_GATEWAY_API_KEY 会被删除（代码已不再读取）。
@@ -34,6 +34,11 @@ const SECRET_HINTS = ["KEY", "SECRET", "TOKEN", "PRIVATE", "PASSWORD", "SIGNING"
  * COOLHA_EVE_LOCAL=1 会让云端把 /eve/v1/* rewrite 到 127.0.0.1:4274 —— 云上没有这个进程。
  */
 const LOCAL_ONLY = new Set(["COOLHA_EVE_LOCAL"])
+
+/** Waffo 已退出。同步脚本不得把这些变量推回去。 */
+function isRetired(key) {
+  return key.startsWith("WAFFO_") || key === "AI_GATEWAY_API_KEY"
+}
 
 function parseEnv(path) {
   const map = new Map()
@@ -107,6 +112,10 @@ async function main() {
         console.log(`  · 跳过 ${key}（纯本地开关，不上云）`)
         continue
       }
+      if (key.startsWith("WAFFO_")) {
+        console.log(`  · 跳过 ${key}（Waffo 已退出，不再推送）`)
+        continue
+      }
       const isSecret = SECRET_HINTS.some((h) => key.includes(h))
       const type = isSecret ? "encrypted" : "plain"
 
@@ -147,7 +156,7 @@ async function main() {
 
     // 清理已停用 / 纯本地的变量
     for (const entry of current.envs ?? []) {
-      const dead = entry.key === "AI_GATEWAY_API_KEY"
+      const dead = isRetired(entry.key)
       const localOnly = LOCAL_ONLY.has(entry.key)
       if (!dead && !localOnly) continue
       if (!(entry.target ?? []).some((t) => cfg.targets.includes(t))) continue

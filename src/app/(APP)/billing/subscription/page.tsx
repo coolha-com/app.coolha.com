@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import { OneTimePurchase } from "@/components/agents/OneTimePurchase"
 import {
   Notice,
   PageHeader,
@@ -8,98 +7,60 @@ import {
   Surface,
 } from "@/components/PageShell"
 import { getCurrentUser } from "@/lib/neon/session"
-import {
-  listWaffoOrders,
-  readWaffoPurchaseSummary,
-  type WaffoOrderStatus,
-} from "@/lib/neon/waffo"
-import { isWaffoTestMode } from "@/lib/waffo/client"
+import { decideAgentAccess } from "@/lib/agents/access-mode"
+import { isInferenceReady, INFERENCE_DEFAULT_MODEL, INFERENCE_GATEWAY_NAME } from "@/lib/inference/config"
 
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-  title: "购买 Agent 服务",
-  description: "一次性购买付费的 Agent 即服务，法币结账（Waffo Pancake 托管）。",
+  title: "Agent 服务说明",
+  description: "当前阶段的 Agent 服务说明。不收款，也不展示付款状态。",
 }
 
-/**
- * 商业模式已改为一次性购买 Agent 服务。
- * 旧的链上订阅代码保留给历史订单与账本查询，但不再渲染订阅档位与下单 CTA。
- */
-
-const STATUS_LABEL: Record<WaffoOrderStatus, string> = {
-  pending: "待支付",
-  paid: "已支付",
-  refunded: "已退款",
-  failed: "失败",
-}
-
-function formatStamp(value: Date | string): string {
-  const date = value instanceof Date ? value : new Date(value)
-  return Number.isNaN(date.getTime()) ? String(value) : date.toISOString()
-}
-
-export default async function PurchasePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ paid?: string; order?: string }>
-}) {
-  const { paid, order } = await searchParams
+export default async function AgentServicePage() {
   const user = await getCurrentUser()
-  const subject = user?.subject ?? null
-
-  const orders = subject ? await listWaffoOrders(subject, 20).catch(() => []) : []
-  const summary = subject
-    ? await readWaffoPurchaseSummary(subject).catch(() => ({
-        paidCalls: 0,
-        paidByCurrency: [],
-      }))
-    : { paidCalls: 0, paidByCurrency: [] }
+  const access = decideAgentAccess()
+  const ready = isInferenceReady()
+  const modeLabel =
+    access.mode === "local_open"
+      ? "本地开发测试"
+      : access.mode === "preview_open"
+        ? "预览开发测试"
+        : "未开放"
 
   return (
     <PageShell>
       <PageHeader
-        title="购买 Agent 服务"
-        description="一次性购买专业 Agent 服务，按次结算；购买记录与账本在这里查看。"
+        title="Agent 服务"
+        description="Coolha 提供的是 Agent 执行与交付，不是模型 API 额度转售。当前阶段不收款。"
       />
 
-      {paid === "1" ? (
-        <Notice className="mb-4">
-          收银台已支付完成。订单以 Waffo 的签名回调为准入账，
-          {order ? `订单号 ${order}，` : ""}
-          若下方列表还没变成「已支付」，说明回调还在路上，稍后刷新即可。
+      <Surface>
+        <p className="text-sm">访问模式：{modeLabel}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          网关 {INFERENCE_GATEWAY_NAME} · 默认模型 {INFERENCE_DEFAULT_MODEL || "未配置"} ·
+          推理{ready ? "已配置" : "未配置"}
+        </p>
+      </Surface>
+
+      {access.open ? (
+        <Notice className="mt-4">
+          这个环境可以不购买直接测试 Agent。用量会记到你的账号上，达到测试预算后会暂停。
+          生产环境不会因为这里的说明而变成开放模式。
         </Notice>
-      ) : null}
+      ) : (
+        <Notice className="mt-4">
+          生产环境在正式商业化之前不开放未经授权的执行。这里没有收银台，也不会生成订单。
+        </Notice>
+      )}
 
-      <OneTimePurchase testMode={isWaffoTestMode()} />
+      {!user ? <Notice className="mt-4">请先在侧边栏登入后再开始任务。</Notice> : null}
 
-      {!subject ? (
-        <Notice className="mt-4">请先在侧边栏登入，订单才能归属到你的账号。</Notice>
-      ) : null}
-
-      {summary.paidCalls > 0 ? (
-        <Surface className="mt-4">
-          已购买 {summary.paidCalls} 次
-          {summary.paidByCurrency.length > 0
-            ? ` · 累计 ${summary.paidByCurrency
-                .map((item) => `${item.total} ${item.currency}`)
-                .join(" + ")}`
-            : ""}
-        </Surface>
-      ) : null}
-
-      <SectionHeading>购买记录</SectionHeading>
+      <SectionHeading>现在能做什么</SectionHeading>
       <ul className="space-y-2">
-        {orders.length === 0 ? (
-          <li className="px-1 text-sm text-muted-foreground">还没有购买记录。</li>
-        ) : null}
-        {orders.map((order) => (
-          <Surface as="li" key={order.id}>
-            {order.id} · {STATUS_LABEL[order.status] ?? order.status} ·{" "}
-            {order.amount ? `${order.amount} ${order.currency}` : "待定"} ·{" "}
-            {formatStamp(order.createdAt)}
-          </Surface>
-        ))}
+        <Surface as="li">在工作台选择 RWA Research Agent，配置约束后开始任务。</Surface>
+        <Surface as="li">模型只能从服务端白名单里选。</Surface>
+        <Surface as="li">对话、工具过程和用量记在你自己的账号下。</Surface>
       </ul>
     </PageShell>
   )
