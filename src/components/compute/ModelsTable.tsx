@@ -147,7 +147,7 @@ export function ModelsTable({
                     />
                     <div className="min-w-0">
                       <Link
-                        href={`/console/models/${model.id}`}
+                        href={`/agents/models/${model.id}`}
                         className="font-medium hover:text-primary"
                       >
                         {model.name}
@@ -207,7 +207,7 @@ export function ModelsTable({
                       </button>
                     ) : null}
                     <Link
-                      href={`/console/models/${model.id}`}
+                      href={`/agents/models/${model.id}`}
                       aria-label={`查看 ${model.name} 详情`}
                       className="inline-flex items-center gap-1 whitespace-nowrap text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
                     >

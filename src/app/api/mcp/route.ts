@@ -1,15 +1,18 @@
-import { RwaResearchError, executeRwaResearch } from "@/lib/agents/execute"
-import { readGeoTier } from "@/lib/agents/http"
 import { recordAgentCall, requireAgentApiKey } from "@/lib/agents/api-auth"
-import { containsSecretValue, isTargetType, listConnectedReadTools } from "@/lib/agents/rwa-research"
-import { REPORT_DISCLAIMER } from "@/lib/research/labels"
+import { listConnectedReadTools } from "@/lib/agents/agent-contracts"
 import { fetchChainSnapshot, isAlchemyConfigured, isToolChain } from "@/lib/web3-tools/alchemy"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 export const maxDuration = 60
 
-const SERVER_INFO = { name: "coolha-rwa-research", version: "0.1.0" }
+const SERVER_INFO = { name: "coolha", version: "0.2.0" }
+
+/**
+ * 只读。返回的是这次实际取到的链上事实，不做评级、不给结论性判断。
+ */
+const MCP_DISCLAIMER =
+  "只读。不签名、不转账、不兑换。返回的是这次实际取到的链上事实与来源，不构成审计意见或投资建议；取不到的维度不会用样例数据填充。"
 
 function rpcResult(id: unknown, result: unknown) {
   return Response.json({ jsonrpc: "2.0", id: id ?? null, result })
@@ -31,22 +34,7 @@ interface McpTool {
 }
 
 function tools(): McpTool[] {
-  const listed: McpTool[] = [
-    {
-      name: "rwa_research",
-      description:
-        "对一个合约、代币或项目做只读研究。只返回这次实际取到的事实、来源、时间和既有免责声明。不签名、不转账、不兑换，不打 0-100 分。",
-      inputSchema: {
-        type: "object",
-        properties: {
-          task: { type: "string", description: "研究任务，可包含 0x 地址" },
-          targetType: { type: "string", enum: ["contract", "token", "project"] },
-        },
-        required: ["task"],
-        additionalProperties: false,
-      },
-    },
-  ]
+  const listed: McpTool[] = []
   if (listConnectedReadTools().some((tool) => tool.id === "alchemy-mcp-server")) {
     listed.push({
       name: "alchemy_read_chain",
@@ -85,7 +73,7 @@ export async function POST(req: Request) {
       protocolVersion: "2025-03-26",
       capabilities: { tools: { listChanged: false } },
       serverInfo: SERVER_INFO,
-      instructions: `只读。${REPORT_DISCLAIMER}`,
+      instructions: `只读。${MCP_DISCLAIMER}`,
     })
   }
   if (body.method === "notifications/initialized" || body.method === "initialized") {
@@ -95,57 +83,18 @@ export async function POST(req: Request) {
     return rpcResult(body.id, { tools: tools() })
   }
   if (body.method === "tools/call") {
-    return callTool(auth.subject, body.id, body.params, readGeoTier(req))
+    return callTool(auth.subject, body.id, body.params)
   }
   return rpcError(body.id, -32601, "不支持的方法")
 }
 
-async function callTool(subject: string, id: unknown, params: unknown, geoTier: string | null) {
+async function callTool(subject: string, id: unknown, params: unknown) {
   const record = params && typeof params === "object" ? (params as { name?: unknown; arguments?: unknown }) : {}
   const name = typeof record.name === "string" ? record.name : ""
   const args = record.arguments && typeof record.arguments === "object"
     ? (record.arguments as Record<string, unknown>)
     : {}
   const started = Date.now()
-
-  if (name === "rwa_research") {
-    const task = typeof args.task === "string" ? args.task : ""
-    if (containsSecretValue(task)) {
-      return rpcResult(id, { content: [{ type: "text", text: "任务文本里不能包含密钥" }], isError: true })
-    }
-    try {
-      const run = await executeRwaResearch({
-        subject,
-        task,
-        targetType: isTargetType(args.targetType) ? args.targetType : "contract",
-        channel: "mcp",
-        geoTier,
-        allowSponsoredNarrative: false,
-      })
-      await recordAgentCall({
-        subject,
-        source: "rwa-mcp",
-        tool: "rwa-research",
-        status: run.status === "failed" ? "error" : "success",
-        latencyMs: Date.now() - started,
-      })
-      return rpcResult(id, {
-        content: [{ type: "text", text: JSON.stringify({ run, disclaimer: run.report?.disclaimer ?? REPORT_DISCLAIMER }) }],
-        isError: run.status === "failed",
-      })
-    } catch (error) {
-      await recordAgentCall({
-        subject,
-        source: "rwa-mcp",
-        tool: "rwa-research",
-        status: "error",
-        latencyMs: Date.now() - started,
-        errorCode: error instanceof RwaResearchError ? error.code : "EXECUTION_FAILED",
-      })
-      const message = error instanceof RwaResearchError ? error.message : "研究执行失败"
-      return rpcResult(id, { content: [{ type: "text", text: message }], isError: true })
-    }
-  }
 
   if (name === "alchemy_read_chain" && listConnectedReadTools().some((tool) => tool.id === "alchemy-mcp-server")) {
     if (!isAlchemyConfigured()) {
@@ -161,7 +110,7 @@ async function callTool(subject: string, id: unknown, params: unknown, geoTier: 
     const result = await fetchChainSnapshot({ chain: args.chain, address })
     await recordAgentCall({
       subject,
-      source: "rwa-mcp",
+      source: "mcp",
       tool: "alchemy-mcp-server",
       status: result.ok ? "success" : "error",
       latencyMs: Date.now() - started,

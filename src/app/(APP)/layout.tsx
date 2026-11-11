@@ -13,11 +13,11 @@ import Sidebar from "./_layout/Sidebar";
  */
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh bg-base-200">
+    <div className="flex h-dvh overflow-hidden bg-base-200">
       <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <NavBar />
-        <div className="flex-1">{children}</div>
+        <div className="flex flex-1 min-h-0 flex-col overflow-y-auto">{children}</div>
       </div>
     </div>
   );

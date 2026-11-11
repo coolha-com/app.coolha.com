@@ -11,7 +11,6 @@ import {
     RiChatSmileAiLine,
     RiDatabase2Line,
     RiMenuUnfoldLine,
-    RiRobot2Line,
     RiSidebarFoldLine,
     RiTerminalBoxLine,
 } from "react-icons/ri";
@@ -84,7 +83,7 @@ function Logo({ showLabels }: { showLabels: boolean }) {
         <div className={cn("flex w-full", showLabels ? "justify-start" : "justify-center")}>
             <motion.div className="w-auto" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Link
-                    href="/chat"
+                    href="/"
                     className={cn(
                         "flex size-11 items-center justify-center rounded-full hover:bg-accent",
                         showLabels && "h-11 w-full justify-start gap-3 px-4",
@@ -111,21 +110,15 @@ function NavbarLink({ showLabels }: { showLabels: boolean }) {
     const links = [
         {
             title: t('chat'),
-            href: '/chat',
+            href: '/',
             icon: RiChatSmileAiLine,
-            active: pathname.startsWith('/chat') || pathname.startsWith('/tasks') || pathname === '/',
-        },
-        {
-            title: t('agents'),
-            href: '/agents',
-            icon: RiRobot2Line,
-            active: pathname.startsWith('/agents'),
+            active: pathname === '/' || pathname.startsWith('/tasks') || pathname.startsWith('/agents'),
         },
         {
             title: t('data'),
             href: '/data',
             icon: RiDatabase2Line,
-            active: pathname.startsWith('/data') || pathname.startsWith('/rwa'),
+            active: pathname.startsWith('/data') || pathname.startsWith('/data/rwa'),
         },
         {
             title: t('billing'),

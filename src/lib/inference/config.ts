@@ -2,7 +2,7 @@
  * 统一推理网关配置（唯一真相源）。
  *
  * 背景：Vercel AI Gateway 团队被永久停用（疑似滥用，无申诉通道），全站不再依赖它。
- * Coolha 现在只对接**一个** OpenAI 兼容推理网关：eve Runtime、/api/compute/playground、
+ * Coolha 现在只对接**一个** OpenAI 兼容推理网关：eve Runtime、narrate
  * narrate 都从这份配置取端点、密钥与模型白名单。换厂商只改环境变量，不改代码。
  *
  * 合规口径（AaaS）：按 Agent 服务计费，不按 token 分档，不转售模型额度。

@@ -2,7 +2,7 @@ import "server-only"
 
 import { createHash, randomBytes } from "node:crypto"
 import { isDatabaseConfigured, query } from "@/lib/neon/postgres"
-import { containsSecretValue } from "@/lib/agents/rwa-research"
+import { containsSecretValue } from "@/lib/agents/agent-contracts"
 import type { AgentApiKeyRecord } from "@/lib/agents/api-key-types"
 
 const MAX_ACTIVE_KEYS = 5

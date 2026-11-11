@@ -44,7 +44,7 @@ export interface ComputeProvider {
 }
 
 export interface ComputeModel {
-  /** 站内 slug，用于 /console/models/[id] */
+  /** 站内 slug，用于 /agents/models/[id] */
   id: string
   name: string
   /** 统一展示的模型 ID（Phase 2 起对应 AI Gateway 模型 ID） */

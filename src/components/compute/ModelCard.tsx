@@ -54,7 +54,7 @@ export function ModelCard({
       </div>
 
       <h3 className="mt-4 font-semibold">
-        <Link href={`/console/models/${model.id}`} className="hover:text-primary">
+        <Link href={`/agents/models/${model.id}`} className="hover:text-primary">
           {model.name}
         </Link>
       </h3>
@@ -89,7 +89,7 @@ export function ModelCard({
       <div className="mt-4 flex items-center justify-between border-t pt-4">
         <DataSourceBadge source={model.dataSource} />
         <Link
-          href={`/console/models/${model.id}`}
+          href={`/agents/models/${model.id}`}
           className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           详情

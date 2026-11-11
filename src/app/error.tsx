@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
 /** 全局错误边界：避免整页白屏 */
@@ -30,7 +31,7 @@ export default function GlobalError({
           重试
         </Button>
         <Button asChild variant="outline" className="rounded-xl">
-          <a href="/chat">返回 Chat</a>
+          <Link href="/">返回首页</Link>
         </Button>
       </div>
     </div>

@@ -48,7 +48,7 @@ export async function requireAgentApiKey(
 
 export async function recordAgentCall(input: {
   subject: string
-  source: "rwa-api" | "rwa-mcp"
+  source: "mcp"
   tool: string
   status: "success" | "error"
   latencyMs: number

@@ -10,7 +10,7 @@ export default function NotFound() {
       </p>
       <div className="flex gap-2">
         <Link
-          href="/chat"
+          href="/"
           className="inline-flex h-10 items-center rounded-xl border bg-background px-4 text-sm font-medium transition-colors hover:text-foreground"
         >
           返回 Chat

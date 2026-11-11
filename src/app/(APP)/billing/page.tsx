@@ -2,7 +2,8 @@ import type { Metadata } from "next"
 import { RiBankCardLine, RiBarChartBoxLine } from "react-icons/ri"
 import { listRecentUsage, summarizeUsage } from "@/lib/neon/ai-usage"
 import { getCurrentUser } from "@/lib/neon/session"
-import { listRwaRuns } from "@/lib/neon/rwa-research"
+import { listChatSessions } from "@/lib/neon/chat-sessions"
+import { readGrantState, summarizeUsage as summarizeAgentUsage } from "@/lib/neon/agent-billing"
 import { listSubscriptionOrders } from "@/lib/neon/subscription"
 import {
   EntryCard,
@@ -33,10 +34,13 @@ export default async function BillingPage() {
     ? await Promise.all([
         summarizeUsage(subject).catch(() => null),
         listRecentUsage(subject, 20).catch(() => []),
-        listRwaRuns(subject, 20).catch(() => []),
+        listChatSessions(subject, 20).catch(() => []),
         listSubscriptionOrders(subject, 10).catch(() => []),
       ])
     : [null, [], [], []]
+
+  const grantState = subject ? await readGrantState(subject).catch(() => null) : null
+  const agentUsage = subject ? await summarizeAgentUsage(subject).catch(() => null) : null
 
   return (
     <PageShell>
@@ -44,9 +48,9 @@ export default async function BillingPage() {
         title="用量与订单"
         description={
           <>
-            只显示当前账户。研究 API 的记录写在现有用量表里，token 数为 0，不代表已付款，也不增加赞助额度。
+            只显示当前账户。按次购买的 Agent 服务授权与实际推理用量都记在这里。
             购买入口在 <InlineLink href="/billing/subscription">购买 Agent 服务</InlineLink>。
-            资料与登录方式在 <InlineLink href="/account">账户页</InlineLink>，
+            资料与登录方式在 <InlineLink href="/settings/account">账户页</InlineLink>，
             调用明细也可看 <InlineLink href="/billing/usage">用量记录</InlineLink>。
           </>
         }
@@ -77,14 +81,40 @@ export default async function BillingPage() {
         </Surface>
       ) : null}
 
-      <SectionHeading>研究订单</SectionHeading>
+      <SectionHeading>服务授权</SectionHeading>
+      {grantState && grantState.grant ? (
+        <Surface className="text-sm">
+          剩余额度 ${grantState.remainingUsd.toFixed(4)} / ${grantState.grant.tokenBudgetUsd.toFixed(0)}
+          {" · "}
+          {grantState.validDaysLeft !== null ? `${grantState.validDaysLeft} 天后到期` : "已到期"}
+          {" · "}
+          累计已用 ${grantState.grant.tokenUsedUsd.toFixed(4)}
+        </Surface>
+      ) : (
+        <Surface className="text-sm text-muted-foreground">
+          当前没有可用的服务授权。到
+          <InlineLink href="/billing/subscription">购买 Agent 服务</InlineLink>
+          购买后即可开始任务。
+        </Surface>
+      )}
+
+      {agentUsage ? (
+        <Surface className="mt-3 text-sm text-muted-foreground">
+          实际推理用量：{agentUsage.requests} 次请求 · 输入 {agentUsage.inputTokens} token · 输出{" "}
+          {agentUsage.outputTokens} token
+          {agentUsage.costUsd !== null ? ` · 成本 $${agentUsage.costUsd.toFixed(6)}` : " · 成本未计入"}
+        </Surface>
+      ) : null}
+
+      <SectionHeading>任务记录</SectionHeading>
       <ul className="space-y-2">
         {runs.length === 0 ? (
-          <li className="px-1 text-sm text-muted-foreground">还没有研究订单。</li>
+          <li className="px-1 text-sm text-muted-foreground">还没有任务记录。</li>
         ) : null}
-        {runs.map((run) => (
-          <Surface as="li" key={run.orderId}>
-            {run.target} · {run.status} · 未付款 · 标价未公布 · {run.createdAt}
+        {runs.map((session) => (
+          <Surface as="li" key={session.id}>
+            {session.title || "未命名任务"}
+            {session.preview ? ` · ${session.preview}` : ""} · {session.updatedAt}
           </Surface>
         ))}
       </ul>

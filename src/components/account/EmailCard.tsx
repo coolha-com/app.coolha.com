@@ -43,7 +43,7 @@ export function EmailCard({
     try {
       const { error } = await authClient.changeEmail({
         newEmail: target,
-        callbackURL: `${window.location.origin}/account`,
+        callbackURL: `${window.location.origin}/settings/account`,
       })
       if (error) {
         setMessage({ ok: false, text: error.message ?? "修改失败" })

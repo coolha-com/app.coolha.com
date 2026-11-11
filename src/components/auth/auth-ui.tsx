@@ -7,7 +7,7 @@ import { RiCheckLine } from "react-icons/ri"
 import { refreshAuthSession } from "@/hooks/useAuth"
 
 /** 登录成功后回到应用的位置 */
-export const AFTER_SIGN_IN = "/chat"
+export const AFTER_SIGN_IN = "/"
 
 /** 表单输入框统一尺寸 */
 export const FIELD_CLASS =

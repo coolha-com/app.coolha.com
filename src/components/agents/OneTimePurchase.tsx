@@ -1,3 +1,6 @@
+"use client"
+
+import { useState } from "react"
 import { RiArrowRightUpLine, RiErrorWarningLine, RiShoppingBagLine } from "react-icons/ri"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,18 +12,65 @@ import { Button } from "@/components/ui/button"
  * 法币收款由 Waffo Pancake（Merchant of Record）承载；x402 / 稳定币收款
  * 留给后续阶段，让外部 Agent 也能自主采购。
  *
- * ⚠️ 诚实纪律：当前是 test 模式，不产生真实扣款，也不授予任何权益。
- * 页面不宣称「购买后立即可用」，权益发放要等 Webhook + 订单核验落地。
+ * 付款走服务端 SDK 开的收银台会话（/api/waffo/checkout），而不是硬编码商品链接：
+ * 只有走会话，回调里才有我们的单号，订单才能对回账号。
+ *
+ * ⚠️ 诚实纪律：test 模式下不产生真实扣款。
+ * 权益发放要等 Webhook 订单核销 + 扣减闸门落地，不做「买了就能用」的承诺。
  */
 
-// 永久商品链接（不是 24 小时即失效的 checkout session）。
-// 生产环境用 WAFFO_CHECKOUT_URL 覆盖为 KYB 审核通过后的正式链接。
-const DEFAULT_CHECKOUT =
-  "https://pancake.waffo.ai/store/coolha-c1wzb0nl/product/PROD_4yvNFDfR3pynj7PmAooWSG?type=onetime&currency=USD&test=true"
+interface OneTimePurchaseProps {
+  /** 服务端判定：当前是不是测试模式 */
+  testMode?: boolean
+  /** 支付完成后回到的站内路径（如 "/"） */
+  returnTo?: string
+}
 
-export function OneTimePurchase() {
-  const checkoutUrl = process.env.WAFFO_CHECKOUT_URL ?? DEFAULT_CHECKOUT
-  const isTest = checkoutUrl.includes("test=true")
+export function OneTimePurchase({ testMode = true, returnTo }: OneTimePurchaseProps) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function startCheckout() {
+    if (loading) return
+    setLoading(true)
+    setError(null)
+
+    // 先同步开一个空窗口：await 之后再 window.open 会被浏览器拦截
+    const popup = window.open("", "_blank")
+
+    try {
+      const response = await fetch("/api/waffo/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(returnTo ? { returnTo } : {}),
+      })
+      const payload = (await response.json().catch(() => null)) as
+        | { checkoutUrl?: string; error?: { code?: string; message?: string } }
+        | null
+
+      if (!response.ok || !payload?.checkoutUrl) {
+        const code = payload?.error?.code
+        const message =
+          code === "AUTH_REQUIRED"
+            ? "请先登入再购买。"
+            : (payload?.error?.message ?? "创建收银台失败，请稍后重试。")
+        setError(message)
+        popup?.close()
+        return
+      }
+
+      if (popup) {
+        popup.location.href = payload.checkoutUrl
+      } else {
+        window.location.href = payload.checkoutUrl
+      }
+    } catch {
+      setError("网络异常，请稍后重试。")
+      popup?.close()
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="grid gap-3">
@@ -39,22 +89,33 @@ export function OneTimePurchase() {
             x402 与稳定币收款方案留待后续，让外部 Agent 也能自主采购。
           </p>
         </div>
-        <Button asChild variant="outline" size="sm" className="shrink-0">
-          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer">
-            前往结账
-            <RiArrowRightUpLine className="size-4" />
-          </a>
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          onClick={startCheckout}
+          disabled={loading}
+        >
+          {loading ? "正在打开收银台…" : "前往结账"}
+          <RiArrowRightUpLine className="size-4" />
         </Button>
       </div>
 
-      {isTest ? (
+      {error ? (
+        <div className="flex items-start gap-2 rounded-4xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm">
+          <RiErrorWarningLine className="mt-0.5 size-4 shrink-0 text-destructive" />
+          <p className="text-xs leading-5">{error}</p>
+        </div>
+      ) : null}
+
+      {testMode ? (
         <div className="flex items-start gap-2 rounded-4xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
           <RiErrorWarningLine className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
           <div className="text-xs leading-5">
             <p className="font-medium">当前为测试模式，不会产生真实扣款</p>
             <p className="mt-1 text-muted-foreground">
-              正式收款需通过 KYB 审核并切换到生产链接。此页面暂不发放任何权益：
-              订单核验 Webhook 与权益授予尚未接入，不做「买了就能用」的承诺。
+              正式收款需通过 KYB 审核并切换到生产凭据。测试模式下订单与授权
+              一样会写进账本（本地走 dev 分支），只是不产生真实扣款。
             </p>
           </div>
         </div>

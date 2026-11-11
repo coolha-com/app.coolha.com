@@ -22,7 +22,7 @@ export function AccountDesk({ account }: { account: AccountSnapshot }) {
     setPending(true)
     try {
       await signOut()
-      router.replace("/chat")
+      router.replace("/")
       router.refresh()
     } finally {
       setPending(false)

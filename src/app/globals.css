@@ -139,3 +139,108 @@
   min-height: 100dvh;
   isolation: isolate;
 }
+
+/* ===== Chat 消息 Markdown 排版（AI SDK UI / AI Elements 同栈） ===== */
+.md-body {
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: var(--foreground);
+  word-break: break-word;
+}
+.md-body > :first-child {
+  margin-top: 0;
+}
+.md-body > :last-child {
+  margin-bottom: 0;
+}
+.md-body p {
+  margin: 0.6rem 0;
+}
+.md-body h1,
+.md-body h2,
+.md-body h3,
+.md-body h4 {
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 1rem 0 0.5rem;
+}
+.md-body h1 {
+  font-size: 1.3rem;
+}
+.md-body h2 {
+  font-size: 1.15rem;
+}
+.md-body h3 {
+  font-size: 1rem;
+}
+.md-body ul {
+  list-style: disc;
+  padding-left: 1.4rem;
+  margin: 0.6rem 0;
+}
+.md-body ol {
+  list-style: decimal;
+  padding-left: 1.4rem;
+  margin: 0.6rem 0;
+}
+.md-body li {
+  margin: 0.25rem 0;
+}
+.md-body li > ul,
+.md-body li > ol {
+  margin: 0.25rem 0;
+}
+.md-body a {
+  color: #3f6212;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.md-body a:hover {
+  opacity: 0.8;
+}
+.dark .md-body a {
+  color: var(--primary);
+}
+.md-body blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 0.9rem;
+  color: var(--muted-foreground);
+  margin: 0.7rem 0;
+}
+.md-body hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 1rem 0;
+}
+.md-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.7rem 0;
+  font-size: 0.82rem;
+  overflow: hidden;
+}
+.md-body th,
+.md-body td {
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+.md-body th {
+  background: var(--muted);
+  font-weight: 600;
+}
+.md-body img {
+  max-width: 100%;
+  border-radius: 0.5rem;
+  margin: 0.5rem 0;
+}
+.md-body strong {
+  font-weight: 700;
+}
+.md-body .inline-code {
+  background: var(--muted);
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.35rem;
+  font-size: 0.85em;
+  font-family: var(--font-mono);
+}

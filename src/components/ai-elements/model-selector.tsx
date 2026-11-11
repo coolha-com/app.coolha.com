@@ -91,12 +91,11 @@ export function ModelSelector({
         </svg>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="start" className="w-80 p-0">
+      <DropdownMenuContent align="start" sideOffset={6} className="w-80 p-2">
         <DropdownMenuRadioGroup value={modelId} onValueChange={onChange}>
           <DropdownMenuGroup>
             <DropdownMenuLabel className="flex flex-wrap items-center gap-1.5">
               <span>平台模型</span>
-              <span className="font-normal text-muted-foreground">零数据保留 · 不用于训练</span>
             </DropdownMenuLabel>
             {models.map((model) => (
               <DropdownMenuRadioItem
@@ -113,7 +112,7 @@ export function ModelSelector({
                 />
                 <span className="min-w-0 flex-1 truncate">{model.name}</span>
                 <Link
-                  href={`/console/models/${model.id}`}
+                  href={`/agents/models/${model.id}`}
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => event.stopPropagation()}
                   aria-label={`查看 ${model.name} 详情`}
@@ -136,7 +135,7 @@ export function ModelSelector({
         <div className="sticky bottom-0 border-t bg-popover p-1">
           <DropdownMenuItem
             render={
-              <Link href="/console/models">
+              <Link href="/agents/models">
                 <RiCpuLine className="size-4" />
                 查看模型目录
               </Link>

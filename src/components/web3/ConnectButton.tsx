@@ -21,7 +21,7 @@ type ConnectButtonProps = {
 
 /** 未登入去登录页；已登入进账户主页（不是再回登录页）。 */
 const SIGN_IN_HREF = '/signin'
-const ACCOUNT_HREF = '/account'
+const ACCOUNT_HREF = '/settings/account'
 
 export default function ConnectButton({ sidebar = false, showLabels = false, className }: ConnectButtonProps) {
   const t = useTranslations('web3')

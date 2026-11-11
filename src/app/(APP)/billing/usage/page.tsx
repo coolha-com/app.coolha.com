@@ -102,7 +102,7 @@ export default async function UsagePage() {
 
       {signedIn && !hasRealData ? (
         <p className="rounded-xl border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-          你还没有调用记录。到 <Link href="/chat" className="underline underline-offset-4">Chat</Link> 发一条消息后，这里会显示你的用量。
+          你还没有调用记录。到 <Link href="/" className="underline underline-offset-4">Chat</Link> 发一条消息后，这里会显示你的用量。
         </p>
       ) : null}
 

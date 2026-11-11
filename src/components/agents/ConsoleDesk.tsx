@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import type { AgentApiKeyRecord } from "@/lib/agents/api-key-types"
-import type { ResearchRunView } from "@/lib/agents/rwa-research"
 import { Button } from "@/components/ui/button"
 
 async function readError(response: Response): Promise<string> {
@@ -13,14 +12,14 @@ async function readError(response: Response): Promise<string> {
 export function ConsoleDesk({
   signedIn,
   initialKeys,
-  initialRuns,
+  initialSessions,
 }: {
   signedIn: boolean
   initialKeys: AgentApiKeyRecord[]
-  initialRuns: ResearchRunView[]
+  initialSessions: { id: string; title: string; preview: string; updatedAt: string }[]
 }) {
   const [keys, setKeys] = useState(initialKeys)
-  const [runs] = useState(initialRuns)
+  const [sessions] = useState(initialSessions)
   const [label, setLabel] = useState("个人助手")
   const [secret, setSecret] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +29,7 @@ export function ConsoleDesk({
     setBusy(true)
     setError(null)
     try {
-      const response = await fetch("/api/agents/rwa-research/keys", {
+      const response = await fetch("/api/agents/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ label }),
@@ -53,7 +52,7 @@ export function ConsoleDesk({
     setBusy(true)
     setError(null)
     try {
-      const response = await fetch(`/api/agents/rwa-research/keys/${id}`, { method: "DELETE" })
+      const response = await fetch(`/api/agents/keys/${id}`, { method: "DELETE" })
       if (!response.ok) {
         setError(await readError(response))
         return
@@ -121,10 +120,11 @@ export function ConsoleDesk({
       <section>
         <h2 className="text-sm font-medium">最近任务</h2>
         <ul className="mt-2 space-y-2 text-sm">
-          {runs.length === 0 ? <li className="text-muted-foreground">还没有执行记录。</li> : null}
-          {runs.map((run) => (
-            <li key={run.orderId} className="rounded-xl border p-3">
-              {run.channel} · {run.target} · {run.status} · 未付款 · {run.createdAt}
+          {sessions.length === 0 ? <li className="text-muted-foreground">还没有执行记录。</li> : null}
+          {sessions.map((session) => (
+            <li key={session.id} className="rounded-xl border p-3">
+              {session.title || "未命名任务"}
+              {session.preview ? ` · ${session.preview}` : ""} · {session.updatedAt}
             </li>
           ))}
         </ul>

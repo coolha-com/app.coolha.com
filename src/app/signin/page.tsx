@@ -19,7 +19,7 @@ export default function SignInPage() {
   return (
     <main className="flex min-h-dvh flex-col bg-base-200">
       <header className="flex items-center justify-between px-5 py-4 sm:px-8">
-        <Link href="/chat" className="flex items-center gap-2.5">
+        <Link href="/" className="flex items-center gap-2.5">
           <Avatar className="size-8 shrink-0 border">
             <AvatarImage src="/favicon.ico" alt="Coolha" />
             <AvatarFallback>CH</AvatarFallback>
@@ -27,7 +27,7 @@ export default function SignInPage() {
           <span className="text-base font-bold tracking-tight">Coolha</span>
         </Link>
         <Link
-          href="/chat"
+          href="/"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
         >
           <RiArrowLeftLine className="size-4" />

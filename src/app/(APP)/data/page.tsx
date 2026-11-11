@@ -16,7 +16,7 @@ const LINKS = [
     icon: RiCompass3Line,
   },
   {
-    href: "/rwa",
+    href: "/data/rwa",
     title: "RWA 数据",
     text: "现有 RWA 行情页。",
     icon: RiDatabase2Line,

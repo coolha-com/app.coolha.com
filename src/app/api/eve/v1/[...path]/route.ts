@@ -4,6 +4,8 @@ import {
   isInferenceReady,
   resolveInferenceModel,
 } from "@/lib/inference/config"
+import { grantForSession } from "@/lib/neon/agent-billing"
+import { teeAndMeterUsage } from "@/lib/agents/usage-meter"
 
 /**
  * 平台模型白名单：只放行统一推理网关配置里登记的模型 ID。
@@ -89,6 +91,35 @@ async function proxy(
     return error(503, INFERENCE_NOT_CONFIGURED.code, INFERENCE_NOT_CONFIGURED.message, requestId)
   }
 
+  // ③ 付费闸门：这次对话归属的服务授权必须还有额度。
+  //    授权用满 token 价值上限（10 美元）或过期 → 直接 402，请求不到上游。
+  const chatSessionId = req.headers.get("x-coolha-chat-session")
+  let grantId: string | null = null
+  if (chatSessionId) {
+    const grant = await grantForSession(chatSessionId, user.subject)
+    if (!grant) {
+      return error(
+        402,
+        "PAYMENT_REQUIRED",
+        "这次对话没有有效的服务授权，请重新购买后再开始任务",
+        requestId,
+      )
+    }
+    const expired = new Date(grant.expiresAt).getTime() <= Date.now()
+    const exhausted = grant.tokenUsedUsd >= grant.tokenBudgetUsd
+    if (expired || exhausted || grant.status !== "active") {
+      return error(
+        402,
+        expired ? "GRANT_EXPIRED" : "QUOTA_EXHAUSTED",
+        expired
+          ? "这份服务授权已过期（有效期一个月），请重新购买"
+          : "这份服务授权的 token 价值额度已用完（上限 10 美元），请重新购买",
+        requestId,
+      )
+    }
+    grantId = grant.id
+  }
+
   const { path } = await context.params
   const url = new URL(req.url)
   const target = `${origin}/eve/v1/${path.map(encodeURIComponent).join("/")}${url.search}`
@@ -118,7 +149,22 @@ async function proxy(
 
   const responseHeaders = new Headers(upstream.headers)
   responseHeaders.set("x-coolha-request-id", requestId)
-  return new Response(upstream.body, {
+  if (!upstream.body) {
+    return new Response(null, {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers: responseHeaders,
+    })
+  }
+  // 计量：把上游事件流 tee 一份，原样转发给浏览器，同时把 token 用量记进账本。
+  const body = teeAndMeterUsage(upstream.body, {
+    subject: user.subject,
+    grantId,
+    sessionId: chatSessionId,
+    fallbackModelId: model,
+    requestId,
+  })
+  return new Response(body, {
     status: upstream.status,
     statusText: upstream.statusText,
     headers: responseHeaders,
