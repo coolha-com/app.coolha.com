@@ -147,11 +147,6 @@ const devDb = {
   DATABASE_URL_UNPOOLED: dev.DATABASE_URL_UNPOOLED,
   NEON_AUTH_BASE_URL: dev.NEON_AUTH_BASE_URL,
 }
-const prodDb = {
-  DATABASE_URL: base.DATABASE_URL,
-  DATABASE_URL_UNPOOLED: base.DATABASE_URL_UNPOOLED,
-  NEON_AUTH_BASE_URL: base.NEON_AUTH_BASE_URL,
-}
 
 const TEST_KEY = base.WAFFO_PRIVATE_KEY
 const TEST_PRODUCT = base.WAFFO_PRODUCT_ID
@@ -249,26 +244,40 @@ fs.writeFileSync(
   }),
 )
 
-// 生产：main 分支库 + Waffo prod
-// ⚠️ 生产私钥与生产商品 ID 拿不到（账号下只有一把 test key），
-//    需要在 Dashboard「生产」模式新建 API Key 并 publish 商品后填入。
+// .env.production.local —— **只放生产环境用的变量**。
+// 开发测试用的变量一律在 .env.development.local，不要往这个文件里塞。
+// 当前还没有生产环境，所以这里的值全空。
 fs.writeFileSync(
   resolve(ROOT, ".env.production.local"),
-  render({
-    title: ".env.production.local — Vercel「Production」环境镜像",
-    dbNote: "main 分支 ep-tiny-wildflower",
-    payNote: "Waffo prod 真实收款",
-    purpose: "生产部署用的变量（Next 不加载本文件，仅作对照）。",
-    db: prodDb,
-    environment: "prod",
-    privateKey: "",
-    productId: "",
-    testPublicKey: TEST_PUB,
-    prodPublicKey: PROD_PUB,
-    eveLocal: null,
-    eveOrigin: "",
-    eveSecret: "",
-  }),
+  [
+    "# ══════════════════════════════════════════════════════════════════",
+    "# .env.production.local — 只放**生产环境**用的变量",
+    "#   当前还没有生产环境：收款与数据库都在开发测试环境。",
+    "#   开发测试用的变量在 .env.development.local，不要往这里复制。",
+    "# ══════════════════════════════════════════════════════════════════",
+    "",
+    "# ────────────────────────────────────────────────────────────",
+    "# 生产环境专属变量（当前全部留空）",
+    "# ────────────────────────────────────────────────────────────",
+    "",
+    "# test = 沙箱（不产生真实扣款）；prod = 真实收款。真上生产时改成 prod。",
+    "WAFFO_ENVIRONMENT=prod",
+    "# 生产 RSA 私钥：Dashboard「生产」模式新建 API Key 后复制过来",
+    "WAFFO_PRIVATE_KEY=",
+    "# 生产的一次性商品 ID：先用 publish-product 把测试商品同步到生产",
+    "WAFFO_PRODUCT_ID=",
+    "# 生产 webhook 验签公钥：Dashboard「生产」模式的 RSA Public Key（必须单行）",
+    "WAFFO_WEBHOOK_PROD_PUBLIC_KEY=",
+    "",
+    "# ────────────────────────────────────────────────────────────",
+    "# 生产数据库（Neon Postgres · main 分支）",
+    "#   与开发测试库（dev 分支）完全隔离，换库必须同步换 NEON_AUTH_BASE_URL。",
+    "# ────────────────────────────────────────────────────────────",
+    "DATABASE_URL=",
+    "DATABASE_URL_UNPOOLED=",
+    "NEON_AUTH_BASE_URL=",
+    "",
+  ].join("\n"),
 )
 
 // 模板：全部敏感值留空
