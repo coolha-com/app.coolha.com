@@ -87,67 +87,76 @@ async function main() {
   captureCookie(verifyRes)
   record("钱包登录建立会话", verifyRes.status === 200 && cookie.length > 0, `status=${verifyRes.status}`)
 
-  // 1. 未购买时创建会话 → 402
-  const sessionId = `bill_smoke_${Date.now()}`
-  const createRes = await fetch(`${BASE}/api/agents/sessions`, {
-    method: "POST",
-    headers: H(),
-    body: JSON.stringify({ id: sessionId, agentId: "coolha-rwa", title: "计费冒烟" }),
-  })
-  const createBody = await createRes.json()
-  record(
-    "无授权时创建会话被拒（402 PAYMENT_REQUIRED）",
-    createRes.status === 402 && createBody?.error?.code === "PAYMENT_REQUIRED",
-    `status=${createRes.status} code=${createBody?.error?.code}`,
-  )
-
-  // 2. 测试模式发放授权
-  const grantRes = await fetch(`${BASE}/api/agents/credits/test-grant`, { method: "POST", headers: H() })
-  const grantBody = await grantRes.json()
-  record(
-    "测试模式发放授权成功",
-    grantRes.status === 200 && Boolean(grantBody?.grantId),
-    `status=${grantRes.status} grant=${grantBody?.grantId}`,
-  )
-  const grantId = grantBody?.grantId
-
-  // 3. 有授权时创建会话 → 200，且会话绑定了这份授权
-  const createRes2 = await fetch(`${BASE}/api/agents/sessions`, {
-    method: "POST",
-    headers: H(),
-    body: JSON.stringify({ id: sessionId, agentId: "coolha-rwa", title: "计费冒烟" }),
-  })
-  const createBody2 = await createRes2.json()
-  record(
-    "有授权时创建会话成功并绑定授权",
-    createRes2.status === 200 && createBody2?.grantId === grantId,
-    `status=${createRes2.status}`,
-  )
-
-  // 4. 额度状态
   const creditsRes = await fetch(`${BASE}/api/agents/credits`, { headers: H() })
   const credits = await creditsRes.json()
+  const open = credits?.openAccess === true
   record(
-    "额度接口返回预算与剩余",
-    creditsRes.status === 200 && credits.hasGrant === true && credits.budgetUsd === 10,
-    `budget=${credits?.budgetUsd} remaining=${credits?.remainingUsd} testMode=${credits?.testMode}`,
+    "服务状态不含购买字段",
+    creditsRes.status === 200 && credits?.accessMode && credits.priceUsd === undefined && credits.testMode === undefined,
+    `mode=${credits?.accessMode}`,
   )
 
-  // 5. 记一笔推理用量 → 已用额度增加（直接写账本，走的是服务端的累加逻辑）
+  const sessionId = `bill_smoke_${Date.now()}`
+  if (!open) {
+    const createRes = await fetch(`${BASE}/api/agents/sessions`, {
+      method: "POST",
+      headers: H(),
+      body: JSON.stringify({ id: sessionId, agentId: "coolha-rwa", title: "计费冒烟" }),
+    })
+    const createBody = await createRes.json()
+    record(
+      "关闭模式下无授权创建会话被拒",
+      createRes.status === 402 && createBody?.error?.code === "PAYMENT_REQUIRED",
+      `status=${createRes.status} code=${createBody?.error?.code}`,
+    )
+  } else {
+    record("开放模式跳过购买闸门", true, credits.accessMode)
+  }
+
   await loadEnv()
   const connectionString = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL
   const client = new pg.Client({ connectionString })
   await client.connect()
   const subject = await client.query(
-    `SELECT subject FROM agent_service_grants WHERE id = $1 LIMIT 1`,
-    [grantId],
+    `SELECT user_id::text AS subject
+       FROM user_identities
+      WHERE kind = 'evm_signing' AND address = $1
+      LIMIT 1`,
+    [account.address.toLowerCase()],
   )
   const subjectId = subject.rows[0]?.subject
+  record("能解析登录主体", Boolean(subjectId))
+
+  let grantId = null
+  if (!open && subjectId) {
+    grantId = `grant_smoke_${sessionId}`
+    await client.query(
+      `INSERT INTO agent_service_grants
+         (id, subject, source_order_id, status, expires_at, token_budget_usd)
+       VALUES ($1, $2, $3, 'active', now() + interval '30 days', 10)`,
+      [grantId, subjectId, `smoke_${sessionId}`],
+    )
+  }
+
+  const createRes2 = await fetch(`${BASE}/api/agents/sessions`, {
+    method: "POST",
+    headers: H(),
+    body: JSON.stringify({ id: open ? sessionId : `${sessionId}_ok`, agentId: "coolha-rwa", title: "计费冒烟" }),
+  })
+  const createBody2 = await createRes2.json()
+  const createdId = open ? sessionId : `${sessionId}_ok`
+  record(
+    open ? "开放模式创建会话不绑定授权" : "有授权时创建会话成功",
+    createRes2.status === 200 && (open ? createBody2?.grantId == null : createBody2?.grantId === grantId),
+    `status=${createRes2.status} grant=${createBody2?.grantId ?? "null"}`,
+  )
+
+  if (subjectId && !open && grantId) {
   await client.query(
     `INSERT INTO agent_usage_ledger
        (subject, grant_id, session_id, model, input_tokens, output_tokens, cost_usd, source)
      VALUES ($1, $2, $3, 'deepseek/deepseek-v4.1-flash-1017', 1000, 500, 0.25, 'smoke')`,
-    [subjectId, grantId, sessionId],
+    [subjectId, grantId, createdId],
   )
   await client.query(
     `UPDATE agent_service_grants
@@ -166,8 +175,9 @@ async function main() {
     Number(afterUse.rows[0]?.token_used_usd) === 0.25,
     `used=${afterUse.rows[0]?.token_used_usd}`,
   )
+  }
 
-  // 6. 额度用满 → exhausted → 再创建会话被拒
+  if (!open && grantId) {
   await client.query(
     `UPDATE agent_service_grants SET token_used_usd = token_budget_usd, status = 'exhausted' WHERE id = $1`,
     [grantId],
@@ -187,12 +197,19 @@ async function main() {
   // 7. 清理
   await client.query(`DELETE FROM agent_usage_ledger WHERE grant_id = $1`, [grantId])
   await client.query(`DELETE FROM agent_service_grants WHERE id = $1`, [grantId])
-  await client.query(`DELETE FROM chat_sessions WHERE id = $1 OR id = $2`, [sessionId, `${sessionId}_b`])
-  await client.query(`DELETE FROM waffo_orders WHERE id = $1`, [grantBody?.orderId])
+  }
+  await client.query(
+    `DELETE FROM chat_sessions WHERE id = $1 OR id = $2 OR id = $3`,
+    [sessionId, createdId, `${sessionId}_b`],
+  )
   await client.end()
   const after = await fetch(`${BASE}/api/agents/credits`, { headers: H() })
   const afterBody = await after.json()
-  record("清理后额度归零", afterBody?.hasGrant === false, `hasGrant=${afterBody?.hasGrant}`)
+  record(
+    open ? "开放模式清理完成" : "清理后没有冒烟授权",
+    open ? true : afterBody?.hasGrant === false,
+    `hasGrant=${afterBody?.hasGrant}`,
+  )
 
   const pass = checks.every((c) => c.ok)
   console.log(pass ? "BILLING_RESULT: ALL_PASS" : "BILLING_RESULT: FAIL")

@@ -1,8 +1,10 @@
 import { requireRwaSubject } from "@/lib/agents/http"
+import { decideAgentAccess } from "@/lib/agents/access-mode"
 import { createChatSession, listChatSessions } from "@/lib/neon/chat-sessions"
 import {
   attachGrantToSession,
   findUsableGrant,
+  readOpenModeBudget,
 } from "@/lib/neon/agent-billing"
 
 export const dynamic = "force-dynamic"
@@ -46,19 +48,43 @@ export async function POST(req: Request) {
   const config =
     body.config && typeof body.config === "object" ? (body.config as Record<string, unknown>) : {}
 
-  // 付费闸门：开始一次任务必须有一份有效的服务授权（19 U/次，30 天，token 价值上限 10 美元）。
-  // 没有可用授权 → 402，前端据此展示收银台。
-  const grant = await findUsableGrant(auth.subject)
-  if (!grant) {
-    return Response.json(
-      {
-        error: {
-          code: "PAYMENT_REQUIRED",
-          message: "还没有可用的服务授权，请先购买后再开始任务",
+  // 开放测试模式不要求授权，但仍受 24 小时测试预算限制。
+  // 关闭模式（含生产）必须已有有效授权。不读取客户端传来的访问模式。
+  const access = decideAgentAccess()
+  let grantId: string | null = null
+  if (access.open) {
+    const budget = await readOpenModeBudget(auth.subject)
+    if (budget.reason === "unavailable") {
+      return Response.json(
+        { error: { code: "BUDGET_UNAVAILABLE", message: "暂时无法确认测试预算，已拒绝创建任务" } },
+        { status: 503 },
+      )
+    }
+    if (budget.blocked) {
+      return Response.json(
+        {
+          error: {
+            code: "QUOTA_EXHAUSTED",
+            message: "开发测试预算已用完，暂时不能开始新任务",
+          },
         },
-      },
-      { status: 402 },
-    )
+        { status: 402 },
+      )
+    }
+  } else {
+    const grant = await findUsableGrant(auth.subject)
+    if (!grant) {
+      return Response.json(
+        {
+          error: {
+            code: "PAYMENT_REQUIRED",
+            message: "当前环境未开放未经授权的 Agent 执行",
+          },
+        },
+        { status: 402 },
+      )
+    }
+    grantId = grant.id
   }
 
   try {
@@ -69,13 +95,14 @@ export async function POST(req: Request) {
       title,
       config,
     })
-    // 会话绑定授权：推理计量据此扣减这份授权的额度
-    await attachGrantToSession({
-      sessionId: created,
-      subject: auth.subject,
-      grantId: grant.id,
-    })
-    return Response.json({ id: created, grantId: grant.id })
+    if (grantId) {
+      await attachGrantToSession({
+        sessionId: created,
+        subject: auth.subject,
+        grantId,
+      })
+    }
+    return Response.json({ id: created, grantId, accessMode: access.mode })
   } catch (error) {
     console.error("[sessions] 创建会话失败:", error)
     return Response.json(

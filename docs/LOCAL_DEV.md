@@ -5,7 +5,7 @@
 | 文件 | 加载时机 | 内容 |
 |---|---|---|
 | `.env.local.example` | **不入库**，是唯一的公开模板 | 全部变量清单与用途注释，值留空 |
-| `.env.local` | dev / build / start 都加载（test 除外） | **基线文件**：应用密钥（`REOWN_ID`、`AI_GATEWAY_API_KEY`、`ALCHEMY_KEY/ID`）+ 标准名 Neon 变量（`DATABASE_URL`、`DATABASE_URL_UNPOOLED`、`NEON_AUTH_BASE_URL`、`NEON_AUTH_COOKIE_SECRET`、`SUBSCRIPTION_TREASURY_ADDRESS`、`CRON_SECRET`…）。完整清单见 `.env.local.example` |
+| `.env.local` | dev / build / start 都加载（test 除外） | **基线文件**：应用密钥（`REOWN_ID`、`INFERENCE_API_KEY`、`ALCHEMY_KEY/ID`）+ 标准名 Neon 变量（`DATABASE_URL`、`DATABASE_URL_UNPOOLED`、`NEON_AUTH_BASE_URL`、`NEON_AUTH_COOKIE_SECRET`、`SUBSCRIPTION_TREASURY_ADDRESS`、`CRON_SECRET`…）。完整清单见 `.env.local.example`。不要再配置 Vercel AI Gateway。 |
 | `.env.development.local` | **仅 `next dev`** 加载 | `vercel env pull` 写入的 `coolha_*` 前缀变量（Vercel→Neon 集成产物） |
 | `.env.production.local` / `.env.preview.local` | Next 不加载，仅作对照 | 本地 Prod / Preview 镜像，人工维护 |
 

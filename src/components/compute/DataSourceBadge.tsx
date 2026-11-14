@@ -21,7 +21,7 @@ const DATA_SOURCE_STYLES: Record<ComputeDataSource, { wrap: string; dot: string;
 
 /**
  * 数据来源徽章：随每条数据展示其来源，禁止把演示数据伪装成真实数据。
- * provider-reported = 供应商报告口径（非平台实测）；当前网关未接入，目录为示例布局
+ * provider-reported = OpenRouter 目录报告的规格（非平台实测延迟）
  */
 export function DataSourceBadge({
   source,

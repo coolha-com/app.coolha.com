@@ -1,9 +1,13 @@
 import type { Metadata } from "next"
-import { RiBankCardLine, RiBarChartBoxLine } from "react-icons/ri"
+import { RiBarChartBoxLine, RiRobot2Line } from "react-icons/ri"
 import { listRecentUsage, summarizeUsage } from "@/lib/neon/ai-usage"
 import { getCurrentUser } from "@/lib/neon/session"
 import { listChatSessions } from "@/lib/neon/chat-sessions"
-import { readGrantState, summarizeUsage as summarizeAgentUsage } from "@/lib/neon/agent-billing"
+import {
+  listAgentUsage,
+  readGrantState,
+  summarizeUsage as summarizeAgentUsage,
+} from "@/lib/neon/agent-billing"
 import { listSubscriptionOrders } from "@/lib/neon/subscription"
 import {
   EntryCard,
@@ -23,8 +27,8 @@ function formatStamp(value: string | Date): string {
 }
 
 export const metadata: Metadata = {
-  title: "用量与订单",
-  description: "当前账户自己的调用记录、研究订单和历史订单。",
+  title: "用量",
+  description: "当前账户自己的 Agent 调用、token 用量和任务记录。",
 }
 
 export default async function BillingPage() {
@@ -41,28 +45,28 @@ export default async function BillingPage() {
 
   const grantState = subject ? await readGrantState(subject).catch(() => null) : null
   const agentUsage = subject ? await summarizeAgentUsage(subject).catch(() => null) : null
+  const agentRows = subject ? await listAgentUsage(subject, 20).catch(() => []) : []
 
   return (
     <PageShell>
       <PageHeader
-        title="用量与订单"
+        title="用量"
         description={
           <>
-            只显示当前账户。按次购买的 Agent 服务授权与实际推理用量都记在这里。
-            购买入口在 <InlineLink href="/billing/subscription">购买 Agent 服务</InlineLink>。
-            资料与登录方式在 <InlineLink href="/settings/account">账户页</InlineLink>，
-            调用明细也可看 <InlineLink href="/billing/usage">用量记录</InlineLink>。
+            只显示当前账户的 Agent 调用、token 和任务记录。当前不收款。
+            服务说明在 <InlineLink href="/billing/subscription">Agent 服务</InlineLink>。
+            资料与登录方式在 <InlineLink href="/settings/account">账户页</InlineLink>。
           </>
         }
       />
 
       <div className="grid gap-3 sm:grid-cols-2">
         <EntryCard
-          title="购买 Agent 服务"
-          description="一次性购买、法币结账与账本流水。"
+          title="Agent 服务"
+          description="当前阶段的服务说明。没有付款入口。"
           href="/billing/subscription"
-          hrefLabel="打开购买页"
-          icon={RiBankCardLine}
+          hrefLabel="查看说明"
+          icon={RiRobot2Line}
         />
         <EntryCard
           title="用量记录"
@@ -81,20 +85,18 @@ export default async function BillingPage() {
         </Surface>
       ) : null}
 
-      <SectionHeading>服务授权</SectionHeading>
+      <SectionHeading>已有授权</SectionHeading>
       {grantState && grantState.grant ? (
         <Surface className="text-sm">
-          剩余额度 ${grantState.remainingUsd.toFixed(4)} / ${grantState.grant.tokenBudgetUsd.toFixed(0)}
+          成本护栏剩余 ${grantState.remainingUsd.toFixed(4)} / ${grantState.grant.tokenBudgetUsd.toFixed(0)}
           {" · "}
           {grantState.validDaysLeft !== null ? `${grantState.validDaysLeft} 天后到期` : "已到期"}
           {" · "}
-          累计已用 ${grantState.grant.tokenUsedUsd.toFixed(4)}
+          累计已记成本 ${grantState.grant.tokenUsedUsd.toFixed(4)}
         </Surface>
       ) : (
         <Surface className="text-sm text-muted-foreground">
-          当前没有可用的服务授权。到
-          <InlineLink href="/billing/subscription">购买 Agent 服务</InlineLink>
-          购买后即可开始任务。
+          当前没有仍有效的服务授权。这里不提供购买。
         </Surface>
       )}
 
@@ -119,10 +121,25 @@ export default async function BillingPage() {
         ))}
       </ul>
 
-      <SectionHeading>历史订单</SectionHeading>
+      <SectionHeading>推理明细</SectionHeading>
+      <ul className="space-y-2">
+        {agentRows.length === 0 ? (
+          <li className="px-1 text-sm text-muted-foreground">还没有 Agent 推理记录。</li>
+        ) : null}
+        {agentRows.map((row) => (
+          <Surface as="li" key={row.id}>
+            {row.model || "模型未提供"} · 输入 {row.inputTokens} · 输出 {row.outputTokens}
+            {row.costUsd !== null ? ` · $${row.costUsd.toFixed(6)}` : " · 成本未提供"}
+            {row.status ? ` · ${row.status}` : ""}
+            {row.latencyMs !== null ? ` · ${row.latencyMs}ms` : ""}
+          </Surface>
+        ))}
+      </ul>
+
+      <SectionHeading>历史链上订单</SectionHeading>
       <ul className="space-y-2">
         {subscriptions.length === 0 ? (
-          <li className="px-1 text-sm text-muted-foreground">没有历史订单。</li>
+          <li className="px-1 text-sm text-muted-foreground">没有历史链上订单。</li>
         ) : null}
         {subscriptions.map((order) => (
           <Surface as="li" key={order.id}>

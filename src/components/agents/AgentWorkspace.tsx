@@ -4,12 +4,11 @@ import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useEveAgent } from "eve/react"
 import { activity } from "eve/events"
-import type { MessagePart, EveToolPart } from "eve/client"
+import type { MessagePart } from "eve/client"
 import {
   RiAddLine,
   RiArrowRightUpLine,
   RiAttachmentLine,
-  RiBrainLine,
   RiCheckboxCircleLine,
   RiCloseLine,
   RiErrorWarningLine,
@@ -17,7 +16,6 @@ import {
   RiRefreshLine,
   RiRobot2Line,
   RiShieldKeyholeLine,
-  RiTerminalBoxLine,
 } from "react-icons/ri"
 
 import { Badge } from "@/components/ui/badge"
@@ -25,7 +23,7 @@ import { Button } from "@/components/ui/button"
 import { ModelSelector } from "@/components/ai-elements/model-selector"
 import { AgentSelector, type AgentOption } from "@/components/agents/AgentSelector"
 import { AgentConfigPanel, type AgentConfigValue, type CreditsState } from "@/components/agents/AgentConfigPanel"
-import { MarkdownMessage } from "@/components/agents/MarkdownMessage"
+import { EveMessageBody } from "@/components/agents/eve-message-view"
 import { useAuth } from "@/hooks/useAuth"
 import type { PlaygroundModel } from "@/lib/ai-gateway/shared"
 
@@ -71,22 +69,6 @@ function readFileAsDataURL(file: File): Promise<string> {
   })
 }
 
-function toolStateLabel(state: string): string {
-  switch (state) {
-    case "streaming":
-      return "调用中"
-    case "done":
-    case "succeeded":
-    case "complete":
-      return "已完成"
-    case "failed":
-    case "error":
-      return "失败"
-    default:
-      return state
-  }
-}
-
 /**
  * 错误如实分类：不把上游状态笼统说成「执行失败」，也不吞掉原文
  * （Vercel 的 request id 是联系支持时必须提供的凭证）。
@@ -119,32 +101,22 @@ function describeAgentError(message: string): { title: string; detail: string } 
   if (/SIGN_IN_REQUIRED/i.test(message)) {
     return { title: "请先登入", detail: message }
   }
+  if (/MODEL_NOT_ALLOWED/i.test(message)) {
+    return { title: "模型不在白名单", detail: message }
+  }
+  if (/UPSTREAM_UNAUTHORIZED|401|403/i.test(message)) {
+    return { title: "推理网关拒绝访问", detail: message }
+  }
+  if (/UPSTREAM_RATE_LIMITED|429/i.test(message)) {
+    return { title: "推理网关限流", detail: message }
+  }
+  if (/UPSTREAM_UNAVAILABLE|502|503/i.test(message)) {
+    return { title: "推理网关或运行时不可用", detail: message }
+  }
+  if (/QUOTA_EXHAUSTED|BUDGET_UNAVAILABLE|PAYMENT_REQUIRED|GRANT_EXPIRED/i.test(message)) {
+    return { title: "当前不能执行", detail: message }
+  }
   return { title: "Agent 执行失败", detail: message }
-}
-
-function ToolStep({ part }: { part: EveToolPart }) {
-  return (
-    <div className="rounded-3xl bg-muted/50 px-3 py-2 text-xs leading-5">
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 font-medium">
-          <RiTerminalBoxLine className="size-3.5 text-muted-foreground" />
-          {part.label || part.name}
-        </span>
-        <span className="text-muted-foreground">{toolStateLabel(part.state)}</span>
-      </div>
-      {"inputText" in part && part.inputText ? (
-        <p className="mt-1 break-all text-muted-foreground">输入：{part.inputText}</p>
-      ) : null}
-      {"output" in part && part.output !== undefined ? (
-        <p className="mt-1 break-all text-muted-foreground">
-          输出：{JSON.stringify(part.output).slice(0, 300)}
-        </p>
-      ) : null}
-      {"error" in part && part.error ? (
-        <p className="mt-1 text-destructive">失败：{String(part.error)}</p>
-      ) : null}
-    </div>
-  )
 }
 
 // ── 从消息里抽取标题 / 预览文本 ────────────────────────────────────────────────
@@ -153,18 +125,6 @@ interface RawMessage {
   id: string
   role: string
   parts: { type: string; text?: string }[]
-}
-
-/**
- * 展示用的宽松 part 类型：存档里的消息是我们自己投影的 JSON，
- * 里面既有 text 也有 reasoning / tool，直接用 eve 的 MessagePart 联合类型
- * 没法在不 cast 的情况下过滤，这里统一按宽松结构读。
- */
-interface LoosePart {
-  type: string
-  text?: string
-  filename?: string
-  callId?: string
 }
 
 /**
@@ -393,41 +353,16 @@ function ChatSession({
           ) : null}
 
           {displayed.map((message) => {
-            const parts = message.parts as unknown as LoosePart[]
-            const reasoning = parts.filter((p) => p.type === "reasoning")
-            const tools = parts.filter((p) => p.type === "tool")
-            const texts = parts.filter((p) => p.type === "text")
-            const files = parts.filter((p) => p.type === "file")
             const isUser = message.role === "user"
-
             if (isUser) {
               return (
                 <div key={message.id} className="flex justify-end">
                   <div className="max-w-[85%] rounded-4xl bg-muted px-4 py-3 text-sm leading-6">
-                    {texts.map((part, i) =>
-                      part.type === "text" ? (
-                        <p key={i} className="whitespace-pre-wrap">
-                          {part.text ?? ""}
-                        </p>
-                      ) : null,
-                    )}
-                    {files.length > 0 ? (
-                      <p className="mt-2 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
-                        {files.map((part, i) =>
-                          part.type === "file" ? (
-                            <span key={i} className="rounded-full border px-2 py-0.5">
-                              <RiAttachmentLine className="mr-1 inline size-3" />
-                              {part.filename ?? "附件"}
-                            </span>
-                          ) : null,
-                        )}
-                      </p>
-                    ) : null}
+                    <EveMessageBody parts={message.parts} />
                   </div>
                 </div>
               )
             }
-
             return (
               <div key={message.id} className="flex justify-start">
                 <div className="w-full space-y-3 rounded-4xl bg-card px-4 py-3 shadow-sm ring-1 ring-foreground/5">
@@ -439,46 +374,7 @@ function ChatSession({
                       Agent 执行
                     </Badge>
                   </div>
-
-                  {reasoning.length > 0 ? (
-                    <details className="rounded-3xl bg-muted/40 px-3 py-2 text-xs leading-5">
-                      <summary className="flex cursor-pointer items-center gap-1.5 font-medium">
-                        <RiBrainLine className="size-3.5" />
-                        思考过程 · {reasoning.length} 段
-                      </summary>
-                      <div className="mt-2 space-y-2 text-muted-foreground">
-                        {reasoning.map((part, i) =>
-                          part.type === "reasoning" ? (
-                            <p key={i} className="whitespace-pre-wrap">
-                              {part.text ?? ""}
-                            </p>
-                          ) : null,
-                        )}
-                      </div>
-                    </details>
-                  ) : null}
-
-                  {tools.length > 0 ? (
-                    <details open className="rounded-3xl bg-muted/40 px-3 py-2 text-xs leading-5">
-                      <summary className="flex cursor-pointer items-center gap-1.5 font-medium">
-                        <RiTerminalBoxLine className="size-3.5" />
-                        执行过程 · {tools.length} 步
-                      </summary>
-                      <ol className="mt-2 space-y-2">
-                        {tools.map((part, i) => (
-                          <li key={part.callId ?? i}>
-                            <ToolStep part={part as unknown as EveToolPart} />
-                          </li>
-                        ))}
-                      </ol>
-                    </details>
-                  ) : null}
-
-                  {texts.length > 0 ? (
-                    <MarkdownMessage
-                      content={texts.map((part) => part.text).join("\n\n")}
-                    />
-                  ) : null}
+                  <EveMessageBody parts={message.parts} assistant />
                 </div>
               </div>
             )
@@ -514,6 +410,9 @@ function ChatSession({
         }}
       >
         <div className="mx-auto w-full max-w-3xl">
+          <p className="mb-2 text-xs text-muted-foreground">
+            {busy ? activityLabel : "空闲"}
+          </p>
           {attachments.length > 0 ? (
             <div className="mb-2 flex flex-wrap gap-2">
               {attachments.map((item) => (
@@ -571,9 +470,24 @@ function ChatSession({
               aria-label="任务消息"
               className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-2 text-sm leading-5 outline-none placeholder:text-muted-foreground disabled:opacity-50"
             />
-            <Button type="submit" size="icon" disabled={!canSend} aria-label="发送">
-              <RiArrowRightUpLine className="size-4" />
-            </Button>
+            <p className="sr-only">Agent 状态：{busy ? activityLabel : "空闲"}</p>
+            {busy ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                aria-label="停止"
+                onClick={() => {
+                  void agent.cancel()
+                }}
+              >
+                <RiCloseLine className="size-4" />
+              </Button>
+            ) : (
+              <Button type="submit" size="icon" disabled={!canSend} aria-label="发送">
+                <RiArrowRightUpLine className="size-4" />
+              </Button>
+            )}
           </div>
         </div>
       </form>
@@ -621,7 +535,7 @@ export function AgentWorkspace({
   const selected = AGENTS.find((item) => item.id === agentId) ?? AGENTS[0]
   const requiresConstraints = AGENTS_REQUIRING_CONSTRAINTS.has(selected.id)
 
-  // 付费状态：没有可用授权就不给开始任务（配置面板里直接是收银台）
+  // 服务状态：开放模式可以直接开始；关闭模式没有授权就不能开始。
   // 注意：fetchCredits 是纯读取（不 setState），setState 放在调用方的异步块里。
   const fetchCredits = useCallback(async (): Promise<CreditsState | null> => {
     if (!auth.signedIn) return null
@@ -639,19 +553,6 @@ export function AgentWorkspace({
     const data = await fetchCredits()
     if (data) setCredits(data)
   }, [fetchCredits])
-
-  // 测试模式：本地直接发一份授权（不走收银台），方便把链路跑通
-  const testGrant = useCallback(async () => {
-    setCreating(true)
-    try {
-      await fetch("/api/agents/credits/test-grant", { method: "POST" })
-      await refreshCredits()
-    } catch {
-      // 忽略：刷新会显示真实状态
-    } finally {
-      setCreating(false)
-    }
-  }, [refreshCredits])
 
   useEffect(() => {
     let cancelled = false
@@ -744,12 +645,11 @@ export function AgentWorkspace({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, agentId, title: "新任务", config }),
       })
-      if (response.status === 402) {
-        // 没有可用授权：留在配置态，配置面板会显示收银台
+      if (response.status === 402 || response.status === 503) {
         const body = (await response.json().catch(() => null)) as {
           error?: { message?: string }
         } | null
-        setPaywallError(body?.error?.message ?? "还没有可用的服务授权，请先购买后再开始任务")
+        setPaywallError(body?.error?.message ?? "当前不能开始任务")
         void refreshCredits()
         return
       }
@@ -832,7 +732,6 @@ export function AgentWorkspace({
           requiresConstraints={requiresConstraints}
           credits={credits}
           onRefreshCredits={() => void refreshCredits()}
-          onTestGrant={() => void testGrant()}
           paywallError={paywallError}
           onStart={startSession}
         />

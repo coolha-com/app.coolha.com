@@ -54,8 +54,7 @@ function parseOffset(value: string | null): number {
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams
 
-  // 当前无上游可刷新：refresh 参数仅保留兼容，不产生回源
-  const catalog = await getModelCatalog()
+  const catalog = await getModelCatalog({ force: params.get("refresh") === "1" })
 
   const sortRaw = params.get("sort") as ModelSort | null
   const sort: ModelSort = sortRaw && VALID_SORTS.includes(sortRaw) ? sortRaw : "name-asc"

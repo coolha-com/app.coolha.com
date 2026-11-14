@@ -1,5 +1,7 @@
 import "server-only"
 
+import { lookupOpenRouterPricing } from "@/lib/inference/openrouter-catalog"
+
 /**
  * OpenRouter 模型单价（USD / token）。
  *
@@ -14,9 +16,6 @@ import "server-only"
  * 进程内缓存 10 分钟：单价不常变，但也不必每次推理都打一次外网。
  */
 
-const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
-const CACHE_TTL_MS = 10 * 60 * 1000
-
 export interface ModelPricing {
   /** 每 token 的美元价（输入） */
   prompt: number
@@ -25,13 +24,6 @@ export interface ModelPricing {
   /** 每 token 的美元价（命中缓存的输入） */
   cacheRead: number
 }
-
-interface CacheEntry {
-  at: number
-  byId: Map<string, ModelPricing>
-}
-
-let cache: CacheEntry | null = null
 
 /**
  * eve 上报的 modelId 形如 "OpenRouter/deepseek/deepseek-v4.1-flash-1017"
@@ -53,52 +45,24 @@ export function candidateModelIds(modelId: string): string[] {
   return candidates
 }
 
-async function loadPricing(): Promise<Map<string, ModelPricing>> {
-  if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.byId
-  const response = await fetch(OPENROUTER_MODELS_URL, { cache: "no-store" })
-  if (!response.ok) {
-    throw new Error(`OpenRouter 模型目录不可用（${response.status}）`)
-  }
-  const body = (await response.json()) as {
-    data?: { id?: string; pricing?: Record<string, string> }[]
-  }
-  const byId = new Map<string, ModelPricing>()
-  for (const model of body.data ?? []) {
-    if (!model.id || !model.pricing) continue
-    const prompt = Number(model.pricing.prompt)
-    const completion = Number(model.pricing.completion)
-    const cacheRead = Number(model.pricing.input_cache_read)
-    if (!Number.isFinite(prompt) || !Number.isFinite(completion)) continue
-    byId.set(model.id, {
-      prompt,
-      completion,
-      cacheRead: Number.isFinite(cacheRead) ? cacheRead : prompt,
-    })
-  }
-  cache = { at: Date.now(), byId }
-  return byId
-}
-
 /**
  * 取某个模型的单价。取不到返回 null（调用方必须如实按「无成本」处理，不能编造）。
+ * 与模型目录共用同一份 OpenRouter 缓存，避免每次页面和每次计量各打一次上游。
  */
 export async function resolveModelPricing(modelId: string): Promise<ModelPricing | null> {
   const candidates = candidateModelIds(modelId)
   if (candidates.length === 0) return null
   try {
-    const byId = await loadPricing()
     for (const id of candidates) {
-      const pricing = byId.get(id)
+      const pricing = await lookupOpenRouterPricing(id)
       if (pricing) return pricing
     }
-    // 目录里没有这个模型：这是配置问题（白名单里的模型不在 OpenRouter 目录），要看得见
     console.error(
       `[pricing] OpenRouter 目录里没有模型 ${candidates.join(" / ")}，本次不记账金额`,
     )
     return null
   } catch (error) {
-    // 目录不可用：这次拿不到单价 → 不记账金额（留 NULL），但 token 照记
-    console.error("[pricing] 拉取 OpenRouter 模型目录失败:", error)
+    console.error("[pricing] 拉取 OpenRouter 模型目录失败:", error instanceof Error ? error.name : "error")
     return null
   }
 }

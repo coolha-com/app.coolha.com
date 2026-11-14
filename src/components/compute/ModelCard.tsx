@@ -74,7 +74,9 @@ export function ModelCard({
         </div>
         <div>
           <dt className="text-xs text-muted-foreground">上下文</dt>
-          <dd className="mt-0.5 font-medium">{formatTokens(model.contextLength)}</dd>
+          <dd className="mt-0.5 font-medium">
+            {model.contextLength > 0 ? formatTokens(model.contextLength) : "未提供"}
+          </dd>
         </div>
         <div>
           <dt className="text-xs text-muted-foreground">延迟</dt>

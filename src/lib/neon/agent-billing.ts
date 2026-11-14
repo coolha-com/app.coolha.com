@@ -1,14 +1,18 @@
 import "server-only"
 
 import { isDatabaseConfigured, query, transaction } from "@/lib/neon/postgres"
-import { AGENT_GRANT_VALIDITY_DAYS, AGENT_TOKEN_BUDGET_USD } from "@/lib/agents/billing-config"
+import {
+  AGENT_GRANT_VALIDITY_DAYS,
+  AGENT_TOKEN_BUDGET_USD,
+  openModeRequestCap,
+} from "@/lib/agents/billing-config"
 
 /**
  * 按次付费的 Agent 服务：授权与用量账本。
  *
  * 两张表（迁移 015）：
- *  - agent_service_grants：用户手里的服务授权。一条已支付订单 = 一份授权，
- *    30 天有效，token 价值上限 10 美元，用满即 exhausted。
+ *  - agent_service_grants：用户手里的服务授权。来源订单号只是幂等键，
+ *    不再绑定某一家收款商。30 天有效，token 价值上限 10 美元，用满即 exhausted。
  *  - agent_usage_ledger：逐次推理的计量明细，可审计、可对账。
  *
  * 幂等约定：
@@ -217,6 +221,10 @@ export interface UsageRecord {
   costUsd: number | null
   source?: string
   requestId?: string | null
+  /** 拿不到耗时就留空，不写 0 */
+  latencyMs?: number | null
+  /** 拿不到状态就留空，不写成 success */
+  status?: string | null
 }
 
 /**
@@ -231,8 +239,8 @@ export async function recordInferenceUsage(record: UsageRecord): Promise<void> {
       await client.query(
         `INSERT INTO agent_usage_ledger
            (subject, grant_id, session_id, model, input_tokens, output_tokens,
-            cache_read_tokens, cost_usd, source, request_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+            cache_read_tokens, cost_usd, source, request_id, latency_ms, status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
         [
           record.subject,
           record.grantId,
@@ -244,6 +252,8 @@ export async function recordInferenceUsage(record: UsageRecord): Promise<void> {
           record.costUsd,
           record.source ?? "chat",
           record.requestId ?? null,
+          record.latencyMs ?? null,
+          record.status ?? null,
         ],
       )
       if (!record.grantId || record.costUsd === null) return
@@ -306,6 +316,111 @@ export async function readGrantState(subject: string): Promise<GrantState> {
     grants: grants.length ? grants : fresh,
     remainingUsd,
     validDaysLeft,
+  }
+}
+
+export interface OpenModeBudget {
+  requests: number
+  knownCostUsd: number | null
+  blocked: boolean
+  reason: "ok" | "cost_cap" | "request_cap" | "unavailable"
+}
+
+/**
+ * 开放测试模式的 24 小时预算。
+ * 已知成本达到授权上限，或请求次数达到次数护栏，就停。
+ * 查不到账本时拒绝放行（unavailable），避免预算表故障变成无限调用。
+ * 成本为 NULL 的行不计入金额，也不被当成 0 美元。
+ */
+export async function readOpenModeBudget(subject: string): Promise<OpenModeBudget> {
+  const empty: OpenModeBudget = {
+    requests: 0,
+    knownCostUsd: null,
+    blocked: false,
+    reason: "ok",
+  }
+  if (!subject) return { ...empty, blocked: true, reason: "unavailable" }
+  if (!isDatabaseConfigured()) return { ...empty, blocked: true, reason: "unavailable" }
+  try {
+    const { rows } = await query<{ requests: string; cost_usd: string | null }>(
+      `SELECT COUNT(*)::text AS requests,
+              SUM(cost_usd)::text AS cost_usd
+         FROM agent_usage_ledger
+        WHERE subject = $1
+          AND created_at > now() - interval '24 hours'`,
+      [subject],
+    )
+    const requests = Number(rows[0]?.requests ?? 0)
+    const rawCost = rows[0]?.cost_usd
+    const knownCostUsd =
+      rawCost === null || rawCost === undefined || !Number.isFinite(Number(rawCost))
+        ? null
+        : Number(rawCost)
+    if (knownCostUsd !== null && knownCostUsd >= AGENT_TOKEN_BUDGET_USD) {
+      return { requests, knownCostUsd, blocked: true, reason: "cost_cap" }
+    }
+    if (requests >= openModeRequestCap()) {
+      return { requests, knownCostUsd, blocked: true, reason: "request_cap" }
+    }
+    return { requests, knownCostUsd, blocked: false, reason: "ok" }
+  } catch (error) {
+    console.error("[billing] 读取测试预算失败:", error instanceof Error ? error.name : "error")
+    return { requests: 0, knownCostUsd: null, blocked: true, reason: "unavailable" }
+  }
+}
+
+export interface AgentUsageRow {
+  id: string
+  model: string | null
+  inputTokens: number
+  outputTokens: number
+  costUsd: number | null
+  status: string | null
+  latencyMs: number | null
+  requestId: string | null
+  sessionId: string | null
+  createdAt: string
+}
+
+/** 账单页：这个主体自己的推理明细。没有记录就返回空数组，不补示例行。 */
+export async function listAgentUsage(subject: string, limit = 20): Promise<AgentUsageRow[]> {
+  if (!isDatabaseConfigured() || !subject) return []
+  try {
+    const { rows } = await query<{
+      id: string
+      model: string | null
+      input_tokens: number
+      output_tokens: number
+      cost_usd: string | null
+      status: string | null
+      latency_ms: number | null
+      request_id: string | null
+      session_id: string | null
+      created_at: Date
+    }>(
+      `SELECT id::text, model, input_tokens, output_tokens, cost_usd::text,
+              status, latency_ms, request_id, session_id, created_at
+         FROM agent_usage_ledger
+        WHERE subject = $1
+        ORDER BY created_at DESC
+        LIMIT $2`,
+      [subject, limit],
+    )
+    return rows.map((row) => ({
+      id: row.id,
+      model: row.model,
+      inputTokens: Number(row.input_tokens ?? 0),
+      outputTokens: Number(row.output_tokens ?? 0),
+      costUsd: row.cost_usd === null ? null : Number(row.cost_usd),
+      status: row.status,
+      latencyMs: row.latency_ms,
+      requestId: row.request_id,
+      sessionId: row.session_id,
+      createdAt: row.created_at.toISOString(),
+    }))
+  } catch (error) {
+    console.error("[billing] 读取用量明细失败:", error instanceof Error ? error.name : "error")
+    return []
   }
 }
 

@@ -23,6 +23,14 @@ export const INFERENCE_GATEWAY_NAME =
 export const INFERENCE_DEFAULT_MODEL =
   process.env.INFERENCE_DEFAULT_MODEL ?? ""
 
+/** 经过验证的上下文窗口（token）。未配置或非法时返回 null，不猜一个窗口。 */
+export function inferenceContextWindow(): number | null {
+  const raw = process.env.INFERENCE_CONTEXT_WINDOW
+  if (!raw) return null
+  const value = Number(raw)
+  return Number.isFinite(value) && value > 0 ? value : null
+}
+
 /**
  * 允许使用的模型 ID 列表（逗号分隔）。
  * 这是服务端白名单，前端只能从里面选，代理再校验一次。
@@ -36,9 +44,9 @@ export function inferenceModelIds(): string[] {
     .filter(Boolean)
 }
 
-/** 网关是否已完成最小配置 */
+/** 网关是否已完成最小配置（每次读取环境，避免模块加载早于 env） */
 export function isInferenceConfigured(): boolean {
-  return Boolean(INFERENCE_BASE_URL && INFERENCE_API_KEY)
+  return Boolean(process.env.INFERENCE_BASE_URL && process.env.INFERENCE_API_KEY)
 }
 
 /** 推理是否真的可用：端点 + 密钥 + 至少一个可选模型 */
@@ -46,14 +54,30 @@ export function isInferenceReady(): boolean {
   return isInferenceConfigured() && inferenceModelIds().length > 0
 }
 
-/** 把前端传入的模型 ID 收敛到白名单；无白名单时返回 null（不猜） */
-export function resolveInferenceModel(requested: string | null | undefined): string | null {
+export type ResolvedInferenceModel =
+  | { ok: true; modelId: string }
+  | { ok: false; reason: "not_configured" | "not_allowed" }
+
+/**
+ * 把前端传入的模型 ID 收敛到白名单。
+ * 显式传入且不在白名单内 → not_allowed（拒绝，不静默换成默认模型）。
+ * 未传入时才使用 INFERENCE_DEFAULT_MODEL，其次白名单第一项。
+ */
+export function resolveInferenceModel(
+  requested: string | null | undefined,
+): ResolvedInferenceModel {
   const ids = inferenceModelIds()
-  if (ids.length === 0) return null
-  if (requested && ids.includes(requested)) return requested
-  const preferred = INFERENCE_DEFAULT_MODEL
-  if (preferred && ids.includes(preferred)) return preferred
-  return ids[0]
+  if (ids.length === 0 || !isInferenceConfigured()) {
+    return { ok: false, reason: "not_configured" }
+  }
+  const trimmed = requested?.trim() ?? ""
+  if (trimmed) {
+    if (ids.includes(trimmed)) return { ok: true, modelId: trimmed }
+    return { ok: false, reason: "not_allowed" }
+  }
+  const preferred = process.env.INFERENCE_DEFAULT_MODEL ?? ""
+  if (preferred && ids.includes(preferred)) return { ok: true, modelId: preferred }
+  return { ok: true, modelId: ids[0] }
 }
 
 /**

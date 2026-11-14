@@ -1,14 +1,13 @@
 /**
- * 按次付费的 Agent 服务：商业参数（唯一真相源）。
+ * Agent 服务的成本护栏（唯一真相源）。
  *
- * 口径（2026-11-12 定稿）：
- *  - 19 U/次：一次购买 = 一份「服务授权」，法币收款由 Waffo 作 Merchant of Record 承载；
- *  - 期限一个月：授权自发放起 30 天内有效，过期即失效；
- *  - token 消耗上限：授权内 token 累计价值到 10 美元后停用。
+ * 2026-11-12：Waffo 收款已移除。当前阶段不收费、不模拟付款。
+ * 下面的天数和美元上限只用于：
+ *  - 已有的服务授权（历史发放的记录仍可消耗）；
+ *  - local_open / preview_open 的测试预算，防止预览环境被无限调用。
  *
- * ⚠️ 合规口径（AaaS）：对外卖的是 **Agent 执行与交付服务**，按次收费。
- * token 上限是**成本护栏**（防止单次任务把平台的模型成本打穿），
- * 不是对外的计费单位、不作为档位区分、也不宣传——避免被读成「按 token 分档售卖」。
+ * 对外卖的是 Agent 执行与交付，不是 token 档位。
+ * 上限是成本护栏，不是价目表。
  */
 
 function numEnv(name: string, fallback: number): number {
@@ -18,8 +17,19 @@ function numEnv(name: string, fallback: number): number {
   return Number.isFinite(value) && value >= 0 ? value : fallback
 }
 
-/** 一次购买的价格（USD），与 Waffo 商品价格一致 */
+/**
+ * 预留的服务标价。当前没有任何收款入口读取它来发起支付。
+ * 保留常量是为了以后接回商业化时不用再散落魔法数字；界面不得把它显示成待付款。
+ */
 export const AGENT_SERVICE_PRICE_USD = numEnv("AGENT_SERVICE_PRICE_USD", 19)
+
+/**
+ * 开放测试模式（local_open / preview_open）每主体、滚动 24 小时的请求次数上限。
+ * 这是次数护栏，不是虚构单价。拿不到成本时靠它挡住无限调用。
+ */
+export function openModeRequestCap(): number {
+  return numEnv("AGENT_OPEN_REQUEST_CAP", 40)
+}
 
 /** 一份授权的有效期（天） */
 export const AGENT_GRANT_VALIDITY_DAYS = numEnv("AGENT_GRANT_VALIDITY_DAYS", 30)

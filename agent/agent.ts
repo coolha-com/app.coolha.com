@@ -47,16 +47,33 @@ const DEFAULT_MODEL = process.env.INFERENCE_DEFAULT_MODEL ?? "";
  * 单一 OpenAI 兼容端点。baseURL 为空时构造不会抛错，
  * 但任何真实调用都会失败 —— 网关未接入时如实失败，不伪造成功。
  */
+/** 与 src/lib/inference/provider.ts 的 OpenRouter 应用头保持一致。 */
+function openRouterAppHeaders(baseURL: string): Record<string, string> | undefined {
+  try {
+    if (new URL(baseURL).host === "openrouter.ai") {
+      return {
+        "HTTP-Referer": "https://app.coolha.com",
+        "X-OpenRouter-Title": "Coolha",
+      };
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
 const provider = createOpenAICompatible({
   name: GATEWAY_NAME,
   baseURL: BASE_URL,
   apiKey: API_KEY,
+  headers: openRouterAppHeaders(BASE_URL),
   includeUsage: true,
 });
 
 function resolveModel(requested: unknown): string {
-  if (typeof requested === "string" && ALLOWED_MODELS.includes(requested)) {
-    return requested;
+  if (typeof requested === "string" && requested.trim()) {
+    if (ALLOWED_MODELS.includes(requested)) return requested;
+    throw new Error("MODEL_NOT_ALLOWED：请求的模型不在服务端白名单");
   }
   if (DEFAULT_MODEL && ALLOWED_MODELS.includes(DEFAULT_MODEL)) return DEFAULT_MODEL;
   return ALLOWED_MODELS[0] ?? "";

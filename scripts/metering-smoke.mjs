@@ -83,11 +83,15 @@ async function main() {
   captureCookie(verifyRes)
   record("钱包登录", verifyRes.status === 200 && cookie.length > 0)
 
-  // 2. 发放授权 + 建会话（会话绑定授权）
-  const grantRes = await fetch(`${BASE}/api/agents/credits/test-grant`, { method: "POST", headers: H() })
-  const grantBody = await grantRes.json()
-  const grantId = grantBody?.grantId
-  record("发放服务授权", grantRes.status === 200 && Boolean(grantId), grantId)
+  // 2. 开放模式直接建会话；关闭模式没有授权接口，本脚本只覆盖开放测试。
+  const creditsRes = await fetch(`${BASE}/api/agents/credits`, { headers: H() })
+  const credits = await creditsRes.json()
+  record(
+    "当前环境允许不购买就测试",
+    creditsRes.status === 200 && credits?.openAccess === true,
+    `mode=${credits?.accessMode}`,
+  )
+  const grantId = null
 
   const sessionId = `meter_smoke_${Date.now()}`
   const createRes = await fetch(`${BASE}/api/agents/sessions`, {
@@ -95,7 +99,7 @@ async function main() {
     headers: H(),
     body: JSON.stringify({ id: sessionId, agentId: "coolha-rwa", title: "计量冒烟" }),
   })
-  record("创建会话（绑定授权）", createRes.status === 200, `status=${createRes.status}`)
+  record("创建会话（开放模式不绑定授权）", createRes.status === 200, `status=${createRes.status}`)
 
   // 3. 通过我们的代理走一遍真实推理
   const createEve = await fetch(`${BASE}/eve/v1/session`, {
@@ -145,9 +149,9 @@ async function main() {
   await client.connect()
   await new Promise((r) => setTimeout(r, 1500))
   const ledger = await client.query(
-    `SELECT input_tokens, output_tokens, cost_usd, model FROM agent_usage_ledger
-      WHERE grant_id = $1 ORDER BY created_at DESC LIMIT 1`,
-    [grantId],
+    `SELECT input_tokens, output_tokens, cost_usd, model, grant_id FROM agent_usage_ledger
+      WHERE session_id = $1 ORDER BY created_at DESC LIMIT 1`,
+    [sessionId],
   )
   const row = ledger.rows[0]
   record(
@@ -161,21 +165,15 @@ async function main() {
     row ? `cost=$${row.cost_usd} model=${row.model}` : "无成本",
   )
 
-  const grant = await client.query(
-    `SELECT token_used_usd, status FROM agent_service_grants WHERE id = $1`,
-    [grantId],
-  )
   record(
-    "用量已累加到授权额度",
-    Number(grant.rows[0]?.token_used_usd ?? 0) > 0,
-    `used=$${grant.rows[0]?.token_used_usd}`,
+    "开放模式用量不依赖授权行",
+    row?.grant_id == null || row?.grant_id === grantId,
+    `grant=${row?.grant_id ?? "null"}`,
   )
 
   // 6. 清理
-  await client.query(`DELETE FROM agent_usage_ledger WHERE grant_id = $1`, [grantId])
-  await client.query(`DELETE FROM agent_service_grants WHERE id = $1`, [grantId])
+  await client.query(`DELETE FROM agent_usage_ledger WHERE session_id = $1`, [sessionId])
   await client.query(`DELETE FROM chat_sessions WHERE id = $1`, [sessionId])
-  await client.query(`DELETE FROM waffo_orders WHERE id = $1`, [grantBody?.orderId])
   await client.end()
 
   const pass = checks.every((c) => c.ok)

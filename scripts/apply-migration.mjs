@@ -86,6 +86,10 @@ async function main() {
   console.log(`环境文件: ${ENV_FILES.join(" → ")}（后者覆盖前者）`)
   console.log(`目标数据库: ${host}`)
   if (host.includes(PRODUCTION_ENDPOINT)) {
+    if (!isProd) {
+      console.error("拒绝执行：连接串指向生产分支，且没有显式 --prod。")
+      process.exit(1)
+    }
     console.log("⚠️  注意：这是 **生产分支（main）**，改动会直接影响线上数据。")
   } else {
     console.log("✓ 非生产分支")
