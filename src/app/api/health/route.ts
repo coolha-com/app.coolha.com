@@ -80,8 +80,8 @@ export async function GET() {
       configured: isAlchemyConfigured(),
       ok: isAlchemyConfigured(),
       detail: isAlchemyConfigured()
-        ? "ALCHEMY_KEY 已配置（/data/tools 的 Alchemy 读链可用）"
-        : "未配置（/data/tools 的 Alchemy 读链将返回「未接入」，不返回任何链上数值）",
+        ? "ALCHEMY_KEY 已配置。RWA 读链覆盖 Ethereum、BNB Chain、Avalanche、Arbitrum；持有人索引未接入"
+        : "未配置（Alchemy 读链将返回「未接入」，不返回任何链上数值）",
     },
   }
 

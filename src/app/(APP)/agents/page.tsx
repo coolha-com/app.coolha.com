@@ -21,7 +21,7 @@ export default function AgentsPage() {
       <div className="grid gap-3">
         <EntryCard
           title="RWA 尽调 Agent"
-          description="在智能对话里配置参数后派任务：只读、必须标注来源、不得把未验证信息当事实。按次付费，一份服务可用一个月。"
+          description="在智能对话里配置参数后派任务：只读、必须标注来源、不得把未验证信息当事实。收银台未接通，这里不能付款。"
           href="/"
           hrefLabel="在智能对话里开始"
           icon={RiRobot2Line}

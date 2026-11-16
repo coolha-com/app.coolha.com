@@ -1,6 +1,7 @@
 import "server-only"
 
-import { SUBSCRIPTION_CHAINS, type ChainKey } from "@/lib/subscription/config"
+import { chainByKey } from "@/lib/chains/registry"
+import { isChainKey, SUBSCRIPTION_CHAINS, type ChainKey } from "@/lib/subscription/config"
 
 /**
  * Alchemy JSON-RPC 客户端 —— **全站唯一实现**。
@@ -16,7 +17,8 @@ import { SUBSCRIPTION_CHAINS, type ChainKey } from "@/lib/subscription/config"
  *    调用方据此区分「未配置 / 超时 / 限流 / 鉴权失败 / 上游故障」，
  *    而不是一律降级成 null —— null 无法区分「没配 key」和「上游挂了」。
  * 4. **错误信息不得夹带密钥**。抛错前统一脱敏（见 `redact`）。
- * 5. 链配置复用订阅模块的同一份登记（Base + Ethereum），避免两处维护 RPC 子域。
+ * 5. 订阅扫链仍走 Base / Ethereum。RWA 已接通的链走 Chain Registry，
+ *    未接入的链直接拒绝，不发起 RPC。
  */
 
 const RPC_TIMEOUT_MS = 12_000
@@ -35,6 +37,8 @@ export type AlchemyErrorCode =
   | "UPSTREAM_ERROR"
   /** 上游返回体不符合 JSON-RPC 规范 */
   | "INVALID_RESPONSE"
+  /** 链未在 RWA 登记中接通，且也不是订阅扫链网络 */
+  | "NOT_CONNECTED"
 
 export class AlchemyError extends Error {
   readonly code: AlchemyErrorCode
@@ -70,16 +74,36 @@ export function isAlchemyConfigured(): boolean {
   return readAlchemyKey().length > 0
 }
 
+function networkOf(chain: string): { subdomain: string; chainId: number } {
+  if (isChainKey(chain)) {
+    const config = SUBSCRIPTION_CHAINS[chain]
+    return { subdomain: config.rpcSubdomain, chainId: config.id }
+  }
+  const entry = chainByKey(chain)
+  if (entry?.access === "connected" && entry.alchemySubdomain) {
+    return { subdomain: entry.alchemySubdomain, chainId: entry.chainId }
+  }
+  throw new AlchemyError(
+    "NOT_CONNECTED",
+    entry ? `${entry.label} 未接入，本次没有发起 RPC` : "未知链，本次没有发起 RPC",
+    false,
+  )
+}
+
 /** 完整 RPC URL（含密钥）。**只在服务端内部使用，禁止回传浏览器、禁止写日志。** */
-export function alchemyRpcUrl(chain: ChainKey): string | null {
+export function alchemyRpcUrl(chain: ChainKey | string): string | null {
   const key = readAlchemyKey()
   if (!key) return null
-  return `https://${SUBSCRIPTION_CHAINS[chain].rpcSubdomain}.g.alchemy.com/v2/${key}`
+  try {
+    return `https://${networkOf(chain).subdomain}.g.alchemy.com/v2/${key}`
+  } catch {
+    return null
+  }
 }
 
 /** 端点标识：只有子域，不含密钥。可安全进响应体与日志。 */
-export function alchemyEndpointLabel(chain: ChainKey): string {
-  return `${SUBSCRIPTION_CHAINS[chain].rpcSubdomain}.g.alchemy.com`
+export function alchemyEndpointLabel(chain: string): string {
+  return `${networkOf(chain).subdomain}.g.alchemy.com`
 }
 
 /** 错误信息脱敏：上游报错里可能夹带 key，输出前先抹掉（红线 11） */
@@ -92,21 +116,21 @@ function redact(message: string): string {
 /**
  * 发一次 JSON-RPC 查询。
  *
- * @param chain Base / Ethereum
+ * @param chain 订阅网络，或 RWA 登记里已接通的链
  * @param method JSON-RPC 方法名
  * @param params 参数数组
  * @returns `result` 字段的原始值（类型由调用方负责校验）
- * @throws {AlchemyError} 凭证缺失 / 超时 / 限流 / 鉴权失败 / 上游故障
+ * @throws {AlchemyError} 凭证缺失 / 链未接入 / 超时 / 限流 / 鉴权失败 / 上游故障
  */
 export async function alchemyRpc(
-  chain: ChainKey,
+  chain: string,
   method: string,
   params: unknown[],
 ): Promise<unknown> {
   const key = readAlchemyKey()
   if (!key) throw new AlchemyError("NOT_CONFIGURED", "ALCHEMY_KEY 未配置", false)
 
-  const url = `https://${SUBSCRIPTION_CHAINS[chain].rpcSubdomain}.g.alchemy.com/v2/${key}`
+  const url = `https://${networkOf(chain).subdomain}.g.alchemy.com/v2/${key}`
 
   let res: Response
   try {

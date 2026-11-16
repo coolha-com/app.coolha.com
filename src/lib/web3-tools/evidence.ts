@@ -1,5 +1,3 @@
-import type { ChainKey } from "@/lib/subscription/config"
-
 /**
  * 工具层证据信封（Evidence Envelope）。
  *
@@ -35,7 +33,7 @@ export interface ToolSource {
   method: string
   /** 端点标识（**不含密钥**），如 base-mainnet.g.alchemy.com */
   endpoint: string
-  chain: ChainKey
+  chain: string
   chainId: number
   /** ISO 时间戳 */
   fetchedAt: string
@@ -101,6 +99,7 @@ export const TOOL_ERROR_CODES = {
   INVALID_RESPONSE: "INVALID_RESPONSE",
   INVALID_REQUEST: "INVALID_REQUEST",
   NOT_INTEGRATED: "NOT_INTEGRATED",
+  NOT_CONNECTED: "NOT_CONNECTED",
 } as const
 
 export type ToolErrorCode = (typeof TOOL_ERROR_CODES)[keyof typeof TOOL_ERROR_CODES]

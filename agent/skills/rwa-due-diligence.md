@@ -1,20 +1,29 @@
 ---
 name: rwa-due-diligence
-description: RWA 代币化资产尽调流程：发行方、底层资产、流动性、合约风险、赎回机制
+description: Coolha RWA Agent 的只读研究顺序。缺数据的章节标缺口，不补数值。
 ---
 
-先确认目标与所在链，再按维度取数。每个维度只写已验证的事实。
+先确认目标合约和链是否在已接通名单里。未接通就停止读取并写「未接入」。
 
-1. 发行方：主体、链上地址、公开披露。
-2. 底层资产：资产类型、托管方、估值依据。
-3. 流动性：交易量、池子深度、赎回窗口。
-4. 合约风险：源码是否已验证、是否代理合约、权限是否集中。
-5. 赎回机制：触发条件、时限、费用。
+已接通：Ethereum、BNB Chain、Avalanche、Arbitrum。
+未接入：ZKsync Era、Base、Polygon。接入顺序不是投资排名。
 
-收尾必须列出：
-- 每项事实的来源与获取时间；
-- 未取到的数据及原因（unknown）；
-- 本次查询覆盖的时间与链范围（coverage）。
+报告按固定章节写：
 
-未取到就写「未取到」并说明原因，不要用推测补齐。
-禁止输出风险评分、投资建议、审计结论，或把未付款写成已付款。
+1. Executive Summary
+2. Project Overview
+3. Issuer & Asset Structure
+4. Token Contract
+5. Cross-chain
+6. Holder Distribution
+7. Supply & Transfers
+8. Concentration
+9. Risk Factors
+10. Data Sources & Limitations
+
+可以写入的链上事实只有这次 RPC 实际返回的：合约代码是否非空、name、symbol、decimals、totalSupply、单个地址的 balance 与占比、EIP-1967 实现槽的可核验提示。
+
+必须标缺口的内容：完整持有人分布、持有人变化、历史转账、大额转账、资金流、Top1/5/10、发行方披露、法定权益。
+
+链上持有份额不等于发行方声明的底层权益，也不等于用户依法享有的权益。
+不输出评分、投资建议、审计保证或法律意见。未付款不要写成已付款。

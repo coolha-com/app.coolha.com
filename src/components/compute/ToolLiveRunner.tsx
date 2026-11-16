@@ -7,6 +7,7 @@ import {
   RiLoader4Line,
   RiSearchLine,
 } from "react-icons/ri"
+import { connectedChains } from "@/lib/chains/registry"
 import { cn } from "@/lib/utils"
 
 /** 工具层证据信封的前端视图（只声明用到的字段，服务端类型见 src/lib/web3-tools/evidence.ts） */
@@ -60,10 +61,7 @@ interface LiveToolResponse {
   result?: ToolResultView
 }
 
-const CHAINS = [
-  { key: "ethereum", label: "Ethereum" },
-  { key: "base", label: "Base" },
-]
+const CHAINS = connectedChains().map((entry) => ({ key: entry.key, label: entry.label }))
 
 /**
  * 工具实测台（当前用于 Alchemy 读链）。
