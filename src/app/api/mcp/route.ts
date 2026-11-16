@@ -1,5 +1,5 @@
 import { requireInternalAuth } from "@/lib/agents/internal-auth"
-import { connectedChains, CHAIN_REGISTRY } from "@/lib/chains/registry"
+import { CHAIN_REGISTRY, chainDisplayStatus, connectedChains } from "@/lib/chains/registry"
 import { fetchChainSnapshot, isAlchemyConfigured, isToolChain } from "@/lib/web3-tools/alchemy"
 import { runRwaResearch } from "@/lib/rwa/research"
 import { STRUCTURAL_GAPS } from "@/lib/rwa/sections"
@@ -38,7 +38,7 @@ function tools() {
     {
       name: "rwa_read_token",
       description:
-        "读取已接通链上的代币基础信息，并给出带缺口标记的研究报告。持有人分布、历史转账和 Top 集中度没有索引，不会编造。",
+        "对会发 RPC 的链读取代币基础信息，并给出带缺口标记的研究报告。这些链的读取结果默认未核验。持有人分布、历史转账和 Top 集中度没有索引，不会编造。",
       inputSchema: {
         type: "object",
         properties: {
@@ -52,7 +52,7 @@ function tools() {
     },
     {
       name: "alchemy_read_chain",
-      description: `最新区块，以及可选地址的原生币余额和交易数。只覆盖已接通的链：${CONNECTED.join("、")}。不是官方 MCP 端点。`,
+      description: `最新区块，以及可选地址的原生币余额和交易数。只接受会发 RPC 的链：${CONNECTED.join("、")}。这些链尚未标成已核验。不是官方 MCP 端点。`,
       inputSchema: {
         type: "object",
         properties: {
@@ -120,6 +120,8 @@ async function callTool(id: unknown, params: unknown) {
               label: entry.label,
               chainId: entry.chainId,
               access: entry.access,
+              verification: entry.verification,
+              displayStatus: chainDisplayStatus(entry),
               priority: entry.priority,
               batch: entry.batch,
             })),
@@ -153,7 +155,7 @@ async function callTool(id: unknown, params: unknown) {
     }
     if (!isToolChain(args.chain)) {
       return rpcResult(id, {
-        content: [{ type: "text", text: `chain 只能是已接通的 ${CONNECTED.join("、")}` }],
+        content: [{ type: "text", text: `chain 只能是会发 RPC 的 ${CONNECTED.join("、")}。未接入的链会拒绝。` }],
         isError: true,
       })
     }

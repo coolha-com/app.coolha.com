@@ -3,9 +3,9 @@ name: rwa-due-diligence
 description: Coolha RWA Agent 的只读研究顺序。缺数据的章节标缺口，不补数值。
 ---
 
-先确认目标合约和链是否在已接通名单里。未接通就停止读取并写「未接入」。
+先确认目标合约和链。未接入就停止读取并写「未接入」。会发 RPC 但尚未读通的链写「未核验」，不要写成已接通。
 
-已接通：Ethereum、BNB Chain、Avalanche、Arbitrum。
+未核验：Ethereum、BNB Chain、Avalanche、Arbitrum。
 未接入：ZKsync Era、Base、Polygon。接入顺序不是投资排名。
 
 报告按固定章节写：

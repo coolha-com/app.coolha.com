@@ -4,7 +4,7 @@ import { useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { CHAIN_REGISTRY, connectedChains } from "@/lib/chains/registry"
+import { CHAIN_REGISTRY, chainDisplayStatus, connectedChains } from "@/lib/chains/registry"
 import { STRUCTURAL_GAPS } from "@/lib/rwa/sections"
 import type { ResearchReport } from "@/lib/rwa/report"
 
@@ -61,8 +61,8 @@ export function RwaResearchPanel() {
       <ul className="mt-4 flex flex-wrap gap-2">
         {CHAIN_REGISTRY.map((entry) => (
           <li key={entry.key}>
-            <Badge variant={entry.access === "connected" ? "secondary" : "outline"}>
-              {entry.priority}. {entry.label} · {entry.access === "connected" ? "已接通" : "未接入"}
+            <Badge variant={chainDisplayStatus(entry) === "已接通" ? "secondary" : "outline"}>
+              {entry.priority}. {entry.label} · {chainDisplayStatus(entry)}
             </Badge>
           </li>
         ))}
@@ -87,7 +87,7 @@ export function RwaResearchPanel() {
       >
         <div className="flex flex-col gap-2 sm:flex-row">
           <label className="text-sm">
-            <span className="mb-1 block text-xs text-muted-foreground">已接通的链</span>
+            <span className="mb-1 block text-xs text-muted-foreground">可发起读取的链</span>
             <select
               className="h-9 rounded-xl border bg-background px-3 text-sm"
               value={chain}

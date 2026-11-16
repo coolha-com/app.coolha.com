@@ -1,5 +1,5 @@
 import { rejectHardBlock } from "@/lib/agents/http"
-import { CHAIN_REGISTRY } from "@/lib/chains/registry"
+import { CHAIN_REGISTRY, chainDisplayStatus } from "@/lib/chains/registry"
 import { getCurrentUser } from "@/lib/neon/session"
 import { runRwaResearch } from "@/lib/rwa/research"
 import { STRUCTURAL_GAPS } from "@/lib/rwa/sections"
@@ -39,6 +39,8 @@ export async function GET(req: Request) {
         label: entry.label,
         chainId: entry.chainId,
         access: entry.access,
+        verification: entry.verification,
+        displayStatus: chainDisplayStatus(entry),
         priority: entry.priority,
         batch: entry.batch,
       })),

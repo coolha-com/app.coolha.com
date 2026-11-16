@@ -1,4 +1,4 @@
-import { connectedChains, reservedChains, type ChainRegistryEntry } from "@/lib/chains/registry"
+import { CHAIN_REGISTRY, chainDisplayStatus, type ChainRegistryEntry } from "@/lib/chains/registry"
 import {
   NOT_ADVICE,
   REPORT_SECTION_TITLES,
@@ -52,8 +52,13 @@ export function buildResearchReport(input: {
   persistenceNote: string
 }): ResearchReport {
   const token = input.token
-  const connected = chainLine(connectedChains(), "已接通")
-  const reserved = chainLine(reservedChains(), "未接入")
+  const chainSummary = (["未核验", "未接入", "已接通"] as const)
+    .map((status) => {
+      const entries = CHAIN_REGISTRY.filter((entry) => chainDisplayStatus(entry) === status)
+      return entries.length === 0 ? "" : chainLine(entries, status)
+    })
+    .filter(Boolean)
+    .join("。")
 
   const identity =
     token && (token.symbol || token.name)
@@ -116,7 +121,7 @@ export function buildResearchReport(input: {
   const cross = section(
     "cross_chain",
     "gap",
-    `${connected}。${reserved}。未接入的链这次没有调用。本次只读取了请求中的一条链，没有把其他地址自动认成同一资产，也没有做全链扫描。`,
+    `${chainSummary}。未接入的链这次没有调用。标成未核验的链只表示代码可以发 RPC，不表示这次或预览环境已经读通。本次只读取了请求中的一条链，没有把其他地址自动认成同一资产，也没有做全链扫描。`,
   )
 
   const holders = section(

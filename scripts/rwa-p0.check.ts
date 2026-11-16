@@ -3,7 +3,13 @@
  *   node --experimental-strip-types scripts/rwa-p0.check.ts
  */
 import assert from "node:assert/strict"
-import { CHAIN_REGISTRY, connectedChains, isConnectedChain, reservedChains } from "../src/lib/chains/registry.ts"
+import {
+  CHAIN_REGISTRY,
+  chainDisplayStatus,
+  connectedChains,
+  isConnectedChain,
+  reservedChains,
+} from "../src/lib/chains/registry.ts"
 import { balanceOfData, decodeAbiString, formatShare, formatUnits } from "../src/lib/rwa/abi.ts"
 
 const connected = connectedChains().map((entry) => entry.key)
@@ -11,6 +17,10 @@ assert.deepEqual(connected, ["ethereum", "bnb", "avalanche", "arbitrum"])
 assert.deepEqual(reservedChains().map((entry) => entry.key), ["zksync", "base", "polygon"])
 assert.equal(isConnectedChain("base"), false)
 assert.equal(isConnectedChain("ethereum"), true)
+assert.ok(connectedChains().every((entry) => entry.verification === "unverified"))
+assert.equal(chainDisplayStatus(CHAIN_REGISTRY[0]), "未核验")
+assert.equal(chainDisplayStatus(CHAIN_REGISTRY.find((entry) => entry.key === "base")), "未接入")
+assert.ok(CHAIN_REGISTRY.every((entry) => chainDisplayStatus(entry) !== "已接通"))
 assert.ok(CHAIN_REGISTRY.every((entry, index) => entry.priority === index + 1))
 assert.ok(reservedChains().every((entry) => entry.alchemySubdomain === null))
 

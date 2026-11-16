@@ -8,6 +8,11 @@
 
 export type ChainAccess = "connected" | "reserved"
 
+/** 与 access 分开。access 决定会不会发 RPC；verification 只决定页面怎么写。 */
+export type ChainVerification = "verified" | "unverified"
+
+export type ChainDisplayStatus = "已接通" | "未核验" | "未接入"
+
 export interface ChainRegistryEntry {
   key: string
   chainId: number
@@ -15,6 +20,8 @@ export interface ChainRegistryEntry {
   /** Alchemy 子域。未接入时为 null，禁止拿它拼 URL。 */
   alchemySubdomain: string | null
   access: ChainAccess
+  /** 读取是否已经核验。默认 unverified，不表示 access。 */
+  verification: ChainVerification
   /** 接入顺序，越小越先。不是排序或推荐。 */
   priority: number
   batch: 1 | 2
@@ -27,6 +34,7 @@ export const CHAIN_REGISTRY: readonly ChainRegistryEntry[] = [
     label: "Ethereum",
     alchemySubdomain: "eth-mainnet",
     access: "connected",
+    verification: "unverified",
     priority: 1,
     batch: 1,
   },
@@ -36,6 +44,7 @@ export const CHAIN_REGISTRY: readonly ChainRegistryEntry[] = [
     label: "BNB Chain",
     alchemySubdomain: "bnb-mainnet",
     access: "connected",
+    verification: "unverified",
     priority: 2,
     batch: 1,
   },
@@ -45,6 +54,7 @@ export const CHAIN_REGISTRY: readonly ChainRegistryEntry[] = [
     label: "Avalanche",
     alchemySubdomain: "avax-mainnet",
     access: "connected",
+    verification: "unverified",
     priority: 3,
     batch: 1,
   },
@@ -54,6 +64,7 @@ export const CHAIN_REGISTRY: readonly ChainRegistryEntry[] = [
     label: "Arbitrum",
     alchemySubdomain: "arb-mainnet",
     access: "connected",
+    verification: "unverified",
     priority: 4,
     batch: 1,
   },
@@ -63,6 +74,7 @@ export const CHAIN_REGISTRY: readonly ChainRegistryEntry[] = [
     label: "ZKsync Era",
     alchemySubdomain: null,
     access: "reserved",
+    verification: "unverified",
     priority: 5,
     batch: 2,
   },
@@ -72,6 +84,7 @@ export const CHAIN_REGISTRY: readonly ChainRegistryEntry[] = [
     label: "Base",
     alchemySubdomain: null,
     access: "reserved",
+    verification: "unverified",
     priority: 6,
     batch: 2,
   },
@@ -81,6 +94,7 @@ export const CHAIN_REGISTRY: readonly ChainRegistryEntry[] = [
     label: "Polygon",
     alchemySubdomain: null,
     access: "reserved",
+    verification: "unverified",
     priority: 7,
     batch: 2,
   },
@@ -102,4 +116,10 @@ export function connectedChains(): ChainRegistryEntry[] {
 
 export function reservedChains(): ChainRegistryEntry[] {
   return CHAIN_REGISTRY.filter((entry) => entry.access === "reserved")
+}
+
+/** 展示文案。access=connected 仍会发 RPC；未核验之前不写成已接通。 */
+export function chainDisplayStatus(entry: ChainRegistryEntry): ChainDisplayStatus {
+  if (entry.access !== "connected") return "未接入"
+  return entry.verification === "verified" ? "已接通" : "未核验"
 }
