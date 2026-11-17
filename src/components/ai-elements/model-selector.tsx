@@ -65,6 +65,7 @@ export function ModelSelector({
   const currentLabel = selected?.name ?? (modelId || "选择模型")
 
   return (
+    <div className={size === "sm" ? "min-w-0 w-full sm:w-auto" : "min-w-0"}>
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
@@ -73,7 +74,11 @@ export function ModelSelector({
             size={size === "icon-sm" ? "icon-sm" : "sm"}
             disabled={disabled}
             aria-label={`模型：${currentLabel}`}
-            className="min-w-0 max-w-[16rem] justify-start gap-1.5"
+            className={
+              size === "sm"
+                ? "h-11 w-full min-w-0 justify-start gap-1.5 overflow-hidden sm:h-8 sm:w-auto sm:max-w-[16rem]"
+                : undefined
+            }
           />
         }
       >
@@ -145,5 +150,6 @@ export function ModelSelector({
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
+    </div>
   )
 }

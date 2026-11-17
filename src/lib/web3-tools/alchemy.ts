@@ -6,7 +6,7 @@ import {
   hexToBigInt,
   isAlchemyConfigured,
 } from "@/lib/alchemy/client"
-import { SUBSCRIPTION_CHAINS, type ChainKey } from "@/lib/subscription/config"
+import { chainByKey, connectedChains, isConnectedChain } from "@/lib/chains/registry"
 import {
   trace,
   type ToolCoverage,
@@ -27,11 +27,11 @@ import {
  *    「把上游响应翻译成工具层的数据结构 + 装进证据信封」。
  */
 
-/** 本工具层开放的链：与订阅扫链同一套登记 */
-export const TOOL_CHAIN_KEYS = Object.keys(SUBSCRIPTION_CHAINS) as ChainKey[]
+/** 本工具层开放的链：RWA 登记里已接通的四条。未接入的链不在这里。 */
+export const TOOL_CHAIN_KEYS = connectedChains().map((entry) => entry.key)
 
-export function isToolChain(value: unknown): value is ChainKey {
-  return typeof value === "string" && value in SUBSCRIPTION_CHAINS
+export function isToolChain(value: unknown): value is string {
+  return typeof value === "string" && isConnectedChain(value)
 }
 
 /** 服务端是否配置了 Alchemy key —— 只判断存在性，绝不读取或回传值 */
@@ -45,7 +45,7 @@ export type AlchemyToolMethod = "block" | "address"
 
 /** 读链结果。字段语义与覆盖边界见 ToolResult。 */
 export interface ToolChainData {
-  chain: ChainKey
+  chain: string
   chainId: number
   label: string
   /** 最新区块高度 */
@@ -63,7 +63,7 @@ export interface ToolChainData {
 }
 
 export interface ToolChainQuery {
-  chain: ChainKey
+  chain: string
   /** 可选。给了就一并查余额与 nonce；不给只查区块高度与时间。 */
   address?: string | null
 }
@@ -75,7 +75,10 @@ export interface ToolChainQuery {
  */
 export async function fetchChainSnapshot(query: ToolChainQuery): Promise<ToolResult<ToolChainData>> {
   const { chain } = query
-  const config = SUBSCRIPTION_CHAINS[chain]
+  const config = chainByKey(chain)
+  if (!config || config.access !== "connected") {
+    throw new Error(`${chain} 未接入，本次没有发起 RPC`)
+  }
   const address = query.address ? query.address.toLowerCase() : null
 
   const method =
@@ -88,7 +91,7 @@ export async function fetchChainSnapshot(query: ToolChainQuery): Promise<ToolRes
     method,
     endpoint: alchemyEndpointLabel(chain),
     chain,
-    chainId: config.id,
+    chainId: config.chainId,
   }
 
   return trace<ToolChainData>({
@@ -167,7 +170,7 @@ export async function fetchChainSnapshot(query: ToolChainQuery): Promise<ToolRes
       return {
         data: {
           chain,
-          chainId: config.id,
+          chainId: config.chainId,
           label: config.label,
           blockNumber: Number(blockNumber),
           blockTime,

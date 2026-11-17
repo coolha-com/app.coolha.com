@@ -18,7 +18,7 @@ const LINKS = [
   {
     href: "/data/rwa",
     title: "RWA 数据",
-    text: "现有 RWA 行情页。",
+    text: "现有 RWA 行情，以及 RWA Agent 的链核验状态和数据缺口。",
     icon: RiDatabase2Line,
   },
 ]

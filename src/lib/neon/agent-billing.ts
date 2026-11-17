@@ -10,7 +10,7 @@ import {
 /**
  * 按次付费的 Agent 服务：授权与用量账本。
  *
- * 两张表（迁移 015）：
+ * 两张表（迁移 015，018 只预留 usage_budget 列，本模块不读取它）：
  *  - agent_service_grants：用户手里的服务授权。来源订单号只是幂等键，
  *    不再绑定某一家收款商。30 天有效，token 价值上限 10 美元，用满即 exhausted。
  *  - agent_usage_ledger：逐次推理的计量明细，可审计、可对账。

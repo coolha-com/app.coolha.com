@@ -44,6 +44,7 @@ export function AgentSelector({
   const selected = agents.find((agent) => agent.id === value) ?? agents[0]
 
   return (
+    <div className="min-w-0 w-full sm:w-auto">
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
@@ -52,7 +53,7 @@ export function AgentSelector({
             size="sm"
             disabled={disabled}
             aria-label={`智能服务：${selected?.name ?? "选择"}`}
-            className="min-w-0 max-w-[14rem] justify-start gap-2"
+            className="h-11 w-full min-w-0 justify-start gap-2 overflow-hidden sm:h-8 sm:w-auto sm:max-w-[14rem]"
           />
         }
       >
@@ -122,5 +123,6 @@ export function AgentSelector({
         />
       </DropdownMenuContent>
     </DropdownMenu>
+    </div>
   )
 }

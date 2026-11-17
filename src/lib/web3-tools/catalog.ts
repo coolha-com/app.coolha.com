@@ -59,11 +59,11 @@ export const WEB3_TOOLS: Web3Tool[] = [
     access: "direct",
     priority: "p0",
     liveScope:
-      "我们接入的是 Alchemy 的链上数据读链（服务端 JSON-RPC，只读），只覆盖 Base 与 Ethereum 两条链；不是官方 mcp.alchemy.com 的 MCP 端点。",
+      "服务端 Alchemy JSON-RPC 只读。RWA 会对 Ethereum、BNB Chain、Avalanche、Arbitrum 发起读取，这四条链的结果尚未核验。只含最新区块、原生币余额与 nonce；代币基础信息在研究读取里另走 eth_call。不是官方 mcp.alchemy.com。Base、Polygon、ZKsync Era 未接入。持有人分布、历史转账和资金流没有索引。",
     caveats: [
       "项目已有 Alchemy key，可直接复用，无需新增密钥",
-      "✅ 已接入（2026-11-03）：服务端 Alchemy JSON-RPC 只读，执行点 /api/ai/tools/alchemy-mcp-server，页面可实测",
-      "接入范围仅限最新区块高度/时间 + 指定地址的原生币余额与交易计数，Base 与 Ethereum 两条链；官方 mcp.alchemy.com 的 MCP 端点尚未接入",
+      "会对 Ethereum、BNB Chain、Avalanche、Arbitrum 发 RPC，读取结果尚未核验。Base 仍只用于既有订阅扫链，不在这条 RWA 读链里",
+      "范围是最新区块、原生币余额与交易计数。官方 mcp.alchemy.com 未接入。持有人分布与历史转账未接入",
       "Alchemy key 只在服务端读取，永不下发浏览器；查不到的项如实标「未取到」，不填占位数值",
     ],
   },

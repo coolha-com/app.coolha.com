@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { constraintsAccepted, type TaskConstraints } from "@/lib/agents/agent-contracts"
 import type { AgentOption } from "@/components/agents/AgentSelector"
+import { RwaResearchPanel } from "@/components/rwa/RwaResearchPanel"
 
 const CONSTRAINTS: { key: keyof TaskConstraints; label: string; detail: string }[] = [
   { key: "readOnly", label: "只读", detail: "不签名、不转账、不兑换" },
@@ -87,8 +88,8 @@ export function AgentConfigPanel({
         : "未开放"
 
   return (
-    <div className="flex flex-1 items-start justify-center overflow-y-auto px-4 py-8">
-      <div className="w-full max-w-xl space-y-5">
+    <div className="flex min-w-0 flex-1 items-start justify-center overflow-y-auto px-4 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:py-8">
+      <div className="w-full min-w-0 max-w-xl space-y-5">
         <div className="flex items-center gap-3">
           <span className="flex size-10 items-center justify-center rounded-2xl bg-primary/15 text-primary">
             <RiShieldKeyholeLine className="size-5" />
@@ -99,9 +100,11 @@ export function AgentConfigPanel({
           </div>
         </div>
 
-        <p className="text-sm leading-6 text-muted-foreground">
+        <p className="break-words text-sm leading-6 text-muted-foreground">
           {AGENT_BLURB[agent.id] ?? "配置该智能体的任务约束后开始对话。"}
         </p>
+
+        {agent.id === "coolha-rwa" ? <RwaResearchPanel /> : null}
 
         <section className="rounded-3xl border bg-card p-4">
           <h3 className="text-sm font-medium">服务状态</h3>

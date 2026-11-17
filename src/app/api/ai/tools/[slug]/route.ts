@@ -154,6 +154,8 @@ function mapError(error: ToolError): { status: string; httpStatus: number } {
       return { status: "invalid_request", httpStatus: 400 }
     case TOOL_ERROR_CODES.NOT_INTEGRATED:
       return { status: "not_integrated", httpStatus: 404 }
+    case TOOL_ERROR_CODES.NOT_CONNECTED:
+      return { status: "not_integrated", httpStatus: 404 }
     default:
       return { status: "upstream_error", httpStatus: 502 }
   }

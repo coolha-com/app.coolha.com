@@ -9,6 +9,7 @@ import {
 } from "react-icons/ri"
 import { MockNotice } from "@/components/compute/MockNotice"
 import { ChainLogos, RwaLogo } from "@/components/rwa/RwaLogo"
+import { RwaResearchPanel } from "@/components/rwa/RwaResearchPanel"
 import { TickerBoard } from "@/components/rwa/TickerBoard"
 import { getRwaSnapshot } from "@/lib/rwa/client"
 import { getTickerBoard, toGroupBoard } from "@/lib/rwa/markets"
@@ -42,6 +43,7 @@ export default async function RwaAggregatorPage() {
 
   return (
     <div className="space-y-8">
+      <RwaResearchPanel />
       <section className="rounded-2xl border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">股票 / ETF / 大宗商品</h2>

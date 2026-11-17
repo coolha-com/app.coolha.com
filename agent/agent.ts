@@ -3,7 +3,7 @@ import { defineDynamic } from "eve/models";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 /**
- * Coolha 的第一个 Hosted Agent：RWA Research。
+ * Coolha 自营 RWA Agent。
  *
  * 推理通道：只连**一个** OpenAI 兼容网关（INFERENCE_BASE_URL + INFERENCE_API_KEY）。
  * Vercel AI Gateway 团队于 2026-11-11 被永久停用（疑似滥用，无申诉通道），
