@@ -33,7 +33,11 @@ const SECRET_HINTS = ["KEY", "SECRET", "TOKEN", "PRIVATE", "PASSWORD", "SIGNING"
  * 纯本地开关：绝不同步到 Vercel。
  * COOLHA_EVE_LOCAL=1 会让云端把 /eve/v1/* rewrite 到 127.0.0.1:4274 —— 云上没有这个进程。
  */
-const LOCAL_ONLY = new Set(["COOLHA_EVE_LOCAL"])
+const LOCAL_ONLY = new Set([
+  "COOLHA_EVE_LOCAL",
+  // Creem 测试凭证按 2026-11-17 决定同步到 Preview（creem_test_ 沙箱，无真实扣款）。
+  // 空值仍会被 parseEnv 跳过：webhook secret / success url 本地没填就不会推上去。
+])
 
 /** Waffo 已退出。同步脚本不得把这些变量推回去。 */
 function isRetired(key) {

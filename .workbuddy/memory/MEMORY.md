@@ -4,7 +4,7 @@
 
 ## 基线 / 门禁
 - Next 16.4.6（experimental.agentUpgrade="security"）/ React 19 / TS 5.9 / Tailwind 4 / shadcn(radix-luma) / Reown AppKit+wagmi / next-intl 三语。主色 #c0e218。
-- Neon Postgres（src/lib/neon/，迁移到 017）。Git coolha-com/app.coolha.com。本地与 Preview 用 dev 分支，生产用 main。不要把本地 DATABASE_URL 指到 main。.workbuddy/memory/ 未被 gitignore → 严禁写密钥。
+- Neon Postgres（src/lib/neon/，迁移到 019）。Git coolha-com/app.coolha.com。本地与 Preview 用 dev 分支，生产用 main。不要把本地 DATABASE_URL 指到 main。.workbuddy/memory/ 未被 gitignore → 严禁写密钥。
 - 门禁：npm run lint + npx tsc --noEmit + npm run build。构建铁律：rm -rf .next && npm run build（safe-delete 拦自清）；.next 被 next start 占用时先停服。
 - 分支分工：main=ep-tiny-wildflower-a1kcciel（生产），dev=ep-gentle-rain-a1zc8ojh。本地开发走 dev（.env.development.local 放 dev 库，.env.local 保持 main）。Neon Auth 分支级，换库须同换 NEON_AUTH_BASE_URL。
 
@@ -58,6 +58,15 @@
 - 删干净了：`/agents/research` 页、ResearchCockpit、`/api/research`、5 维度引擎（`src/lib/research/*`）、旧一次性 RWA 研究管线（`lib/agents/execute.ts`、`lib/agents/rwa-research.ts`、`lib/neon/rwa-research.ts`、RwaResearchDesk、ResearchRunArticle、`/api/agents/rwa-research/*`、`/api/v1/agents/rwa-research/*`、MCP 的 `rwa_research` 工具）。
 - 仍被需要的约束/密钥校验/只读工具清单抽到 `src/lib/agents/agent-contracts.ts`。MCP 现在只剩 `alchemy_read_chain`。
 - 遗留待清：`rwa_research_*` 三张表与 `/api/v1/rwa/{assets,markets}` 仍在（见 docs/HANDOVER.md P2）。
+
+## Creem 测试收款通道（2026-11-17 接入，仅测试）
+- 定位：支付通道技术验证，不改 AaaS 模型、不恢复 Waffo。支付成功只发一份 Agent 服务授权（复用 `grantForPaidOrder()`，授权层与 access-mode 未改）。
+- 迁移 019：`creem_orders`（自建单，request_id=我们的单号，状态机 pending→paid→refunded）+ `creem_webhook_events`（只审计不 gate 核销）。
+- 代码：`src/lib/neon/creem.ts`、`/api/creem/checkout`（POST 建会话+GET 订单）、`/api/creem/webhook`（raw-body HMAC-SHA256 hex 验签）、`components/billing/CreemTestCheckoutButton.tsx` + billing/subscription 入口。
+- 强制 `creem_test_` key（live key 服务端拒绝）；测试 base `https://test-api.creem.io/v1`；CREEM_* 在 sync-vercel-env.mjs 里设为纯本地不上云。未配凭证时接口/按钮降级（503 / 不显示）。
+- 拿不到 Creem 回调订单号时靠 `object.request_id` 精确对回，不靠邮箱；幂等靠订单状态机 + source_order_id UNIQUE，事件表只记不拦。
+- 官方 skill 已存 `~/.creem/skills/`（需 curl -L）。接入与操作步骤见 `docs/CREEM_TEST_SETUP.md`。
+- 类目风险：Creem 禁 crypto/NFT、services 属 guardrail，正式开卖前需 support@creem.io 确认 Web3/RWA 属性能过审。
 
 ## 已知缺陷
 - 历史缺陷 `waffo.ts` 的 `sum(text)` 已随 Waffo 代码删除，不再适用。

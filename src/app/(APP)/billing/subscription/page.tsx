@@ -8,6 +8,8 @@ import {
 } from "@/components/PageShell"
 import { getCurrentUser } from "@/lib/neon/session"
 import { decideAgentAccess } from "@/lib/agents/access-mode"
+import { isCreemConfigured } from "@/lib/neon/creem"
+import { CreemTestCheckoutButton } from "@/components/billing/CreemTestCheckoutButton"
 import { isInferenceReady, INFERENCE_DEFAULT_MODEL, INFERENCE_GATEWAY_NAME } from "@/lib/inference/config"
 
 export const dynamic = "force-dynamic"
@@ -21,6 +23,7 @@ export default async function AgentServicePage() {
   const user = await getCurrentUser()
   const access = decideAgentAccess()
   const ready = isInferenceReady()
+  const creemReady = isCreemConfigured()
   const modeLabel =
     access.mode === "local_open"
       ? "本地开发测试"
@@ -55,6 +58,19 @@ export default async function AgentServicePage() {
       )}
 
       {!user ? <Notice className="mt-4">请先在侧边栏登入后再开始任务。</Notice> : null}
+
+      {user && creemReady ? (
+        <Surface as="section" className="mt-4">
+          <p className="font-medium">Creem 支付通道联调（测试）</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            这是收款通道的技术验证，使用 Creem 沙箱（creem_test_），不会产生真实扣款。
+            测试付款成功后，会自动往你的账号发放一份 Agent 服务授权，可用于 Closed 模式的执行。
+          </p>
+          <div className="mt-3">
+            <CreemTestCheckoutButton />
+          </div>
+        </Surface>
+      ) : null}
 
       <SectionHeading>现在能做什么</SectionHeading>
       <ul className="space-y-2">
