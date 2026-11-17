@@ -63,13 +63,15 @@
 - 定位：支付通道技术验证，不改 AaaS 模型、不恢复 Waffo。支付成功只发一份 Agent 服务授权（复用 `grantForPaidOrder()`，授权层与 access-mode 未改）。
 - 迁移 019：`creem_orders`（自建单，request_id=我们的单号，状态机 pending→paid→refunded）+ `creem_webhook_events`（只审计不 gate 核销）。
 - 代码：`src/lib/neon/creem.ts`、`/api/creem/checkout`（POST 建会话+GET 订单）、`/api/creem/webhook`（raw-body HMAC-SHA256 hex 验签）、`components/billing/CreemTestCheckoutButton.tsx` + billing/subscription 入口。
-- 强制 `creem_test_` key（live key 服务端拒绝）；测试 base `https://test-api.creem.io/v1`；CREEM_* 在 sync-vercel-env.mjs 里设为纯本地不上云。未配凭证时接口/按钮降级（503 / 不显示）。
+- 强制 `creem_test_` key（live key 服务端拒绝）；测试 base `https://test-api.creem.io/v1`。未配凭证时接口/按钮降级（503 / 不显示）。
+- 2026-11-17 用户决定：CREEM_API_KEY/CREEM_PRODUCT_ID **同步到 Vercel Preview**（已从 sync 脚本 LOCAL_ONLY 移除）；COOLHA_EVE_LOCAL 仍严格不上云。CREEM_WEBHOOK_SECRET/SUCCESS_URL 本地为空，同步脚本空值跳过。
 - 拿不到 Creem 回调订单号时靠 `object.request_id` 精确对回，不靠邮箱；幂等靠订单状态机 + source_order_id UNIQUE，事件表只记不拦。
 - 官方 skill 已存 `~/.creem/skills/`（需 curl -L）。接入与操作步骤见 `docs/CREEM_TEST_SETUP.md`。
 - 类目风险：Creem 禁 crypto/NFT、services 属 guardrail，正式开卖前需 support@creem.io 确认 Web3/RWA 属性能过审。
 
 ## 已知缺陷
 - 历史缺陷 `waffo.ts` 的 `sum(text)` 已随 Waffo 代码删除，不再适用。
+- Vercel Preview `/api/health` 报 postgres `getaddrinfo ENOTFOUND base`（2026-11-17 发现，旧部署同样存在，非新引入）。云端明文 DATABASE_URL host 正确（ep-gentle-rain-a1zc8ojh-pooler...），实际数据接口正常（/api/v1/models 200、credits 401）。疑为 health 里 pg ping 对连接串尾部 `channel_binding=require` 的诊断瑕疵，待查；不影响实际读写。
 
 ## 存储 / 隔离
 - 本地 IndexedDB 唯一读源，云端可选镜像。用户第三方 Key 永不上行。终端查询必带 subject 过滤。
