@@ -88,8 +88,8 @@ export function AgentConfigPanel({
         : "未开放"
 
   return (
-    <div className="flex flex-1 items-start justify-center overflow-y-auto px-4 py-8">
-      <div className="w-full max-w-xl space-y-5">
+    <div className="flex min-w-0 flex-1 items-start justify-center overflow-y-auto px-4 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:py-8">
+      <div className="w-full min-w-0 max-w-xl space-y-5">
         <div className="flex items-center gap-3">
           <span className="flex size-10 items-center justify-center rounded-2xl bg-primary/15 text-primary">
             <RiShieldKeyholeLine className="size-5" />
@@ -100,7 +100,7 @@ export function AgentConfigPanel({
           </div>
         </div>
 
-        <p className="text-sm leading-6 text-muted-foreground">
+        <p className="break-words text-sm leading-6 text-muted-foreground">
           {AGENT_BLURB[agent.id] ?? "配置该智能体的任务约束后开始对话。"}
         </p>
 

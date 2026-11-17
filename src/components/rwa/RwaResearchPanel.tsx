@@ -51,7 +51,7 @@ export function RwaResearchPanel() {
   return (
     <section className="rounded-2xl border bg-card p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">RWA Agent 数据边界</h2>
+        <h2 className="min-w-0 text-lg font-semibold">RWA Agent 数据边界</h2>
         <Badge variant="outline">收银台未接通</Badge>
       </div>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -60,8 +60,11 @@ export function RwaResearchPanel() {
 
       <ul className="mt-4 flex flex-wrap gap-2">
         {CHAIN_REGISTRY.map((entry) => (
-          <li key={entry.key}>
-            <Badge variant={chainDisplayStatus(entry) === "已接通" ? "secondary" : "outline"}>
+          <li key={entry.key} className="min-w-0">
+            <Badge
+              variant={chainDisplayStatus(entry) === "已接通" ? "secondary" : "outline"}
+              className="max-w-full"
+            >
               {entry.priority}. {entry.label} · {chainDisplayStatus(entry)}
             </Badge>
           </li>
@@ -86,10 +89,10 @@ export function RwaResearchPanel() {
         }}
       >
         <div className="flex flex-col gap-2 sm:flex-row">
-          <label className="text-sm">
+          <label className="min-w-0 text-sm sm:w-auto">
             <span className="mb-1 block text-xs text-muted-foreground">可发起读取的链</span>
             <select
-              className="h-9 rounded-xl border bg-background px-3 text-sm"
+              className="h-11 w-full rounded-xl border bg-background px-3 text-sm sm:h-9"
               value={chain}
               onChange={(event) => setChain(event.target.value)}
             >
@@ -103,7 +106,7 @@ export function RwaResearchPanel() {
           <label className="min-w-0 flex-1 text-sm">
             <span className="mb-1 block text-xs text-muted-foreground">代币合约</span>
             <input
-              className="h-9 w-full rounded-xl border bg-background px-3 text-sm"
+              className="h-11 w-full rounded-xl border bg-background px-3 text-sm sm:h-9"
               value={address}
               onChange={(event) => setAddress(event.target.value)}
               placeholder="0x"
@@ -115,7 +118,7 @@ export function RwaResearchPanel() {
         <label className="text-sm">
           <span className="mb-1 block text-xs text-muted-foreground">可选：单个持有地址（不计算排名）</span>
           <input
-            className="h-9 w-full rounded-xl border bg-background px-3 text-sm"
+            className="h-11 w-full rounded-xl border bg-background px-3 text-sm sm:h-9"
             value={holder}
             onChange={(event) => setHolder(event.target.value)}
             placeholder="留空则不计算占比"

@@ -403,7 +403,7 @@ function ChatSession({
 
       {/* 输入框 —— 固定置底 */}
       <form
-        className="border-t bg-background/95 px-4 py-3 backdrop-blur"
+        className="border-t bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur"
         onSubmit={(event) => {
           event.preventDefault()
           void sendMessage()
@@ -690,7 +690,7 @@ export function AgentWorkspace({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* 顶部工具栏：始终可见 */}
-      <header className="flex flex-wrap items-center gap-2 border-b px-4 py-2">
+      <header className="grid grid-cols-1 gap-2 border-b px-4 py-2 sm:flex sm:flex-wrap sm:items-center">
         <AgentSelector
           agents={AGENTS}
           value={agentId}
@@ -703,9 +703,9 @@ export function AgentWorkspace({
           onChange={setModelId}
           disabled={creating || models.length === 0}
         />
-        <div className="ml-auto flex items-center gap-1">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/tasks">
+        <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:gap-1">
+          <Button asChild variant="ghost" size="sm" className="min-h-11 w-full sm:min-h-8 sm:w-auto">
+            <Link href="/tasks" className="inline-flex items-center justify-center gap-1">
               <RiHistoryLine className="size-4" />
               历史任务
             </Link>
@@ -714,6 +714,7 @@ export function AgentWorkspace({
             type="button"
             variant="ghost"
             size="sm"
+            className="min-h-11 w-full sm:min-h-8 sm:w-auto"
             onClick={() => handleAgentChange("__new__")}
             disabled={creating}
           >

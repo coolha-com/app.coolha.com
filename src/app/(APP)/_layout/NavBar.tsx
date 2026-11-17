@@ -13,20 +13,22 @@ const ConnectButton = dynamic(() => import("@/components/web3/ConnectButton"), {
  */
 export default function NavBar() {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/95 px-2 backdrop-blur lg:hidden">
-      <button
-        type="button"
-        onClick={() => setSidebarDrawer(true)}
-        title="打开导航"
-        aria-label="打开导航"
-        className="inline-flex size-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-accent"
-      >
-        <RiMenuLine className="size-5" />
-      </button>
+    <header className="sticky top-0 z-30 border-b bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur lg:hidden">
+      <div className="flex h-14 items-center justify-between px-4">
+        <button
+          type="button"
+          onClick={() => setSidebarDrawer(true)}
+          title="打开导航"
+          aria-label="打开导航"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-accent"
+        >
+          <RiMenuLine className="size-6" />
+        </button>
 
-      <div className="ml-auto flex shrink-0 items-center gap-1">
-        <ButtonMenu />
-        <ConnectButton />
+        <div className="flex shrink-0 items-center gap-1">
+          <ButtonMenu />
+          <ConnectButton />
+        </div>
       </div>
     </header>
   );
